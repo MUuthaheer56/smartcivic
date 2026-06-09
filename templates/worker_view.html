@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="grid">
+  <!-- Top header tracking bar -->
+  <div class="col-12">
+    <div class="tracking-bar" id="gps-tracking-bar">
+      <span>👷 Field Operations View</span>
+      <span id="tracking-status">Awaiting GPS Lock...</span>
+    </div>
+  </div>
+  
+  <!-- Left Column Route sequence -->
+  <div class="col-6" style="display:flex; flex-direction:column; gap:20px;">
+    <div class="card" style="padding:15px; display:flex; justify-content:space-around; text-align:center; font-weight:bold;">
+      <div>
+        <p style="font-size:0.8rem; color:var(--neutral-600);">Total Distance</p>
+        <h3 id="route-distance" style="font-size:1.5rem; color:var(--primary);">0 km</h3>
+      </div>
+      <div style="border-left:1px solid var(--neutral-200); height:40px;"></div>
+      <div>
+        <p style="font-size:0.8rem; color:var(--neutral-600);">Est. Duration</p>
+        <h3 id="route-duration" style="font-size:1.5rem; color:var(--primary);">0 mins</h3>
+      </div>
+    </div>
+    
+    <div id="active-route-container">
+      <!-- Active route sequence rendered here -->
+    </div>
+  </div>
+  
+  <!-- Right Column Map view -->
+  <div class="col-6">
+    <div class="card" style="height:fit-content; position:sticky; top:84px;">
+      <h3 style="margin-bottom:12px;">Active Route Navigation Map</h3>
+      <p style="font-size:0.85rem; color:var(--neutral-600); margin-bottom:15px;">Follow the sequenced waypoints on the map. Pin colors change for priorities.</p>
+      <div id="worker-map" style="width:100%; height:450px; border-radius:var(--radius);"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script src="{{ url_for('static', filename='js/worker.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const user = Auth.getUser();
+    if (!user || user.role !== 'field_worker') {
+      showToast("Access forbidden: Workers only", "error");
+      window.location.href = '/login';
+      return;
+    }
+    
+    WorkerRoute.init();
+  });
+</script>
+{% endblock %}

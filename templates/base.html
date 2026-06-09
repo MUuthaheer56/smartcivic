@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="app_name">SmartCivic</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/worker.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}" media="print">
+  
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  
+  <!-- Live Urgent Broadcast Alert Banner -->
+  <div id="urgent-banner" style="display:none; background:var(--danger); color:white; font-weight:bold; text-align:center; padding:10px; position:fixed; top:64px; left:0; right:0; z-index:999;"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="/" class="nav-brand">
+      <span>Smart</span>Civic
+    </a>
+    
+    <div class="nav-links">
+      <a href="/issues" data-i18n="nav_issues">Browse Issues</a>
+      <a href="/report" data-i18n="nav_report">Report Issue</a>
+    </div>
+    
+    <div id="auth-nav">
+      <!-- Loaded dynamically via main.js -->
+    </div>
+  </nav>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Socket.io & Leaflet scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- JS Scripts -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/tour.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/offline.js') }}"></script>
+  
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

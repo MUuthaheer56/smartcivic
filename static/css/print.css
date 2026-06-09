@@ -1,0 +1,90 @@
+/* SmartCivic - Print Media CSS */
+
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 11pt !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .navbar, .footer, .btn, .btn-primary, .btn-secondary,
+  .toast-container, .voting-panel, .lang-switcher, .theme-btn,
+  .tracking-bar, .comment-box, #auth-nav, #notif-bell,
+  .sidebar, .filters-container, .map-placeholder {
+    display: none !important;
+  }
+  
+  .container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #CCCCCC !important;
+    background: #FFFFFF !important;
+    margin-bottom: 20px !important;
+    page-break-inside: avoid !important;
+    border-radius: 0 !important;
+  }
+  
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #000000;
+    padding-bottom: 15px;
+  }
+  
+  .print-title {
+    font-size: 24pt;
+    font-weight: bold;
+    margin: 0;
+  }
+  
+  .print-meta {
+    font-size: 10pt;
+    color: #555555;
+    margin-top: 5px;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+    color: #000000 !important;
+  }
+  
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 20px 0 !important;
+  }
+  
+  th, td {
+    border: 1px solid #CCCCCC !important;
+    padding: 8px !important;
+    text-align: left !important;
+    font-size: 10pt !important;
+  }
+  
+  th {
+    background-color: #EEEEEE !important;
+    font-weight: bold !important;
+  }
+  
+  .sla-overdue {
+    color: #FF0000 !important;
+    font-weight: bold !important;
+    border: none !important;
+  }
+  
+  .status-badge {
+    border: 1px solid #999999 !important;
+    padding: 2px 6px !important;
+    text-transform: uppercase !important;
+    font-size: 8pt !important;
+  }
+}

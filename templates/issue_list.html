@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="grid">
+  <!-- Filter Sidebar -->
+  <div class="col-4 card" style="height:fit-content;">
+    <h3 style="margin-bottom:15px;" data-i18n="nav_issues">Browse Issues</h3>
+    
+    <div class="form-group">
+      <label for="filter-search" class="form-label">Search Keywords</label>
+      <input type="text" id="filter-search" class="form-control" placeholder="Search by title, description...">
+    </div>
+    
+    <div class="form-group">
+      <label for="filter-category" class="form-label" data-i18n="label_category">Category</label>
+      <select id="filter-category" class="form-control">
+        <option value="">All Categories</option>
+        <option value="water">Water Supply</option>
+        <option value="sewage">Sewage Overflow</option>
+        <option value="pothole">Pothole / Road Damage</option>
+        <option value="garbage">Garbage Pile / Dump</option>
+        <option value="streetlight">Streetlight Malfunction</option>
+        <option value="noise">Noise Pollution</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="filter-status" class="form-label">Status</label>
+      <select id="filter-status" class="form-control">
+        <option value="">All Statuses</option>
+        <option value="pending_validation">Pending Validation</option>
+        <option value="validated">Validated</option>
+        <option value="assigned">Assigned</option>
+        <option value="in_progress">In Progress</option>
+        <option value="resolved">Resolved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="filter-severity" class="form-label" data-i18n="label_severity">Minimum Severity</label>
+      <select id="filter-severity" class="form-control">
+        <option value="">Any Severity</option>
+        <option value="1">★☆☆☆☆</option>
+        <option value="2">★★☆☆☆</option>
+        <option value="3">★★★☆☆</option>
+        <option value="4">★★★★☆</option>
+        <option value="5">★★★★★</option>
+      </select>
+    </div>
+    
+    <button class="btn btn-primary" style="width:100%;" onclick="loadIssues()">Apply Filters</button>
+  </div>
+  
+  <!-- Map & List -->
+  <div class="col-8" style="display:flex; flex-direction:column; gap:20px;">
+    <!-- Map widget -->
+    <div class="card" style="padding:10px;">
+      <div id="browse-map" style="width:100%; height:300px; border-radius:var(--radius);"></div>
+    </div>
+    
+    <!-- Issue Listing -->
+    <div id="issues-container" style="display:flex; flex-direction:column; gap:16px;">
+      <!-- Loaded dynamically via js -->
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script>
+  let currentCommunityId = '';
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!Auth.isLoggedIn()) {
+      showToast("Please log in to browse community issues", "warning");
+      window.location.href = '/login';
+      return;
+    }
+    
+    const user = Auth.getUser();
+    currentCommunityId = user.community_id;
+    
+    // Set default map view for community
+    fetch('/api/communities/').then(res => res.json()).then(result => {
+      if (result.success) {
+        const comm = result.data.find(c => c._id === currentCommunityId);
+        if (comm) {
+          CivicMap.init('browse-map', comm.lat, comm.lng, 13);
+        }
+      }
+      loadIssues();
+    });
+  });
+  
+  async function loadIssues() {
+    const search = document.getElementById('filter-search').value;
+    const cat = document.getElementById('filter-category').value;
+    const stat = document.getElementById('filter-status').value;
+    const sev = document.getElementById('filter-severity').value;
+    
+    const url = `/api/issues/?community_id=${currentCommunityId}&search=${encodeURIComponent(search)}&category=${cat}&status=${stat}&min_severity=${sev}`;
+    
+    const res = await apiFetch(url);
+    const container = document.getElementById('issues-container');
+    if (!container) return;
+    
+    if (!res?.success || res.data.issues.length === 0) {
+      container.innerHTML = `<div class="card" style="text-align:center; padding:30px; color:var(--neutral-600)" data-i18n="empty_no_issues">No issues found matching your filters.</div>`;
+      if (typeof applyTranslations === 'function') applyTranslations();
+      CivicMap.clearMarkers();
+      return;
+    }
+    
+    const issues = res.data.issues;
+    
+    CivicMap.clearMarkers();
+    
+    let html = '';
+    issues.forEach(iss => {
+      const starStr = severityStars(iss.severity);
+      const relativeTime = timeAgo(iss.created_at);
+      
+      let imageHtml = '';
+      if (iss.images && iss.images.length > 0) {
+        imageHtml = `<img src="/${iss.images[0]}" style="width:120px; height:90px; object-fit:cover; border-radius:var(--radius-sm); margin-left:16px;">`;
+      }
+      
+      html += `
+        <div class="card" style="display:flex; justify-content:space-between; align-items:start;" onclick="window.location.href='/issues/${iss._id}'">
+          <div style="flex:1;">
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+              <span class="badge-cat cat-${iss.category}">${iss.category}</span>
+              <span style="font-size:0.8rem; color:var(--neutral-600)">Severity: <span style="color:orange">${starStr}</span></span>
+            </div>
+            <h3 style="font-size:1.15rem; font-weight:600; margin-bottom:6px;">${iss.title}</h3>
+            <p style="font-size:0.9rem; color:var(--neutral-700); margin-bottom:12px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+              ${iss.description}
+            </p>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--neutral-400)">
+              <span>Reporter: ${iss.reporter_name} · ${relativeTime}</span>
+              <span style="padding:2px 8px; border-radius:4px; font-weight:600;" class="status-badge">${iss.status.replace('_', ' ')}</span>
+            </div>
+          </div>
+          ${imageHtml}
+        </div>
+      `;
+      
+      // Plot markers
+      const markerPopup = `
+        <div style="font-family:var(--font-body)">
+          <strong>${iss.title}</strong><br/>
+          Category: ${iss.category}<br/>
+          Status: ${iss.status}<br/>
+          <a href="/issues/${iss._id}" style="color:var(--primary); font-weight:bold;">View Details</a>
+        </div>
+      `;
+      CivicMap.addMarker(iss.lat, iss.lng, markerPopup, iss.severity >= 4);
+    });
+    
+    container.innerHTML = html;
+    CivicMap.fitMarkers();
+    
+    if (typeof applyTranslations === 'function') {
+      applyTranslations();
+    }
+  }
+</script>
+{% endblock %}

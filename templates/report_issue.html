@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="grid">
+  <div class="col-6 card">
+    <h2 style="margin-bottom:20px;" data-i18n="btn_report_issue">Report an Issue</h2>
+    
+    <form id="report-form" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="title" class="form-label" data-i18n="label_title">Issue Title</label>
+        <input type="text" id="title" name="title" class="form-control" placeholder="e.g. Broken water pipe" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="category" class="form-label" data-i18n="label_category">Category</label>
+        <select id="category" name="category" class="form-control" required>
+          <option value="water">Water Supply</option>
+          <option value="sewage">Sewage Overflow</option>
+          <option value="pothole">Pothole / Road Damage</option>
+          <option value="garbage">Garbage Pile / Dump</option>
+          <option value="streetlight">Streetlight Malfunction</option>
+          <option value="noise">Noise Pollution</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="description" class="form-label" data-i18n="label_description">Description</label>
+        <textarea id="description" name="description" class="form-control" rows="4" placeholder="Enter detailed description" required></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label" data-i18n="label_upload_photo">Upload Photos (max 3)</label>
+        <input type="file" name="images[]" class="form-control" accept="image/*" multiple>
+      </div>
+      
+      <!-- Linked Issue Status Banner -->
+      <input type="hidden" id="linked_issue_id" name="linked_issue_id" value="">
+      <div id="linked-issue-alert" style="display:none; padding:12px; background:var(--primary-light); color:var(--primary-dark); border-radius:var(--radius-sm); font-size:0.85rem; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; border:1px solid var(--primary-border);">
+        <span>🔗 <strong>Linked to existing issue:</strong> <span id="linked-issue-title">None</span></span>
+        <button type="button" class="btn btn-secondary" style="padding:2px 6px; font-size:0.75rem; background:rgba(37, 99, 235, 0.1); color:var(--primary);" onclick="clearLinkedIssue()">Clear Link</button>
+      </div>
+
+      <div class="form-group">
+        <label for="address" class="form-label">Location Address / Landmark</label>
+        <input type="text" id="address" name="address" class="form-control" placeholder="e.g. Near Block B Main Gate" required>
+      </div>
+      
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+        <div class="form-group">
+          <label for="lat" class="form-label">Latitude</label>
+          <input type="text" id="lat" name="lat" class="form-control" required readonly>
+        </div>
+        <div class="form-group">
+          <label for="lng" class="form-label">Longitude</label>
+          <input type="text" id="lng" name="lng" class="form-control" required readonly>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" name="is_anonymous" value="true">
+          <span>Report Anonymously</span>
+        </label>
+      </div>
+      
+      <div style="display:flex; gap:12px;">
+        <button type="button" class="btn btn-secondary" id="detect-location-btn" data-i18n="btn_detect_location">Detect My Location</button>
+        <button type="submit" class="btn btn-primary" data-i18n="btn_submit_report">Submit Report</button>
+      </div>
+    </form>
+  </div>
+  
+  <div class="col-6" style="display:flex; flex-direction:column; gap:20px;">
+    <div class="card" style="flex:1;">
+      <h3 style="margin-bottom:12px;">Select Location on Map</h3>
+      <p style="font-size:0.85rem; color:var(--neutral-600); margin-bottom:15px;">Click on the map to place a pinpoint marker representing where the issue is located.</p>
+      <div id="report-map" style="width:100%; height:420px; border-radius:var(--radius);"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script src="{{ url_for('static', filename='js/report.js') }}"></script>
+<script>
+  function selectRelatedIssue(id, title, lat, lng, address) {
+    document.getElementById('linked_issue_id').value = id;
+    document.getElementById('lat').value = lat;
+    document.getElementById('lng').value = lng;
+    document.getElementById('address').value = address;
+    
+    document.getElementById('linked-issue-title').textContent = title;
+    document.getElementById('linked-issue-alert').style.display = 'flex';
+    
+    showToast(`Snapped to location of: "${title}"`, "success");
+    
+    CivicMap.setReportMarker(lat, lng, `Linked: ${title}`);
+    
+    if (CivicMap.map) {
+      CivicMap.map.setView([lat, lng], 16);
+    }
+  }
+
+  function clearLinkedIssue() {
+    document.getElementById('linked_issue_id').value = '';
+    document.getElementById('linked-issue-alert').style.display = 'none';
+    CivicMap.clearReportMarker();
+    showToast("Linked issue cleared.", "info");
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!Auth.isLoggedIn()) {
+      showToast("Please log in to report issues", "warning");
+      window.location.href = '/login';
+      return;
+    }
+    
+    const user = Auth.getUser();
+    let centerLat = 12.9716;
+    let centerLng = 77.5946;
+    
+    fetch(`/api/communities/`).then(res => res.json()).then(result => {
+      if (result.success) {
+        const comm = result.data.find(c => c._id === user.community_id);
+        if (comm) {
+          centerLat = comm.lat;
+          centerLng = comm.lng;
+          document.getElementById('lat').value = centerLat;
+          document.getElementById('lng').value = centerLng;
+          
+          CivicMap.init('report-map', centerLat, centerLng, 14);
+          CivicMap.setReportMarker(centerLat, centerLng, "Community Center");
+          
+          if (CivicMap.map) {
+            CivicMap.map.on('click', (e) => {
+              const lat = e.latlng.lat;
+              const lng = e.latlng.lng;
+              document.getElementById('lat').value = lat;
+              document.getElementById('lng').value = lng;
+              CivicMap.setReportMarker(lat, lng, "Report Pin");
+              
+              // Clear linked issue if user manual clicks somewhere else
+              if (document.getElementById('linked_issue_id').value) {
+                clearLinkedIssue();
+              }
+            });
+            
+            // Fetch open issues in this community to display as related options
+            fetch(`/api/issues/?community_id=${user.community_id}&limit=100`)
+              .then(res => res.json())
+              .then(issResult => {
+                if (issResult.success) {
+                  const openIssues = issResult.data.issues.filter(iss => iss.status !== 'resolved' && iss.status !== 'rejected');
+                  openIssues.forEach(iss => {
+                    const yellowIcon = new L.Icon({
+                      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+                      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                      iconSize: [25, 41],
+                      iconAnchor: [12, 41],
+                      popupAnchor: [1, -34],
+                      shadowSize: [41, 41]
+                    });
+                    
+                    const marker = L.marker([iss.lat, iss.lng], {icon: yellowIcon}).addTo(CivicMap.map);
+                    marker.bindPopup(`
+                      <div style="font-size:0.85rem; padding:4px;">
+                        <strong>${iss.title}</strong><br/>
+                        Category: ${iss.category}<br/>
+                        Address: ${iss.address}<br/>
+                        <button type="button" class="btn btn-primary" style="padding:2px 6px; font-size:0.75rem; margin-top:6px; width:100%;" onclick="selectRelatedIssue('${iss._id}', '${iss.title.replace(/'/g, "\\'")}', ${iss.lat}, ${iss.lng}, '${iss.address.replace(/'/g, "\\'")}')">Pinpoint to this Location</button>
+                      </div>
+                    `);
+                  });
+                }
+              });
+          }
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width:600px; margin:40px auto; text-align:center; padding:40px;">
+  <div style="font-size:4rem; margin-bottom:20px;">👋</div>
+  <h1 style="margin-bottom:15px; font-weight:700;">Welcome to SmartCivic!</h1>
+  <p style="color:var(--neutral-600); line-height:1.6; margin-bottom:30px; font-size:1.05rem;">
+    Let's take a quick interactive tour to show you how to check community maintenance scores, report issues, validate neighbor reports, and view reputation statistics.
+  </p>
+  
+  <div style="display:flex; justify-content:center; gap:16px;">
+    <button class="btn btn-secondary" onclick="skipTourBtn()">Skip Tour</button>
+    <button class="btn btn-primary" onclick="startTourBtn()">Start Interactive Tour</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function startTourBtn() {
+    // Redirect to home page first, then start tour
+    window.location.href = '/?start_tour=true';
+  }
+  
+  async function skipTourBtn() {
+    const res = await apiFetch('/api/auth/onboarding-complete', { method: 'PUT' });
+    if (res?.success) {
+      const user = Auth.getUser();
+      if (user) {
+        user.onboarding_complete = true;
+        Auth.setSession(Auth.getToken(), user);
+      }
+      showToast("Tour skipped successfully!", "info");
+      window.location.href = '/community';
+    }
+  }
+</script>
+{% endblock %}

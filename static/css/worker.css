@@ -1,0 +1,121 @@
+/* SmartCivic - Worker CSS */
+
+.route-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.map-placeholder {
+  width: 100%;
+  height: 350px;
+  background-color: var(--neutral-200);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  color: var(--neutral-600);
+  font-weight: 500;
+  border: 1px solid var(--neutral-200);
+}
+
+html[data-theme="dark"] .map-placeholder {
+  background-color: var(--neutral-50);
+  border-color: #334155;
+}
+
+.waypoint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  padding-left: 20px;
+}
+
+.waypoint-list::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 6px;
+  width: 2px;
+  background-color: var(--neutral-200);
+  z-index: 1;
+}
+
+.waypoint-item {
+  position: relative;
+  background-color: #FFFFFF;
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--neutral-200);
+  z-index: 2;
+  transition: var(--transition);
+}
+
+html[data-theme="dark"] .waypoint-item {
+  background-color: #1E293B;
+  border-color: #334155;
+}
+
+.waypoint-item:hover {
+  transform: translateX(4px);
+}
+
+.waypoint-seq {
+  position: absolute;
+  top: 16px;
+  left: -28px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--primary);
+  color: #FFFFFF;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+}
+
+.waypoint-item.completed .waypoint-seq {
+  background-color: var(--success);
+}
+
+.waypoint-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 8px;
+}
+
+.waypoint-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.waypoint-body {
+  font-size: 0.9rem;
+  color: var(--neutral-700);
+  margin-bottom: 12px;
+}
+
+.waypoint-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.tracking-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--primary-light);
+  color: var(--primary-dark);
+  padding: 12px 18px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.9rem;
+}

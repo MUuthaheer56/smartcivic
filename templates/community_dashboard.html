@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="grid">
+  <!-- Top header -->
+  <div class="col-12 card">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+      <div>
+        <h1 id="community-title">Community Dashboard</h1>
+        <p style="color:var(--neutral-600); font-size:0.9rem;" id="community-location">City, State</p>
+      </div>
+      <button class="btn btn-primary" onclick="window.location.href='/report'">Report a New Issue</button>
+    </div>
+  </div>
+  
+  <!-- Left Side stats -->
+  <div class="col-8" style="display:flex; flex-direction:column; gap:24px;">
+    <!-- Stats Grid -->
+    <div class="stats-summary-grid">
+      <div class="stat-box">
+        <span class="stat-num" id="resolution-rate">0%</span>
+        <span class="stat-desc">Resolution Rate</span>
+      </div>
+      
+      <div class="stat-box">
+        <span class="stat-num" id="avg-resolution-time">0 hrs</span>
+        <span class="stat-desc">Average Fix Time</span>
+      </div>
+      
+      <div class="stat-box">
+        <div id="sla-compliance-summary" style="margin-top:4px;">
+          <!-- Loaded via JS -->
+        </div>
+        <span class="stat-desc">SLA Time compliance</span>
+      </div>
+    </div>
+    
+    <!-- Hotspots -->
+    <div class="card">
+      <h3>Civic Clustering Hotspots</h3>
+      <p style="font-size:0.85rem; color:var(--neutral-600); margin-bottom:16px;">Identified geographic concentrations of unresolved civic complaints using proximity clustering.</p>
+      <div id="hotspots-list">
+        <!-- Loaded via JS -->
+      </div>
+    </div>
+    
+    <!-- Recent Issues list -->
+    <div class="card">
+      <h3 style="margin-bottom:16px;">Recent Reports</h3>
+      <div id="recent-issues-list">
+        <!-- Loaded via JS -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- Right Side Score and info -->
+  <div class="col-4" style="display:flex; flex-direction:column; gap:24px;">
+    <!-- Score Gauge -->
+    <div class="card score-gauge-container">
+      <h3 style="margin-bottom:20px;" data-i18n="score_label">Community Score</h3>
+      <div class="score-gauge" id="community-score-gauge">
+        <div class="score-value" id="community-score-value">100</div>
+      </div>
+      <p style="font-size:0.85rem; color:var(--neutral-600); margin-top:16px; text-align:center;">
+        Score represents community upkeep. Drops for reports, gains on fixes!
+      </p>
+    </div>
+    
+    <!-- Map panel -->
+    <div class="card" style="padding:10px;">
+      <h4 style="margin:10px 10px 10px 10px;">Community Center Location Map</h4>
+      <div id="auth-map" style="width:100%; height:200px; border-radius:var(--radius-sm);"></div>
+    </div>
+    
+    <!-- Announcements widget -->
+    <div class="card">
+      <h3>Community Announcements</h3>
+      <div id="announcements-container" style="margin-top:12px;">
+        <!-- Loaded via JS -->
+      </div>
+    </div>
+    
+    <!-- Categories Breakdown -->
+    <div class="card">
+      <h3>Issues by Category</h3>
+      <div id="issues-by-category" style="margin-top:12px;">
+        <!-- Loaded via JS -->
+      </div>
+    </div>
+    
+    <!-- Contributors -->
+    <div class="card">
+      <h3>Top Community Contributors</h3>
+      <div id="top-reporters-list" style="margin-top:12px;">
+        <!-- Loaded via JS -->
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!Auth.isLoggedIn()) {
+      showToast("Please log in to view community dashboard", "warning");
+      window.location.href = '/login';
+      return;
+    }
+    
+    const user = Auth.getUser();
+    
+    // Get community details
+    fetch('/api/communities/').then(res => res.json()).then(result => {
+      if (result.success) {
+        const comm = result.data.find(c => c._id === user.community_id);
+        if (comm) {
+          document.getElementById('community-title').textContent = `${comm.name} Community`;
+          document.getElementById('community-location').textContent = `${comm.city}, ${comm.state}`;
+          
+          CivicMap.init('auth-map', comm.lat, comm.lng, 13);
+        }
+      }
+      
+      Dashboard.loadCommunityData(user.community_id);
+      Dashboard.loadHotspots(user.community_id);
+    });
+  });
+</script>
+{% endblock %}
