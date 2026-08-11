@@ -105,7 +105,7 @@ def send_weekly_digest(community_id):
                     <hr/>
                     <p>Keep your community clean and active! Report new issues or cast votes on open reports by logging into SmartCivic.</p>
                     <div style="text-align: center; margin-top: 20px;">
-                        <a href="http://localhost:5000/community" style="background-color: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Go to Dashboard</a>
+                        <a href="{current_app.config.get('APP_BASE_URL', 'http://localhost:5000') + '/community'}" style="background-color: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Go to Dashboard</a>
                     </div>
                 </div>
             </body>

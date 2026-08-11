@@ -84,12 +84,42 @@ const CivicMap = {
     }
   },
 
-  drawRoutePath: function(waypoints) {
+  drawRoutePath: async function(waypoints) {
     if (typeof L !== 'undefined' && CivicMap.map && waypoints && waypoints.length > 1) {
       if (CivicMap.polyline) {
         CivicMap.polyline.remove();
+        CivicMap.polyline = null;
       }
       
+      try {
+        const coordinates = waypoints
+          .map(wp => `${wp.lng},${wp.lat}`)
+          .join(';');
+          
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+          const routeCoordinates = data.routes[0].geometry.coordinates;
+          const leafletCoordinates = routeCoordinates.map(([lng, lat]) => [lat, lng]);
+          
+          CivicMap.polyline = L.polyline(leafletCoordinates, {
+            color: '#2563eb',
+            weight: 5,
+            opacity: 0.8,
+            dashArray: '8, 8',
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(CivicMap.map);
+          return;
+        }
+      } catch (e) {
+        console.error("OSRM routing failed, falling back to straight lines:", e);
+      }
+      
+      // Fallback to straight lines
       const latlngs = waypoints.map(wp => [wp.lat, wp.lng]);
       CivicMap.polyline = L.polyline(latlngs, {
         color: '#2563eb',

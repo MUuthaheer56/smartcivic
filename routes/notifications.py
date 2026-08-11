@@ -8,7 +8,7 @@ notifications_bp = Blueprint('notifications', __name__)
 @notifications_bp.route('/', methods=['GET'])
 @require_auth
 def list_notifications():
-    user_id = g.user['_id']
+    user_id = ObjectId(g.user['user_id'])
     try:
         notifs = list(db.notifications.find({"user_id": user_id}).sort("created_at", -1))
         # Format results for serialization
@@ -27,7 +27,7 @@ def list_notifications():
 def mark_read(notif_id):
     try:
         db.notifications.update_one(
-            {"_id": ObjectId(notif_id), "user_id": g.user['_id']},
+            {"_id": ObjectId(notif_id), "user_id": ObjectId(g.user['user_id'])},
             {"$set": {"is_read": True}}
         )
         return jsonify({"success": True, "message": "Notification marked as read"})
@@ -39,7 +39,7 @@ def mark_read(notif_id):
 def mark_all_read():
     try:
         db.notifications.update_many(
-            {"user_id": g.user['_id'], "is_read": False},
+            {"user_id": ObjectId(g.user['user_id']), "is_read": False},
             {"$set": {"is_read": True}}
         )
         return jsonify({"success": True, "message": "All notifications marked as read"})

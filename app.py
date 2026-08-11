@@ -9,6 +9,8 @@ socketio = SocketIO()
 mail = Mail()
 db = None
 
+import routes.sockets  # registers Socket.IO event handlers
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -53,6 +55,8 @@ def create_app():
     app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
     app.register_blueprint(announcements_bp, url_prefix='/api/announcements')
     app.register_blueprint(pages_bp)
+    from routes.notifications import notifications_bp
+    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     
     # Error handlers
     @app.errorhandler(400)
@@ -67,20 +71,3 @@ def create_app():
     def e500(e): return jsonify({'success': False, 'message': 'Server error', 'data': None}), 500
     
     return app
-
-# Socket.IO Events
-@socketio.on('connect', namespace='/civic')
-def on_connect():
-    pass
-
-@socketio.on('join_room', namespace='/civic')
-def on_join(data):
-    join_room(data.get('room', ''))
-
-@socketio.on('leave_room', namespace='/civic')
-def on_leave(data):
-    leave_room(data.get('room', ''))
-
-@socketio.on('worker_location_update', namespace='/civic')
-def on_worker_location(data):
-    emit('worker_location', data, room=f"authority_{data.get('community_id')}", namespace='/civic')

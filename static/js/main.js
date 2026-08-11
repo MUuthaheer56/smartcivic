@@ -3,7 +3,7 @@
 const Auth = {
   getToken: () => localStorage.getItem('sc_token'),
   getUser: () => JSON.parse(localStorage.getItem('sc_user') || 'null'),
-  setSession: (token, user) => {
+  setSession: (token, user) => {  
     localStorage.setItem('sc_token', token);
     localStorage.setItem('sc_user', JSON.stringify(user));
   },

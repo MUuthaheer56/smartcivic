@@ -181,6 +181,8 @@ def seed_database():
             "created_at": now - timedelta(hours=6),
             "sla_deadline": now + timedelta(days=7),
             "sla_breached": False,
+            "stale_3days_applied": False,
+            "stale_7days_applied": False,
             "comments": [
                 {
                     "user_id": ObjectId("660000000000000000000002"),
@@ -224,6 +226,8 @@ def seed_database():
             "created_at": now - timedelta(days=2),
             "sla_deadline": now + timedelta(hours=12),
             "sla_breached": False,
+            "stale_3days_applied": False,
+            "stale_7days_applied": False,
             "comments": [],
             "status_history": [
                 {"status": "pending_validation", "changed_by": ObjectId("660000000000000000000003"), "timestamp": now - timedelta(days=2), "note": "Issue reported."},
@@ -261,6 +265,8 @@ def seed_database():
             "created_at": now - timedelta(days=5),
             "sla_deadline": now - timedelta(days=2),
             "sla_breached": False,
+            "stale_3days_applied": False,
+            "stale_7days_applied": False,
             "comments": [],
             "status_history": [
                 {"status": "pending_validation", "changed_by": ObjectId("660000000000000000000003"), "timestamp": now - timedelta(days=5), "note": "Issue reported."},

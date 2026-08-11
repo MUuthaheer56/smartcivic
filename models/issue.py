@@ -67,6 +67,8 @@ def create_issue_doc(title, description, category, lat, lng, address, community_
         "created_at": datetime.utcnow(),
         "sla_deadline": None,
         "sla_breached": False,
+        "stale_3days_applied": False,
+        "stale_7days_applied": False,
         "comments": [],
         "status_history": [
             {

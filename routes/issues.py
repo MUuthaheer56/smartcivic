@@ -428,6 +428,11 @@ def update_status(issue_id):
             {'_id': issue['community_id']},
             {'$inc': {'resolved_issues': 1, 'open_issues': -1}}
         )
+        if issue.get('assigned_to'):
+            db.users.update_one(
+                {'_id': issue['assigned_to']},
+                {'$inc': {'issues_resolved_count': 1}}
+            )
         
         # Notify reporter
         notify_user(

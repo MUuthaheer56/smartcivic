@@ -50,43 +50,6 @@ def worker_stats():
 def onboarding_tour():
     return render_template('onboarding_tour.html')
 
-@pages_bp.route('/api/notifications/', methods=['GET'])
-def get_user_notifications():
-    from flask import g
-    from bson import ObjectId
-    from app import db
-    from utils import serialize
-    from services.auth_service import require_auth
-    
-    # We apply require_auth dynamically since require_auth is a decorator
-    @require_auth
-    def _get():
-        notifs = list(db.notifications.find({'user_id': ObjectId(g.user['user_id'])}).sort([('created_at', -1)]))
-        return {
-            'success': True,
-            'message': 'Notifications retrieved',
-            'data': serialize(notifs)
-        }
-    return _get()
 
-@pages_bp.route('/api/notifications/<notif_id>/read', methods=['PUT'])
-def read_notification(notif_id):
-    from flask import g
-    from bson import ObjectId
-    from app import db
-    from services.auth_service import require_auth
-    
-    @require_auth
-    def _read():
-        db.notifications.update_one(
-            {'_id': ObjectId(notif_id), 'user_id': ObjectId(g.user['user_id'])},
-            {'$set': {'is_read': True}}
-        )
-        return {
-            'success': True,
-            'message': 'Notification marked as read',
-            'data': None
-        }
-    return _read()
 
 

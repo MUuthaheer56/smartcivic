@@ -1,5 +1,7 @@
 import math
 import heapq
+import urllib.request
+import json
 from typing import List, Dict
 
 def haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -10,7 +12,36 @@ def haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng/2)**2
     return 2 * R * math.asin(math.sqrt(a))
 
+def get_osrm_distances(locations: List[Dict]) -> Dict[str, Dict[str, float]]:
+    # Coordinates in format lng,lat
+    coords_str = ";".join(f"{loc['lng']},{loc['lat']}" for loc in locations)
+    url = f"https://router.project-osrm.org/table/v1/driving/{coords_str}?annotations=distance"
+    
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'SmartCivic/1.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            if data.get('code') == 'Ok' and 'distances' in data:
+                distances = data['distances']
+                matrix = {}
+                for i, a in enumerate(locations):
+                    matrix[a['id']] = {}
+                    for j, b in enumerate(locations):
+                        if i != j and distances[i][j] is not None:
+                            # OSRM returns distances in meters. Convert to kilometers.
+                            matrix[a['id']][b['id']] = distances[i][j] / 1000.0
+                return matrix
+    except Exception as e:
+        print(f"[OSRM] Table API error: {e}. Falling back to Haversine.")
+    return None
+
 def build_graph(locations: List[Dict]) -> Dict:
+    # Try fetching real road distances from OSRM first
+    osrm_matrix = get_osrm_distances(locations)
+    if osrm_matrix:
+        return osrm_matrix
+
+    # Fallback to Haversine distance
     graph = {}
     for i, a in enumerate(locations):
         graph[a['id']] = {}
@@ -70,8 +101,7 @@ def optimize_route(worker_lat: float, worker_lng: float, issues: List[Dict]) -> 
         'address': 'Worker Start Location'
     }]
     
-    total = 0.0
-    plat, plng = worker_lat, worker_lng
+    latlngs_ordered = [(worker_lat, worker_lng)]
     for seq, iid in enumerate(ordered, 1):
         iss = imap.get(iid)
         if iss:
@@ -85,12 +115,41 @@ def optimize_route(worker_lat: float, worker_lng: float, issues: List[Dict]) -> 
                 'category': iss.get('category', ''),
                 'address': iss.get('address', '')
             })
-            total += haversine(plat, plng, iss['lat'], iss['lng'])
-            plat, plng = iss['lat'], iss['lng']
+            latlngs_ordered.append((iss['lat'], iss['lng']))
             
+    # Calculate route distance and duration using OSRM Route service if possible
+    total_distance_km = 0.0
+    estimated_duration_min = 0
+    osrm_route_success = False
+    
+    try:
+        # Build URL for OSRM Route service
+        coords_str = ";".join(f"{lng},{lat}" for lat, lng in latlngs_ordered)
+        url = f"https://router.project-osrm.org/route/v1/driving/{coords_str}?overview=false"
+        req = urllib.request.Request(url, headers={'User-Agent': 'SmartCivic/1.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            if data.get('code') == 'Ok' and 'routes' in data and len(data['routes']) > 0:
+                route = data['routes'][0]
+                total_distance_km = round(route['distance'] / 1000.0, 2)
+                estimated_duration_min = int(route['duration'] / 60.0)
+                osrm_route_success = True
+    except Exception as e:
+        print(f"[OSRM] Route API error: {e}. Falling back to Haversine route calculation.")
+        
+    if not osrm_route_success:
+        # Fallback to straight-line haversine path distance
+        total = 0.0
+        plat, plng = worker_lat, worker_lng
+        for wp in waypoints[1:]:
+            total += haversine(plat, plng, wp['lat'], wp['lng'])
+            plat, plng = wp['lat'], wp['lng']
+        total_distance_km = round(total, 2)
+        estimated_duration_min = int((total / 30) * 60) # assuming average 30 km/h
+        
     return {
         'ordered_issue_ids': ordered,
         'waypoints': waypoints,
-        'total_distance_km': round(total, 2),
-        'estimated_duration_min': int((total / 30) * 60) # assuming average 30 km/h
+        'total_distance_km': total_distance_km,
+        'estimated_duration_min': estimated_duration_min
     }
