@@ -29,6 +29,24 @@
         <textarea id="description" name="description" class="form-control" rows="4" placeholder="Enter detailed description" required></textarea>
       </div>
       
+      <!-- Noise Recorder Widget (shown only when category = noise) -->
+      <div id="noise-recorder-section" style="display:none; margin-bottom:20px;">
+        <label class="form-label">🎙️ Record Ambient Noise Level</label>
+        <div class="card" style="padding:16px;">
+          <p style="font-size:0.85rem;color:var(--sc-text-muted);margin-bottom:12px;">
+            Use your microphone to measure the dB SPL and auto-validate against CPCB standards.
+          </p>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary" id="start-recording-btn" onclick="NoiseRecorder.start()">🎙️ Start Recording</button>
+            <button type="button" class="btn btn-secondary" id="stop-recording-btn" onclick="NoiseRecorder.stop()" style="display:none;">⏹ Stop</button>
+            <div id="db-live-display" style="font-size:1.4rem;font-weight:800;color:var(--sc-primary);min-width:80px;">-- dB</div>
+          </div>
+          <div id="noise-cpcb-result" style="margin-top:12px;"></div>
+          <input type="hidden" id="recorded-db-spl" name="recorded_db_spl">
+          <input type="hidden" id="noise-cpcb-status" name="noise_cpcb_status">
+        </div>
+      </div>
+      
       <div class="form-group">
         <label class="form-label" data-i18n="label_upload_photo">Upload Photos (max 3)</label>
         <input type="file" name="images[]" class="form-control" accept="image/*" multiple>

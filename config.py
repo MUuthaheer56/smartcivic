@@ -19,3 +19,5 @@ class Config:
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_USERNAME', '')
     APP_BASE_URL = os.getenv('APP_BASE_URL', 'http://localhost:5000')
+    OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY', '')
+    AI_IMAGE_ANALYSIS_ENABLED = os.getenv('AI_IMAGE_ANALYSIS_ENABLED', 'True') == 'True'

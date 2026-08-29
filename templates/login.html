@@ -29,10 +29,19 @@
 {% block extra_js %}
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // If logged in, redirect
+    // If logged in, redirect based on role
     if (Auth.isLoggedIn()) {
-      window.location.href = '/community';
-      return;
+      const user = Auth.getUser();
+      if (user) {
+        if (user.role === 'authority') {
+          window.location.href = '/authority';
+        } else if (user.role === 'field_worker') {
+          window.location.href = '/worker';
+        } else {
+          window.location.href = '/community';
+        }
+        return;
+      }
     }
     
     const form = document.getElementById('login-form');

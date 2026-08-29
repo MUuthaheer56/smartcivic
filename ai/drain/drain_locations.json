@@ -1,0 +1,32 @@
+[
+  {
+    "id": "D-042",
+    "name": "Sarjapur Road drain junction",
+    "lat": 12.9018,
+    "lng": 77.6741
+  },
+  {
+    "id": "D-102",
+    "name": "Koramangala 80ft Road stormwater gate",
+    "lat": 12.9352,
+    "lng": 77.6245
+  },
+  {
+    "id": "D-103",
+    "name": "Indiranagar 100ft Road drain outlet",
+    "lat": 12.9784,
+    "lng": 77.6408
+  },
+  {
+    "id": "D-204",
+    "name": "HSR Layout Sector 3 channel",
+    "lat": 12.9105,
+    "lng": 77.6450
+  },
+  {
+    "id": "D-305",
+    "name": "Whitefield ITPL Road main drain",
+    "lat": 12.9830,
+    "lng": 77.7400
+  }
+]

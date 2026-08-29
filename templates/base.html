@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,6 +22,14 @@
 </head>
 <body>
   
+  <!-- Antigravity Background -->
+  <div class="bg-field">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+  <div class="grid-overlay"></div>
+  
   <!-- Live Urgent Broadcast Alert Banner -->
   <div id="urgent-banner" style="display:none; background:var(--danger); color:white; font-weight:bold; text-align:center; padding:10px; position:fixed; top:64px; left:0; right:0; z-index:999;"></div>
 
@@ -31,7 +39,10 @@
       <span>Smart</span>Civic
     </a>
     
-    <div class="nav-links">
+    <button class="nav-hamburger" id="nav-hamburger" aria-label="Open menu" onclick="toggleMobileNav()">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="nav-links">
       <a href="/issues" data-i18n="nav_issues">Browse Issues</a>
       <a href="/report" data-i18n="nav_report">Report Issue</a>
     </div>

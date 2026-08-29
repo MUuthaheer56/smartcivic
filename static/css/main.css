@@ -1,74 +1,73 @@
 /* ============================================================
-   SmartCivic — Main Design System CSS
-   Color system: Navy · Blue · Cyan · White/Slate
-   Status colors (Green · Amber · Red) reserved for data only
+   SmartCivic Antigravity Design System — Main System CSS
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* ============================================================
-   1. DESIGN TOKENS — Light Theme (default)
-   ============================================================ */
 :root {
-  /* Brand — Blue */
-  --sc-primary-900: #0B1220;
-  --sc-primary-800: #111827;
-  --sc-primary-700: #1E3A8A;
-  --sc-primary-600: #2563EB;
-  --sc-primary-500: #3B82F6;
-  --sc-primary-400: #60A5FA;
-  --sc-primary-300: #93C5FD;
-  --sc-primary-100: #DBEAFE;
-  --sc-primary-50:  #EFF6FF;
+  /* Design system tokens */
+  --void: #050810;
+  --deep: #080d1a;
+  --dark: #0d1528;
+  --mid: #121e38;
+  --lift: #182444;
+  --rim: rgba(255,255,255,0.06);
+  --rim2: rgba(255,255,255,0.10);
+  --glow-blue: #1a8fff;
+  --glow-cyan: #00d4ff;
+  --glow-teal: #00ffcc;
+  --glow-purple: #7c4dff;
+  --glow-pink: #ff4d9d;
+  --glow-amber: #ffab00;
+  --glow-red: #ff3d71;
+  --glow-green: #00e676;
+  --text: #e2eaff;
+  --muted: #5a7299;
+  --faint: #0f1b30;
+  --glass: rgba(16, 28, 52, 0.55);
+  --glass2: rgba(20, 36, 68, 0.45);
 
-  /* Brand — Cyan */
-  --sc-cyan-600: #0891B2;
-  --sc-cyan-500: #06B6D4;
-  --sc-cyan-400: #22D3EE;
-  --sc-cyan-100: #CFFAFE;
-  --sc-cyan-50:  #ECFEFF;
+  /* Semantic aliases */
+  --sc-bg:              var(--void);
+  --sc-bg-secondary:    var(--deep);
+  --sc-surface:         var(--glass);
+  --sc-surface-soft:    var(--glass2);
+  --sc-border:          var(--rim);
+  --sc-border-strong:   var(--rim2);
+  --sc-text:            var(--text);
+  --sc-text-secondary:  var(--text);
+  --sc-text-muted:      var(--muted);
+  --sc-text-subtle:     var(--muted);
+  --sc-primary:         var(--glow-blue);
+  --sc-primary-hover:   var(--glow-cyan);
+  --sc-primary-soft:    var(--faint);
+  --sc-cyan:            var(--glow-cyan);
+  --sc-cyan-soft:       var(--faint);
 
-  /* Semantic aliases — resolved per theme below */
-  --sc-bg:              #F5F7FA;
-  --sc-bg-secondary:    #EEF2F7;
-  --sc-surface:         #FFFFFF;
-  --sc-surface-soft:    #F8FAFC;
-  --sc-border:          #E2E8F0;
-  --sc-border-strong:   #CBD5E1;
-  --sc-text:            #0F172A;
-  --sc-text-secondary:  #334155;
-  --sc-text-muted:      #64748B;
-  --sc-text-subtle:     #94A3B8;
-  --sc-primary:         #2563EB;
-  --sc-primary-hover:   #1D4ED8;
-  --sc-primary-soft:    #EFF6FF;
-  --sc-cyan:            #06B6D4;
-  --sc-cyan-soft:       #ECFEFF;
-
-  /* Status — NEVER use these for branding */
-  --sc-success:         #16A34A;
-  --sc-success-soft:    #DCFCE7;
-  --sc-warning:         #D97706;
-  --sc-warning-soft:    #FEF3C7;
-  --sc-danger:          #DC2626;
-  --sc-danger-soft:     #FEE2E2;
-  --sc-info:            #0284C7;
-  --sc-info-soft:       #E0F2FE;
+  /* Status Colors */
+  --sc-success:         var(--glow-green);
+  --sc-success-soft:    rgba(0, 230, 118, 0.12);
+  --sc-warning:         var(--glow-amber);
+  --sc-warning-soft:    rgba(255, 171, 0, 0.12);
+  --sc-danger:          var(--glow-red);
+  --sc-danger-soft:     rgba(255, 61, 113, 0.12);
+  --sc-info:            var(--glow-blue);
+  --sc-info-soft:       rgba(26, 143, 255, 0.15);
 
   /* Gradients */
-  --sc-gradient-brand:  linear-gradient(135deg, #2563EB 0%, #06B6D4 100%);
-  --sc-gradient-aurora: radial-gradient(circle at 20% 20%, rgba(37,99,235,0.14), transparent 35%),
-                        radial-gradient(circle at 80% 30%, rgba(6,182,212,0.12), transparent 35%),
-                        radial-gradient(circle at 50% 100%, rgba(79,70,229,0.08), transparent 40%),
-                        #F5F7FA;
+  --sc-gradient-brand:  linear-gradient(135deg, var(--glow-blue) 0%, var(--glow-cyan) 100%);
+  --sc-gradient-aurora: radial-gradient(ellipse 80% 60% at 20% 20%, rgba(26,143,255,0.08) 0%, transparent 60%),
+                        radial-gradient(ellipse 60% 50% at 80% 70%, rgba(124,77,255,0.07) 0%, transparent 55%),
+                        radial-gradient(ellipse 40% 40% at 50% 10%, rgba(0,212,255,0.05) 0%, transparent 50%),
+                        var(--void);
 
-  /* Backwards-compat aliases for existing HTML that uses old var names */
+  /* Backwards compatibility variables */
   --primary:           var(--sc-primary);
   --primary-dark:      var(--sc-primary-hover);
   --primary-light:     var(--sc-primary-soft);
-  --civic-blue:        var(--sc-primary-500);
-  --deep-navy:         var(--sc-primary-900);
-  --navy:              var(--sc-primary-800);
+  --civic-blue:        var(--glow-blue);
+  --deep-navy:         var(--void);
+  --navy:              var(--deep);
   --cyan:              var(--sc-cyan);
   --success:           var(--sc-success);
   --success-light:     var(--sc-success-soft);
@@ -83,72 +82,176 @@
   --neutral-200:       var(--sc-border);
   --neutral-400:       var(--sc-text-subtle);
   --neutral-600:       var(--sc-text-muted);
-  --neutral-700:       var(--sc-text-secondary);
-  --neutral-900:       var(--sc-text);
+  --primary-border:    var(--sc-primary-300);   /* #93C5FD — used by dashboard.js recs panel */
+  --sc-primary-300:    #93C5FD;
 
-  /* Score dynamic colors */
   --score-high:  var(--sc-success);
   --score-mid:   var(--sc-warning);
   --score-low:   var(--sc-danger);
 
-  /* Type */
-  --font-heading: 'Plus Jakarta Sans', sans-serif;
-  --font-body:    'Inter', sans-serif;
+  --font-heading: 'Syne', sans-serif;
+  --font-body:    'Space Grotesk', sans-serif;
 
-  /* Shape */
-  --radius:    16px;
-  --radius-lg: 24px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
-  --radius-xs: 4px;
+  --radius:    20px;
+  --radius-lg: 28px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
 
-  /* Elevation */
-  --shadow:    0 2px 12px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04);
-  --shadow-lg: 0 8px 30px rgba(15,23,42,0.10), 0 2px 8px rgba(15,23,42,0.06);
-  --shadow-xl: 0 20px 50px rgba(15,23,42,0.14);
+  --shadow:    0 8px 30px rgba(0,0,0,0.3);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.4);
+  --shadow-xl: 0 24px 60px rgba(0,0,0,0.5);
 
-  /* Motion */
-  --transition: all 0.15s ease-out;
-  --primary-border: #93C5FD;
+  --transition: all 0.25s ease-out;
 }
 
-/* ============================================================
-   2. DARK THEME
-   ============================================================ */
+/* Antigravity design default overrides for dark theme */
 html[data-theme="dark"] {
-  --sc-bg:             #070B14;
-  --sc-bg-secondary:   #0B1220;
-  --sc-surface:        #0F172A;
-  --sc-surface-soft:   #111C30;
-  --sc-border:         #1E293B;
-  --sc-border-strong:  #334155;
-  --sc-text:           #F8FAFC;
-  --sc-text-secondary: #CBD5E1;
-  --sc-text-muted:     #94A3B8;
-  --sc-text-subtle:    #64748B;
-  --sc-primary:        #3B82F6;
-  --sc-primary-hover:  #60A5FA;
-  --sc-primary-soft:   #1E3A8A;
-  --sc-cyan:           #22D3EE;
-  --sc-cyan-soft:      #0C4A6E;
-
-  --sc-gradient-aurora: radial-gradient(circle at 20% 20%, rgba(59,130,246,0.18), transparent 35%),
-                        radial-gradient(circle at 80% 30%, rgba(34,211,238,0.14), transparent 35%),
-                        radial-gradient(circle at 50% 100%, rgba(99,102,241,0.10), transparent 40%),
-                        #070B14;
-
-  /* compat */
-  --primary:        var(--sc-primary);
-  --primary-dark:   var(--sc-primary-hover);
-  --primary-light:  var(--sc-primary-soft);
-  --neutral-50:     var(--sc-bg);
-  --neutral-100:    var(--sc-bg-secondary);
-  --neutral-200:    var(--sc-border);
-  --neutral-400:    var(--sc-text-subtle);
-  --neutral-600:    var(--sc-text-muted);
-  --neutral-700:    var(--sc-text-secondary);
-  --neutral-900:    var(--sc-text);
+  --sc-bg:             var(--void);
+  --sc-bg-secondary:   var(--deep);
+  --sc-surface:        var(--glass);
+  --sc-surface-soft:   var(--glass2);
+  --sc-border:         var(--rim);
+  --sc-border-strong:  var(--rim2);
+  --sc-text:           var(--text);
+  --sc-text-secondary: var(--text);
+  --sc-text-muted:     var(--muted);
+  --sc-text-subtle:    var(--muted);
+  
+  --primary:           var(--sc-primary);
+  --primary-dark:      var(--sc-primary-hover);
+  --primary-light:     var(--sc-primary-soft);
+  --neutral-50:        var(--sc-bg);
+  --neutral-100:       var(--sc-bg-secondary);
+  --neutral-200:       var(--sc-border);
+  --neutral-400:       var(--sc-text-subtle);
+  --neutral-600:       var(--sc-text-muted);
+  --neutral-700:       var(--sc-text-secondary);
+  --neutral-900:       var(--sc-text);
 }
+
+/* ── ANTIGRAVITY AMBIENT BACKGROUND ── */
+.bg-field {
+  position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  overflow: hidden;
+}
+.bg-field::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 20% 20%, rgba(26,143,255,0.08) 0%, transparent 60%),
+              radial-gradient(ellipse 60% 50% at 80% 70%, rgba(124,77,255,0.07) 0%, transparent 55%),
+              radial-gradient(ellipse 40% 40% at 50% 10%, rgba(0,212,255,0.05) 0%, transparent 50%);
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  animation: drift 20s ease-in-out infinite alternate;
+}
+.orb-1 { width:500px; height:500px; background:rgba(26,143,255,0.07); top:-100px; left:-100px; animation-duration:25s; }
+.orb-2 { width:400px; height:400px; background:rgba(124,77,255,0.07); bottom:-80px; right:-80px; animation-duration:20s; animation-delay:-8s; }
+.orb-3 { width:300px; height:300px; background:rgba(0,212,255,0.05); top:40%; left:60%; animation-duration:30s; animation-delay:-15s; }
+
+@keyframes drift {
+  0%   { transform: translate(0,0) scale(1); }
+  50%  { transform: translate(40px,-30px) scale(1.05); }
+  100% { transform: translate(-20px,50px) scale(0.97); }
+}
+
+.grid-overlay {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(26,143,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26,143,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* ── CLASS HELPERS ── */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--rim);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+.glass-strong {
+  background: rgba(13,21,40,0.80);
+  border: 1px solid var(--rim2);
+  backdrop-filter: blur(32px) saturate(200%);
+}
+
+.float-card {
+  background: var(--glass);
+  border: 1px solid var(--rim);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-radius: 20px;
+  box-shadow:
+    0 2px 0 rgba(255,255,255,0.04) inset,
+    0 30px 60px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(255,255,255,0.03);
+  transition: transform .3s ease, box-shadow .3s ease;
+  position: relative;
+}
+.float-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%);
+  pointer-events: none;
+}
+.float-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 2px 0 rgba(255,255,255,0.05) inset, 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05), 0 0 40px rgba(26,143,255,0.06);
+}
+
+.btn-glow {
+  padding: .6rem 1.4rem; border-radius: 10px; font-size: .85rem; font-weight: 600;
+  font-family: 'Space Grotesk', sans-serif; cursor: pointer; border: none; transition: all .2s;
+  position: relative; overflow: hidden;
+}
+.btn-glow-blue {
+  background: linear-gradient(135deg, #0077ff, #00aaff);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(0,170,255,0.3), 0 8px 24px rgba(0,119,255,0.3);
+}
+.btn-glow-blue:hover {
+  box-shadow: 0 0 0 1px rgba(0,170,255,0.5), 0 12px 32px rgba(0,119,255,0.5);
+  transform: translateY(-1px);
+}
+.btn-glow-ghost {
+  background: rgba(255,255,255,0.05);
+  color: var(--text); border: 1px solid var(--rim2);
+}
+.btn-glow-ghost:hover { background: rgba(255,255,255,0.09); }
+
+.badge-blue  { background: rgba(26,143,255,.15); color: #4da6ff; border: 1px solid rgba(26,143,255,.2); }
+.badge-cyan  { background: rgba(0,212,255,.12); color: #00d4ff; border: 1px solid rgba(0,212,255,.18); }
+.badge-green { background: rgba(0,230,118,.12); color: #00e676; border: 1px solid rgba(0,230,118,.18); }
+.badge-amber { background: rgba(255,171,0,.12); color: #ffab00; border: 1px solid rgba(255,171,0,.18); }
+.badge-red   { background: rgba(255,61,113,.12); color: #ff6b9d; border: 1px solid rgba(255,61,113,.18); }
+.badge-purple{ background: rgba(124,77,255,.12); color: #9b6bff; border: 1px solid rgba(124,77,255,.18); }
+
+.display { font-family: 'Syne', sans-serif; font-weight: 800; line-height: 1.1; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.label { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+
+.glow-text-blue { color: var(--glow-cyan); text-shadow: 0 0 30px rgba(0,212,255,0.5); }
+.glow-text-purple { color: #a97fff; text-shadow: 0 0 30px rgba(124,77,255,0.5); }
+
+.pulse-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.pulse-dot-green { background: #00e676; box-shadow: 0 0 0 0 rgba(0,230,118,.4); animation: pulseGreen 2s infinite; }
+.pulse-dot-red   { background: #ff3d71; box-shadow: 0 0 0 0 rgba(255,61,113,.4); animation: pulseRed 2s infinite; }
+.pulse-dot-blue  { background: #00d4ff; box-shadow: 0 0 0 0 rgba(0,212,255,.4); animation: pulseBlue 2s infinite; }
+@keyframes pulseGreen { 70%{box-shadow:0 0 0 8px rgba(0,230,118,0)} 100%{box-shadow:0 0 0 0 rgba(0,230,118,0)} }
+@keyframes pulseRed   { 70%{box-shadow:0 0 0 8px rgba(255,61,113,0)} 100%{box-shadow:0 0 0 0 rgba(255,61,113,0)} }
+@keyframes pulseBlue  { 70%{box-shadow:0 0 0 8px rgba(0,212,255,0)} 100%{box-shadow:0 0 0 0 rgba(0,212,255,0)} }
+
+.progress-track { height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--lift); border-radius: 3px; }
 
 /* ============================================================
    3. RESET & BASE
@@ -830,6 +933,38 @@ html[data-theme="dark"] .toast {
   .nav-links { display: none; }
   .grid { gap: 16px; }
   .before-after-slider { height: 250px; }
+
+  .nav-hamburger {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .nav-hamburger span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: var(--sc-text);
+    border-radius: 2px;
+    transition: transform 0.2s;
+  }
+  #nav-links.open {
+    display: flex !important;
+    flex-direction: column;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    background: var(--sc-surface);
+    border-bottom: 1px solid var(--sc-border);
+    padding: 16px 20px;
+    gap: 12px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
 }
 
 /* ============================================================

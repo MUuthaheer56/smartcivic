@@ -1,6 +1,6 @@
 import os
 from flask import Flask, jsonify
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import SocketIO
 from flask_mail import Mail
 from pymongo import MongoClient
 from config import Config
@@ -8,8 +8,6 @@ from config import Config
 socketio = SocketIO()
 mail = Mail()
 db = None
-
-import routes.sockets  # registers Socket.IO event handlers
 
 def create_app():
     app = Flask(__name__)
@@ -24,6 +22,10 @@ def create_app():
     client = MongoClient(app.config['MONGO_URI'])
     db = client[app.config['DB_NAME']]
     
+
+
+    import routes.sockets  # registers Socket.IO event handlers
+    
     # MongoDB Indexes
     db.users.create_index('email', unique=True)
     db.issues.create_index([('lat', 1), ('lng', 1)])
@@ -33,6 +35,10 @@ def create_app():
     db.votes.create_index([('issue_id', 1), ('voter_id', 1)], unique=True)
     db.notifications.create_index([('user_id', 1), ('is_read', 1)])
     db.announcements.create_index('community_id')
+    db.login_attempts.create_index("ip", expireAfterSeconds=900)
+    db.notifications.create_index([("user_id", 1), ("delivery_status", 1)])
+    db.audit_logs.create_index([("user_id", 1), ("timestamp", -1)])
+    db.issues.create_index("suppressed")
     
     # Rate limiter state (in-memory, per IP, per minute)
     app.rate_limit_store = {}
@@ -57,6 +63,16 @@ def create_app():
     app.register_blueprint(pages_bp)
     from routes.notifications import notifications_bp
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
+    
+    from routes.ai_routes import ai_bp
+    from routes.issues import complaints_bp
+    app.register_blueprint(ai_bp, url_prefix='/api/ai')
+    app.register_blueprint(complaints_bp, url_prefix='/api/complaints')
+    
+    # Start background scheduler (do not run in testing)
+    if not app.config.get('TESTING') and os.environ.get('WERKZEUG_RUN_MAIN') != 'false':
+        from services.scheduler_service import start_scheduler
+        start_scheduler(app)
     
     # Error handlers
     @app.errorhandler(400)

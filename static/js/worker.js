@@ -100,6 +100,8 @@ const WorkerRoute = {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
     
     fileInput.onchange = async () => {
       const file = fileInput.files[0];
@@ -115,6 +117,8 @@ const WorkerRoute = {
         body: fd
       });
       
+      document.body.removeChild(fileInput);
+      
       if (res?.success) {
         showToast("Issue resolved successfully!", "success");
         WorkerRoute.loadActiveRoute();
@@ -127,6 +131,8 @@ const WorkerRoute = {
     if (confirm("Would you like to upload a resolution photo?")) {
       fileInput.click();
     } else {
+      document.body.removeChild(fileInput);
+      
       // Submit without image
       const fd = new FormData();
       fd.append('status', 'resolved');

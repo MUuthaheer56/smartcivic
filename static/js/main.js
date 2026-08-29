@@ -26,8 +26,10 @@ async function apiFetch(url, options = {}) {
     const res = await fetch(url, { ...options, headers });
     if (res.status === 401) {
       Auth.clearSession();
-      window.location.href = '/login';
-      return null;
+      if (!url.includes('/api/auth/login')) {
+        window.location.href = '/login';
+        return null;
+      }
     }
     return await res.json();
   } catch (e) {
@@ -100,7 +102,8 @@ function initNavbar() {
     
     let dashboardLink = '';
     if (user.role === 'authority') {
-      dashboardLink = `<a href="/authority" data-i18n="nav_dashboard" class="btn btn-secondary">Dashboard</a>`;
+      dashboardLink = `<a href="/authority" data-i18n="nav_dashboard" class="btn btn-secondary">Dashboard</a>
+  <a href="/ai-insights" class="btn btn-secondary" style="background:var(--sc-gradient-brand);color:white;border:none;">🧠 AI Hub</a>`;
     } else if (user.role === 'resident') {
       dashboardLink = `<a href="/community" data-i18n="nav_community" class="btn btn-secondary">Community</a>`;
     } else if (user.role === 'field_worker') {
@@ -232,3 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavbar();
   initSocket();
 });
+
+function toggleMobileNav() {
+  const nl = document.getElementById('nav-links');
+  if (nl) nl.classList.toggle('open');
+}

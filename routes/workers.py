@@ -99,7 +99,7 @@ def generate_route():
         'waypoints': opt_res['waypoints'],
         'total_distance_km': opt_res['total_distance_km']
     }
-    notify_worker_room(worker_id, 'route_assigned', socket_data)
+    notify_worker_room(str(worker_id), 'route_assigned', socket_data)
     
     # Email worker with route summary
     email_body = f"""
@@ -310,4 +310,34 @@ def cancel_route(route_id):
     notify_worker_room(str(route['worker_id']), 'route_cancelled', {'route_id': route_id})
     
     return jsonify({'success': True, 'message': 'Route unassigned successfully', 'data': None}), 200
+
+@workers_bp.route('/nearest', methods=['GET'])
+@require_role('authority')
+def get_nearest_worker_route():
+    try:
+        lat = float(request.args.get("lat"))
+        lng = float(request.args.get("lng"))
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "message": "Missing or invalid latitude/longitude"}), 400
+        
+    category = request.args.get("category", "")
+    from services.workers_service import get_nearest_available_worker
+    results = get_nearest_available_worker(lat, lng, category, db)
+    return jsonify({"success": True, "data": results}), 200
+
+@workers_bp.route('/<id>/schedule', methods=['GET'])
+@require_role('authority', 'field_worker')
+def get_worker_schedule_route(id):
+    date_str = request.args.get("date")
+    if date_str:
+        try:
+            date = datetime.fromisoformat(date_str)
+        except ValueError:
+            return jsonify({"success": False, "message": "Invalid date format"}), 400
+    else:
+        date = datetime.utcnow()
+        
+    from services.workers_service import get_worker_daily_schedule
+    schedule = get_worker_daily_schedule(id, date, db)
+    return jsonify({"success": True, "data": schedule}), 200
 

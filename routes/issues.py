@@ -16,6 +16,7 @@ from services.notification_service import (
 from services.route_optimizer import haversine
 
 issues_bp = Blueprint('issues', __name__)
+complaints_bp = Blueprint('complaints', __name__)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
@@ -26,6 +27,10 @@ def allowed_file(filename):
 def report_issue():
     title = request.form.get('title')
     description = request.form.get('description')
+    
+    from utils import sanitize_description
+    description = sanitize_description(description)
+    
     category = request.form.get('category')
     lat = request.form.get('lat')
     lng = request.form.get('lng')
@@ -82,6 +87,26 @@ def report_issue():
             except Exception as e:
                 print(f"Error processing image: {e}")
                 
+    # AI Image Quality Gate (runs on first uploaded image if present)
+    ai_image_result = None
+    if saved_images and current_app.config.get('AI_IMAGE_ANALYSIS_ENABLED', True):
+        try:
+            from ai.image_analyzer import analyze_image
+            # Re-open the first saved image from disk for analysis
+            with open(os.path.join(current_app.root_path, saved_images[0]), 'rb') as f:
+                ai_image_result = analyze_image(f.read())
+            if not ai_image_result.get('passed', True):
+                # Return quality gate failure — do NOT delete already saved file here;
+                # the issue was not inserted yet so no cleanup needed.
+                return jsonify({
+                    'success': False,
+                    'message': ai_image_result.get('reject_reason', 'Image quality insufficient'),
+                    'data': {'ai_quality_result': ai_image_result}
+                }), 400
+        except Exception as e:
+            print(f"[AI] Image analysis error (non-fatal): {e}")
+            ai_image_result = None
+
     # Check for nearby duplicates within 200m (0.2 km)
     nearby_issue = None
     existing_issues = list(db.issues.find({
@@ -117,6 +142,7 @@ def report_issue():
         "description": description.strip(),
         "category": category,
         "images": saved_images,
+        "ai_image_analysis": ai_image_result,
         "lat": lat,
         "lng": lng,
         "address": address.strip(),
@@ -142,6 +168,8 @@ def report_issue():
         "created_at": now,
         "sla_deadline": deadline,
         "sla_breached": False,
+        "stale_3days_applied": False,
+        "stale_7days_applied": False,
         "comments": [],
         "status_history": [
             {
@@ -202,6 +230,39 @@ def report_issue():
         data={'issue_id': str(inserted_id), 'title': title, 'category': category}
     )
     
+    # Feature 2: Passive streetlight outage detection
+    if saved_images:
+        try:
+            from ai.streetlight.darkness_detector import check_streetlight_outage
+            import app
+            streetlight_res = check_streetlight_outage(saved_images[0], lat, lng, now, app.db)
+            if streetlight_res:
+                app.db.issues.insert_one({
+                    "title": "Streetlight Outage (Auto-detected)",
+                    "description": f"Passive dark road area detection (luminance score: {streetlight_res['luminance_score']}). Triggered by citizen report.",
+                    "category": "streetlight",
+                    "images": [saved_images[0]],
+                    "lat": lat,
+                    "lng": lng,
+                    "address": address.strip(),
+                    "community_id": community_id,
+                    "reporter_id": reporter_id,
+                    "is_anonymous": True,
+                    "status": "pending_validation",
+                    "severity": 4,
+                    "confirm_votes": 0,
+                    "deny_votes": 0,
+                    "created_at": now,
+                    "auto_detected": True,
+                    "detection_source": "passive_night_analysis",
+                    "luminance_score": streetlight_res["luminance_score"],
+                    "requires_human_confirm": True,
+                    "stale_3days_applied": False,
+                    "stale_7days_applied": False
+                })
+        except Exception as e:
+            print(f"Error checking passive streetlight outage: {e}")
+
     return jsonify({
         'success': True,
         'message': 'Issue reported successfully!',
@@ -379,8 +440,14 @@ def comment_issue(issue_id):
 @require_role('authority', 'field_worker')
 def update_status(issue_id):
     # Form data or JSON
-    status = request.form.get('status') or request.json.get('status') if request.is_json else request.form.get('status')
-    note = request.form.get('note') or request.json.get('note') if request.is_json else request.form.get('note')
+    if request.is_json:
+        data = request.get_json() or {}
+        status = data.get('status')
+        note = data.get('note')
+    else:
+        status = request.form.get('status')
+        note = request.form.get('note')
+        
     resolution_image = request.files.get('resolution_image') if 'resolution_image' in request.files else None
     
     if not status:
@@ -442,6 +509,12 @@ def update_status(issue_id):
             issue_id=issue_id
         )
         
+    elif status == 'rejected':
+        db.communities.update_one(
+            {'_id': issue['community_id']},
+            {'$inc': {'open_issues': -1}}
+        )
+        
     elif status == 'in_progress':
         # Check if SLA breached and mark if true
         deadline = issue.get('sla_deadline')
@@ -463,6 +536,10 @@ def update_status(issue_id):
             }
         }
     )
+    
+    # Wire notify citizen on status change
+    from services.notification_service import notify_citizen_on_status_change
+    notify_citizen_on_status_change(issue_id, status, db)
     
     # Broadcast status change
     notify_community_room(
@@ -523,27 +600,165 @@ def heatmap(community_id):
 
 @issues_bp.route('/suggest-category', methods=['GET'])
 def suggest_category():
-    title = request.args.get('title', '').lower()
+    title = request.args.get('title', '')
+    description = request.args.get('description', '')
     
-    keywords = {
-        'water': ['water', 'pipe', 'leak', 'flood', 'drainage', 'tap'],
-        'pothole': ['pothole', 'road', 'crater', 'hole', 'bump', 'damage'],
-        'garbage': ['garbage', 'waste', 'trash', 'rubbish', 'dump', 'litter'],
-        'streetlight': ['light', 'lamp', 'streetlight', 'dark', 'bulb', 'electric'],
-        'sewage': ['sewage', 'drain', 'sewer', 'smell', 'overflow', 'stink'],
-        'noise': ['noise', 'loud', 'sound', 'music', 'construction', 'barking']
-    }
-    
-    suggested = 'other'
-    for category, kw_list in keywords.items():
-        if any(kw in title for kw in kw_list):
-            suggested = category
-            break
-            
-    return jsonify({
-        'success': True,
-        'message': 'Suggested category matching completed',
-        'data': {
-            'suggested_category': suggested
+    try:
+        from ai.nlp_classifier import classify_issue
+        result = classify_issue(title, description)
+        return jsonify({
+            'success': True,
+            'message': 'Suggested category matching completed',
+            'data': {
+                'suggested_category': result['category'],
+                'department': result['department'],
+                'confidence': result['confidence_score'],
+                'urgency_flag': result['urgency_flag']
+            }
+        }), 200
+    except Exception as e:
+        # Fallback to original keyword matching
+        kw = title.lower()
+        keywords = {
+            'water': ['water', 'pipe', 'leak', 'flood', 'drainage', 'tap'],
+            'pothole': ['pothole', 'road', 'crater', 'hole', 'bump', 'damage'],
+            'garbage': ['garbage', 'waste', 'trash', 'rubbish', 'dump', 'litter'],
+            'streetlight': ['light', 'lamp', 'streetlight', 'dark', 'bulb', 'electric'],
+            'sewage': ['sewage', 'drain', 'sewer', 'smell', 'overflow', 'stink'],
+            'noise': ['noise', 'loud', 'sound', 'music', 'construction', 'barking']
         }
-    }), 200
+        suggested = 'other'
+        for cat, kw_list in keywords.items():
+            if any(k in kw for k in kw_list):
+                suggested = cat
+                break
+        return jsonify({
+            'success': True,
+            'message': 'Suggested category matching completed',
+            'data': {'suggested_category': suggested, 'department': None, 'confidence': 0.0, 'urgency_flag': False}
+        }), 200
+
+@complaints_bp.route('/noise-reading', methods=['POST'])
+def submit_noise_reading():
+    data = request.get_json() or {}
+    complaint_id = data.get("complaint_id")
+    measured_db = data.get("measured_db")
+    legal_limit_db = data.get("legal_limit_db")
+    zone = data.get("zone", "residential")
+    is_violation = data.get("is_violation", False)
+    excess_db = data.get("excess_db", 0)
+    
+    if not complaint_id:
+        return jsonify({"success": False, "message": "Missing complaint_id"}), 400
+        
+    # store noise measurement with complaint
+    db.noise_readings.insert_one({
+        "complaint_id": ObjectId(complaint_id),
+        "measured_db": measured_db,
+        "legal_limit_db": legal_limit_db,
+        "zone": zone,
+        "is_violation": is_violation,
+        "excess_db": excess_db,
+        "recorded_at": datetime.utcnow()
+    })
+    
+    if is_violation:
+        db.issues.update_one(
+            {"_id": ObjectId(complaint_id)},
+            {"$set": {
+                "noise_validated": True,
+                "noise_violation_db": excess_db,
+                "tags": ["legally_validated_noise_violation"]
+            }}
+        )
+    return jsonify({"success": True, "message": "Noise reading recorded successfully"}), 200
+
+@complaints_bp.route('/export', methods=['GET'])
+@require_role('authority')
+def export_complaints_csv():
+    import csv
+    import io
+    from flask import Response
+    
+    # Extract query params
+    ward = request.args.get("ward")
+    category = request.args.get("category")
+    status = request.args.get("status")
+    date_from = request.args.get("date_from")
+    date_to = request.args.get("date_to")
+    
+    filters = {}
+    if ward:
+        filters["ward"] = ward
+    if category:
+        filters["category"] = category
+    if status:
+        filters["status"] = status
+        
+    if date_from:
+        try:
+            filters.setdefault("created_at", {})["$gte"] = datetime.fromisoformat(date_from)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            filters.setdefault("created_at", {})["$lte"] = datetime.fromisoformat(date_to)
+        except ValueError:
+            pass
+            
+    FIELDS = ["_id", "category", "status", "ward", "address", "description", "created_at", "resolved_at", "assigned_to"]
+    
+    def generate():
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=FIELDS, extrasaction="ignore")
+        writer.writeheader()
+        yield buf.getvalue()
+        
+        for comp in db.issues.find(filters):
+            comp["_id"] = str(comp["_id"])
+            comp["assigned_to"] = str(comp.get("assigned_to") or "")
+            comp["created_at"] = comp.get("created_at").isoformat() if isinstance(comp.get("created_at"), datetime) else str(comp.get("created_at") or "")
+            comp["resolved_at"] = comp.get("resolved_at").isoformat() if isinstance(comp.get("resolved_at"), datetime) else str(comp.get("resolved_at") or "")
+            
+            buf = io.StringIO()
+            writer = csv.DictWriter(buf, fieldnames=FIELDS, extrasaction="ignore")
+            writer.writerow(comp)
+            yield buf.getvalue()
+            
+    return Response(
+        generate(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=complaints_{datetime.utcnow().date().isoformat()}.csv"}
+    )
+
+@complaints_bp.route('/<id>/timeline', methods=['GET'])
+@require_auth
+def get_timeline_route(id):
+    from services.complaints_service import get_complaint_timeline
+    events = get_complaint_timeline(id, db)
+    return jsonify({"success": True, "data": events}), 200
+
+@complaints_bp.route('/<id>/reopen', methods=['POST'])
+@require_auth
+def reopen_complaint_route(id):
+    data = request.get_json() or {}
+    reason = data.get("reason", "")
+    citizen_id = g.user["user_id"]
+    from services.complaints_service import reopen_complaint
+    success, msg = reopen_complaint(id, reason, citizen_id, db)
+    if not success:
+        return jsonify({"success": False, "message": msg}), 400
+    return jsonify({"success": True, "message": msg}), 200
+
+@complaints_bp.route('/<id>/duplicate', methods=['POST'])
+@require_role('authority')
+def duplicate_complaint_route(id):
+    data = request.get_json() or {}
+    source_id = data.get("source_id")
+    if not source_id:
+        return jsonify({"success": False, "message": "Missing source_id"}), 400
+    from services.complaints_service import flag_complaint_as_duplicate
+    success, msg = flag_complaint_as_duplicate(id, source_id, db)
+    if not success:
+        return jsonify({"success": False, "message": msg}), 400
+    return jsonify({"success": True, "message": msg}), 200

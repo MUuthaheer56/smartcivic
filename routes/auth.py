@@ -98,12 +98,26 @@ def login():
     if not email or not password:
         return jsonify({'success': False, 'message': 'Missing email or password', 'data': None}), 400
         
+    ip = request.remote_addr or "unknown"
+    from services.auth_service import rate_limit_login_by_ip, record_failed_attempt, clear_login_attempts, audit_log_action
+    
+    allowed, rem = rate_limit_login_by_ip(ip, db)
+    if not allowed:
+        return jsonify({'success': False, 'message': 'Too many attempts. Try again in 15 min.', 'data': None}), 429
+        
     user = db.users.find_one({'email': email.lower().strip()})
     if not user or not check_password(password, user['password_hash']):
+        record_failed_attempt(ip, db)
         return jsonify({'success': False, 'message': 'Invalid email or password', 'data': None}), 401
         
     if not user.get('is_verified', False):
         return jsonify({'success': False, 'message': 'Account pending verification by authority', 'data': None}), 403
+        
+    # Clear on success
+    clear_login_attempts(ip, db)
+    
+    # Audit log
+    audit_log_action(str(user['_id']), "LOGIN", {"email": email.lower().strip()}, db)
         
     # Update last login
     now = datetime.utcnow()

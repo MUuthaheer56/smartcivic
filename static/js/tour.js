@@ -147,6 +147,10 @@ document.addEventListener('DOMContentLoaded', () => {
       createTourOverlay();
       showTourStep(0);
     }, 800);
+  } else {
+    setTimeout(() => {
+      startTour();
+    }, 1000);
   }
 });
 

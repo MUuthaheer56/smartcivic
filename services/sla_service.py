@@ -95,3 +95,96 @@ def check_and_flag_sla_breaches():
             'severity': issue.get('severity', 3)
         }
         notify_authority_room(str(issue['community_id']), 'sla_breach', data)
+
+from bson import ObjectId
+from ai.analytics import compute_worker_performance
+
+def escalate_sla_breach(complaint_id: str, db) -> dict:
+    """
+    Escalates an SLA-breached complaint.
+    Returns {"escalated": bool, "escalation_level": int, "new_assignee": str|None}
+    """
+    comp = db.issues.find_one({"_id": ObjectId(complaint_id)})
+    if not comp:
+        return {"escalated": False, "escalation_level": 0, "new_assignee": None}
+        
+    current_level = comp.get("escalation_level", 0)
+    MAX_ESCALATION_LEVEL = 3
+    if current_level >= MAX_ESCALATION_LEVEL:
+        return {"escalated": False, "escalation_level": current_level, "new_assignee": None}
+        
+    new_level = current_level + 1
+    now = datetime.utcnow()
+    new_assignee = None
+    
+    updates = {
+        "$set": {"escalation_level": new_level, "sla_status": "BREACHED"},
+        "$push": {"timeline": {
+            "timestamp": now,
+            "event_type": "SLA_BREACH_ESCALATED",
+            "actor": "system",
+            "detail": f"Escalation level {new_level}"
+        }}
+    }
+    
+    # On level 2+, try to reassign to best available worker
+    if new_level >= 2:
+        ward = comp.get("community_id") or comp.get("ward")
+        category = comp.get("category")
+        best = _find_best_available_worker(ward, category, db)
+        if best and str(best["_id"]) != str(comp.get("assigned_to", "")):
+            new_assignee = str(best["_id"])
+            updates["$set"]["assigned_to"] = best["_id"]
+            updates["$set"]["status"] = "assigned"
+            db.users.update_one({"_id": best["_id"]}, {"$set": {"status": "BUSY"}})
+            
+            old_worker_id = comp.get("assigned_to")
+            if old_worker_id:
+                db.users.update_one({"_id": ObjectId(old_worker_id)}, {"$set": {"status": "AVAILABLE"}})
+                
+    db.issues.update_one({"_id": ObjectId(complaint_id)}, updates)
+    
+    # Notify ward admins
+    admin_filter = {"role": "authority"}
+    comp_comm_id = comp.get("community_id")
+    if comp_comm_id:
+        admin_filter["community_id"] = ObjectId(comp_comm_id)
+    admins = list(db.users.find(admin_filter))
+    
+    for admin in admins:
+        db.notifications.insert_one({
+            "user_id": admin["_id"],
+            "complaint_id": ObjectId(complaint_id),
+            "message": f"SLA breach level {new_level}: {comp.get('category')} complaint in {comp.get('ward') or 'your community'} has exceeded its deadline.",
+            "is_read": False,
+            "created_at": now,
+            "delivery_status": "PENDING"
+        })
+        
+    return {"escalated": True, "escalation_level": new_level, "new_assignee": new_assignee}
+
+def _find_best_available_worker(ward, category, db):
+    """Returns the highest-performing available worker for the ward/category."""
+    query = {"role": "field_worker", "status": "AVAILABLE"}
+    if isinstance(ward, str) and ObjectId.is_valid(ward):
+        query["community_id"] = ObjectId(ward)
+    elif ObjectId.is_valid(str(ward)):
+        query["community_id"] = ObjectId(str(ward))
+    else:
+        query["ward"] = ward
+        
+    from services.workers_service import DEPT_CATEGORY_MAP
+    dept = DEPT_CATEGORY_MAP.get(category)
+    if dept:
+        query["department"] = dept
+        
+    candidates = list(db.users.find(query))
+    if not candidates:
+        return None
+        
+    scored = []
+    for w in candidates:
+        perf = compute_worker_performance(str(w["_id"]), db)
+        scored.append((perf.get("score", 0), w))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored[0][1] if scored else None

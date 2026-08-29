@@ -39,7 +39,7 @@ def notify_authority_room(community_id, event, data):
 def notify_worker_room(worker_id, event, data):
     from app import socketio
     from utils import serialize
-    socketio.emit(event, serialize(data), room=f"worker_{worker_id}", namespace='/civic')
+    socketio.emit(event, serialize(data), room=f"worker_{str(worker_id)}", namespace='/civic')
 
 def send_email(to, subject, html_body):
     from app import mail
@@ -112,3 +112,65 @@ def send_weekly_digest(community_id):
         </html>
         """
         send_email(to=email, subject=f"SmartCivic Weekly Digest: {community['name']}", html_body=html_body)
+
+STATUS_MESSAGES = {
+    "ASSIGNED": "Your complaint has been assigned to a field worker.",
+    "IN_PROGRESS": "A worker has started work on your complaint.",
+    "RESOLVED": "Your complaint has been marked as resolved. You can reopen within 7 days.",
+    "REOPENED": "Your complaint has been reopened and re-queued for assignment.",
+    "REJECTED": "Your complaint was reviewed and could not be actioned. Check comments.",
+    "VERIFIED": "Your complaint has been verified and is queued for assignment.",
+}
+
+def notify_citizen_on_status_change(complaint_id: str, new_status: str, db) -> bool:
+    """
+    Creates a notification record and triggers push if FCM token available.
+    Returns True if notification was queued.
+    """
+    comp = db.issues.find_one(
+        {"_id": ObjectId(complaint_id)},
+        {"reporter_id": 1, "category": 1}
+    )
+    if not comp:
+        return False
+        
+    citizen_id = comp.get("reporter_id")
+    message = STATUS_MESSAGES.get(new_status.upper(), f"Your complaint status has been updated to: {new_status}")
+    
+    notification = {
+        "user_id": citizen_id,
+        "complaint_id": ObjectId(complaint_id),
+        "message": message,
+        "status": new_status,
+        "is_read": False,  # use 'is_read' for compatibility with database indexes!
+        "read": False,     # also keep 'read' for PDF compatibility
+        "created_at": datetime.utcnow(),
+        "delivery_status": "PENDING",
+        "retry_count": 0
+    }
+    
+    db.notifications.insert_one(notification)
+    
+    # Fire push notification if FCM token registered
+    citizen = db.users.find_one({"_id": citizen_id}, {"fcm_token": 1})
+    if citizen and citizen.get("fcm_token"):
+        _send_fcm_push(citizen["fcm_token"], "SmartCivic Update", message, complaint_id)
+        
+    return True
+
+def _send_fcm_push(token: str, title: str, body: str, complaint_id: str):
+    """Sends Firebase Cloud Messaging push."""
+    import requests, os
+    key = os.environ.get("FIREBASE_SERVER_KEY")
+    if not key:
+        return
+    try:
+        requests.post(
+            "https://fcm.googleapis.com/fcm/send",
+            headers={"Authorization": f"key={key}", "Content-Type": "application/json"},
+            json={"to": token, "notification": {"title": title, "body": body},
+                  "data": {"complaint_id": str(complaint_id)}},
+            timeout=5
+        )
+    except Exception as e:
+        print(f"[FCM Error] {e}")

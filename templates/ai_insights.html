@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/map.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ai.css') }}">
+{% endblock %}
+{% block content %}
+<div style="padding: 24px 0;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+    <div style="width:40px;height:40px;background:var(--sc-gradient-brand);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">🧠</div>
+    <div>
+      <h1 style="font-family:var(--font-heading);font-size:1.6rem;font-weight:800;margin:0;">AI Intelligence Hub</h1>
+      <p style="color:var(--sc-text-muted);margin:0;font-size:0.9rem;">Predictive insights powered by SmartCivic AI</p>
+    </div>
+  </div>
+
+  <!-- Trust Score Card -->
+  <div class="card" style="margin-bottom:20px;">
+    <h3 style="font-family:var(--font-heading);font-weight:700;margin-bottom:16px;">🏅 Civic Trust Score</h3>
+    <div id="trust-score-container">
+      <div class="spinner-ring" style="margin:20px auto;"></div>
+    </div>
+  </div>
+
+  <!-- Anomaly Detection Card -->
+  <div class="card" style="margin-bottom:20px;">
+    <h3 style="font-family:var(--font-heading);font-weight:700;margin-bottom:16px;">📈 Issue Frequency Anomalies</h3>
+    <p style="color:var(--sc-text-muted);font-size:0.85rem;margin-bottom:16px;">Detected unusual spikes in issue reporting (Z-score > 2.0)</p>
+    <div id="anomaly-container">
+      <div class="spinner-ring" style="margin:20px auto;"></div>
+    </div>
+  </div>
+
+  <!-- Drain Risk Card -->
+  <div class="card" style="margin-bottom:20px;">
+    <h3 style="font-family:var(--font-heading);font-weight:700;margin-bottom:16px;">🌧️ Drain Blockage Risk (Monsoon)</h3>
+    <p style="color:var(--sc-text-muted);font-size:0.85rem;margin-bottom:16px;">Risk score = complaint density × severity × rain probability (48h)</p>
+    <div id="drain-risk-container">
+      <div class="spinner-ring" style="margin:20px auto;"></div>
+    </div>
+  </div>
+
+  <!-- Noise Validator Tool -->
+  <div class="card" style="margin-bottom:20px;">
+    <h3 style="font-family:var(--font-heading);font-weight:700;margin-bottom:16px;">🔊 Noise Level Validator</h3>
+    <p style="color:var(--sc-text-muted);font-size:0.85rem;margin-bottom:16px;">Validate a measured dB SPL reading against CPCB standards</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label class="form-label">Measured dB SPL</label>
+        <input type="number" id="noise-db" class="form-input" placeholder="e.g. 72.5" min="0" max="150" step="0.1">
+      </div>
+      <div>
+        <label class="form-label">Zone Type</label>
+        <select id="noise-zone" class="form-input">
+          <option value="residential">Residential</option>
+          <option value="commercial">Commercial</option>
+          <option value="industrial">Industrial</option>
+          <option value="silence">Silence Zone</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Time Period</label>
+        <select id="noise-period" class="form-input">
+          <option value="false">Daytime (06:00–22:00)</option>
+          <option value="true">Night (22:00–06:00)</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="AIInsights.validateNoise()">Validate Reading</button>
+    <div id="noise-result" style="margin-top:16px;"></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ai_panel.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => AIInsights.init());
+</script>
+{% endblock %}

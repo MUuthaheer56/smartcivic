@@ -1,0 +1,19 @@
+/* SmartCivic — AI Panel Styling */
+.spinner-ring {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-radius: 50%;
+  border-top-color: var(--sc-primary);
+  animation: spin-ring 1s ease-in-out infinite;
+}
+
+@keyframes spin-ring {
+  to { transform: rotate(360deg); }
+}
+
+.noise-cpcb-result {
+  font-weight: 600;
+  margin-top: 8px;
+}

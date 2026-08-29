@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, g
 from bson import ObjectId
 from app import db
-from services.auth_service import require_auth
+from services.auth_service import require_auth, require_role
 
 notifications_bp = Blueprint('notifications', __name__)
 
@@ -45,3 +45,13 @@ def mark_all_read():
         return jsonify({"success": True, "message": "All notifications marked as read"})
     except Exception as e:
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+
+@notifications_bp.route('/trigger-digest/<community_id>', methods=['POST'])
+@require_role('authority')
+def trigger_digest(community_id):
+    from services.notification_service import send_weekly_digest
+    try:
+        send_weekly_digest(community_id)
+        return jsonify({"success": True, "message": "Weekly digest emails sent successfully."})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Error triggering digest: {str(e)}"}), 500

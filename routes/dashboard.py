@@ -10,16 +10,10 @@ import services.clustering_service as clustering_service
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
-@dashboard_bp.route('/community/<community_id>', methods=['GET'])
-@require_auth
-def community_dashboard(community_id):
-    # Update stale and SLA flags
-    check_stale_issues()
-    check_and_flag_sla_breaches()
-    
+def get_community_dashboard_data(community_id):
     community = db.communities.find_one({'_id': ObjectId(community_id)})
     if not community:
-        return jsonify({'success': False, 'message': 'Community not found', 'data': None}), 404
+        return None
         
     now = datetime.utcnow()
     
@@ -110,7 +104,7 @@ def community_dashboard(community_id):
         ]
     }).sort([('created_at', -1)]))
     
-    dashboard_data = {
+    return {
         'community_score': community.get('community_score', 100),
         'score_trend': community.get('score_history', [])[-30:],
         'issues_by_category': issues_by_category,
@@ -126,7 +120,14 @@ def community_dashboard(community_id):
         },
         'active_announcements': serialize(active_announcements)
     }
-    
+
+@dashboard_bp.route('/community/<community_id>', methods=['GET'])
+@require_auth
+def community_dashboard(community_id):
+    dashboard_data = get_community_dashboard_data(community_id)
+    if dashboard_data is None:
+        return jsonify({'success': False, 'message': 'Community not found', 'data': None}), 404
+        
     return jsonify({
         'success': True,
         'message': 'Community dashboard statistics retrieved',
@@ -136,12 +137,9 @@ def community_dashboard(community_id):
 @dashboard_bp.route('/authority/<community_id>', methods=['GET'])
 @require_role('authority')
 def authority_dashboard(community_id):
-    # 1. Base community dashboard data
-    base_res = community_dashboard(community_id)
-    if base_res[1] != 200:
-        return base_res
-        
-    base_data = base_res[0].json['data']
+    base_data = get_community_dashboard_data(community_id)
+    if base_data is None:
+        return jsonify({'success': False, 'message': 'Community not found', 'data': None}), 404
     
     # 2. Count of pending users
     pending_users_count = db.users.count_documents({
