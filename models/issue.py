@@ -1,81 +1,92 @@
-# db.issues schema representation:
-# {
-#   _id: ObjectId,
-#   title: str,
-#   description: str,
-#   category: str("pothole"|"garbage"|"streetlight"|"water"|"sewage"|"noise"|"other"),
-#   images: [str],
-#   lat: float,
-#   lng: float,
-#   address: str,
-#   community_id: ObjectId,
-#   reporter_id: ObjectId,
-#   is_anonymous: bool(False),
-#   status: str("pending_validation"|"validated"|"assigned"|"in_progress"|"resolved"|"rejected"),
-#   severity: int(1-5, set on validation),
-#   severity_override: int|None,
-#   severity_override_by: ObjectId|None,
-#   confirm_votes: int(0),
-#   deny_votes: int(0),
-#   severity_votes: [int],
-#   upvotes: int(0),
-#   upvoted_by: [ObjectId],
-#   linked_issue_ids: [ObjectId],
-#   validated_at: datetime|None,
-#   assigned_to: ObjectId|None,
-#   assigned_at: datetime|None,
-#   resolved_at: datetime|None,
-#   resolution_note: str|None,
-#   resolution_image: str|None,
-#   created_at: datetime,
-#   sla_deadline: datetime|None,
-#   sla_breached: bool(False),
-#   comments: [{user_id:ObjectId, name:str, text:str, timestamp:datetime}],
-#   status_history: [{status:str, changed_by:ObjectId|None, timestamp:datetime, note:str}]
-# }
+"""
+SmartCivic+ — Issue Data Model Schema and Helpers
+"""
+from marshmallow import Schema, fields, validate
+from datetime import datetime
+from bson import ObjectId
 
-def create_issue_doc(title, description, category, lat, lng, address, community_id, reporter_id, is_anonymous=False, images=None):
-    from datetime import datetime
-    from bson import ObjectId
+CATEGORIES = ["road", "water", "electricity", "sanitation", "drainage", "other"]
+SEVERITIES = ["low", "medium", "high", "critical"]
+STATUSES = [
+    "submitted", "ai_reviewed", "officer_reviewed", "assigned",
+    "work_started", "work_completed", "officer_verified",
+    "citizen_verification", "closed", "reopened"
+]
+DEPARTMENTS = ["roads", "water_supply", "electrical", "sanitation", "drainage"]
+SLA_STATUSES = ["on_track", "warning", "urgent", "breached"]
+
+def create_issue_doc(citizen_id, title, description, category, issue_type, lat, lng, address, ward, images=None) -> dict:
+    now = datetime.utcnow()
     return {
-        "title": title,
-        "description": description,
-        "category": category,
-        "images": images or [],
-        "lat": float(lat),
-        "lng": float(lng),
-        "address": address,
-        "community_id": ObjectId(community_id),
-        "reporter_id": ObjectId(reporter_id),
-        "is_anonymous": is_anonymous,
-        "status": "pending_validation",
-        "severity": 3,
-        "severity_override": None,
-        "severity_override_by": None,
-        "confirm_votes": 0,
-        "deny_votes": 0,
-        "severity_votes": [],
-        "upvotes": 0,
-        "upvoted_by": [],
-        "linked_issue_ids": [],
-        "validated_at": None,
-        "assigned_to": None,
-        "assigned_at": None,
-        "resolved_at": None,
-        "resolution_note": None,
-        "resolution_image": None,
-        "created_at": datetime.utcnow(),
-        "sla_deadline": None,
-        "sla_breached": False,
-        "stale_3days_applied": False,
-        "stale_7days_applied": False,
-        "comments": [],
-        "status_history": [
-            {
-                "status": "pending_validation",
-                "changed_by": ObjectId(reporter_id),
-                "timestamp": datetime.utcnow(),
-                "note": "Issue reported."
-            }
-        ]
+        "title": title.strip(),
+        "description": description.strip(),
+        "category": category, # road, water, electricity, sanitation, drainage, other
+        "type": issue_type.strip(),
+        "severity": "medium", # default, computed by AI
+        "priority_score": 0.0, # computed by priority_service
+        "status": "submitted",
+        "location": {
+            "type": "Point",
+            "coordinates": [float(lng), float(lat)]
+        },
+        "address": address.strip(),
+        "ward": ward.strip(),
+        "department": "roads", # default, resolved by AI
+        "citizen_id": ObjectId(citizen_id),
+        "officer_id": None,
+        "worker_id": None,
+        "cluster_id": None,
+        "duplicate_of": None,
+        "ai_analysis": {
+            "category": category,
+            "type": issue_type.strip(),
+            "severity": "medium",
+            "department": "roads",
+            "confidence": 0.0,
+            "provider": "rule_based",
+            "image_detections": [],
+            "duplicate_candidates": [],
+            "analyzed_at": now,
+            "officer_overridden": False,
+            "override_reason": None
+        },
+        "images": images or [], # list of image dicts: filename, url, type, uploaded_by, uploaded_at
+        "sla_deadline": now, # computed by sla_service
+        "sla_status": "on_track",
+        "resolution_notes": "",
+        "ai_verification": {
+            "confidence": 0.0,
+            "status": "uncertain", # verified, likely_verified, uncertain, not_verified
+            "timestamp": None
+        },
+        "citizen_verified": None,
+        "citizen_feedback": "",
+        "audit_trail": [], # list of AuditLog ObjectIds
+        "is_emergency": False,
+        "emergency_category": None,
+        "emergency_declared_at": None,
+        "emergency_declared_by": None,
+        "community_confirmations": [],
+        "confirmation_count": 0,
+        "citizen_rating": None,
+        "citizen_feedback_text": None,
+        "feedback_submitted_at": None,
+        "original_language": "english",
+        "original_description": None,
+        "translated_description": None,
+        "is_recurring": False,
+        "recurrence_count": 0,
+        "first_occurrence_at": None,
+        "created_at": now,
+        "updated_at": now
     }
+
+class IssueCreateSchema(Schema):
+    title = fields.Str(required=True, validate=validate.Length(min=5, max=100))
+    description = fields.Str(required=True, validate=validate.Length(min=10, max=1000))
+    category = fields.Str(required=True, validate=validate.OneOf(CATEGORIES))
+    type = fields.Str(required=True, validate=validate.Length(min=2, max=50))
+    lat = fields.Float(required=True)
+    lng = fields.Float(required=True)
+    address = fields.Str(required=True, validate=validate.Length(min=5, max=250))
+    ward = fields.Str(required=True, validate=validate.Length(min=2, max=100))

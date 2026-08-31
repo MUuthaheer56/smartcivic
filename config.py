@@ -1,23 +1,29 @@
+"""
+SmartCivic+ — Global Application Configuration
+Loads configuration secrets exclusively from environment variables or .env file.
+"""
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 
+# Load local .env file
 load_dotenv()
 
 class Config:
-    SECRET_KEY = os.getenv('SECRET_KEY', 'smartcivic-dev-2024')
-    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
-    DB_NAME = os.getenv('DB_NAME', 'smartcivic')
-    JWT_SECRET = os.getenv('JWT_SECRET', 'jwt-smartcivic-2024')
-    JWT_EXPIRY_HOURS = 24
-    UPLOAD_FOLDER = os.path.join('static', 'uploads')
-    ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
-    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-    MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
-    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True') == 'True'
-    MAIL_USERNAME = os.getenv('MAIL_USERNAME', '')
-    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')
-    MAIL_DEFAULT_SENDER = os.getenv('MAIL_USERNAME', '')
-    APP_BASE_URL = os.getenv('APP_BASE_URL', 'http://localhost:5000')
-    OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY', '')
-    AI_IMAGE_ANALYSIS_ENABLED = os.getenv('AI_IMAGE_ANALYSIS_ENABLED', 'True') == 'True'
+    SECRET_KEY            = os.getenv("SECRET_KEY", "prod_fallback_secret_key_123")
+    MONGO_URI             = os.getenv("MONGO_URI", "mongodb://localhost:27017/smartcivic")
+    GEMINI_API_KEY        = os.getenv("GEMINI_API_KEY", "")
+    
+    JWT_SECRET            = os.getenv("JWT_SECRET", "prod_fallback_jwt_secret_999")
+    JWT_ACCESS_EXPIRES    = timedelta(minutes=30)
+    JWT_REFRESH_EXPIRES   = timedelta(days=7)
+    
+    MAX_UPLOAD_SIZE       = 5 * 1024 * 1024  # 5MB
+    UPLOAD_FOLDER         = "static/uploads/issues"
+    ALLOWED_EXTENSIONS    = {"jpg", "jpeg", "png", "webp"}
+    
+    SLA_CHECK_INTERVAL    = 900  # 15 minutes
+    DEBUG                 = False  # Never True in production
+    
+    # OSRM router endpoint
+    OSRM_BASE             = os.getenv("OSRM_BASE", "http://router.project-osrm.org")

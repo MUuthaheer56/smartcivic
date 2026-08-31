@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+    .dashboard-layout {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+        min-height: 80vh;
+    }
+    
+    /* Left Sidebar */
+    .sidebar {
+        width: 250px;
+        flex-shrink: 0;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .sidebar-btn {
+        width: 100%;
+        padding: 0.8rem 1.2rem;
+        border-radius: 8px;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.2s ease;
+    }
+    .sidebar-btn:hover, .sidebar-btn.active {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--primary);
+    }
+    
+    /* Main Panel Content */
+    .panel-container {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    /* Stats Row */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+    @media (max-width: 1000px) {
+        .stats-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    .stat-card {
+        padding: 1.5rem;
+        text-align: center;
+    }
+    .stat-val {
+        font-family: var(--font-display);
+        font-weight: 800;
+        font-size: 2rem;
+        color: var(--text-main);
+        margin-top: 0.5rem;
+    }
+    .stat-lbl {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Health Bar */
+    .health-container {
+        padding: 1.5rem;
+    }
+    .health-bar-wrapper {
+        display: flex;
+        height: 16px;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+    }
+    .health-segment {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    
+    /* Priority Grid Layout */
+    .queue-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+    .queue-card {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        position: relative;
+    }
+    .queue-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    /* Leaflet Map Panel */
+    .map-container {
+        position: relative;
+    }
+    #officerMap {
+        height: 500px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        z-index: 10;
+    }
+    .map-sidebar-overlay {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 320px;
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--border-color);
+        padding: 1.5rem;
+        border-radius: 12px;
+        z-index: 1000;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        display: none;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    /* Overlay Assign Worker Panel */
+    .assign-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 450px;
+        background: rgba(15, 23, 42, 0.98);
+        border: 1px solid var(--border-color);
+        padding: 2rem;
+        border-radius: 16px;
+        z-index: 2000;
+        display: none;
+        flex-direction: column;
+        gap: 1.5rem;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    }
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.7);
+        z-index: 1999;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-family: var(--font-display); font-weight: 800; font-size: 2.2rem; margin-bottom: 0.25rem;">Officer command</h1>
+        <p style="color: var(--text-muted)">Command console — Ward: <span id="officerWardVal">{{ g.current_user.ward.upper() }}</span></p>
+    </div>
+</div>
+
+<div class="dashboard-layout">
+    <!-- Sidebar Navigation -->
+    <div class="glass-panel sidebar">
+        <button class="sidebar-btn active" onclick="switchTab('overview')"><i class="fa-solid fa-chart-line"></i> Overview</button>
+        <button class="sidebar-btn" onclick="switchTab('new-complaints')"><i class="fa-solid fa-envelope-open-text"></i> New Issues</button>
+        <button class="sidebar-btn" onclick="switchTab('priority-queue')"><i class="fa-solid fa-fire"></i> Priority Queue</button>
+        <button class="sidebar-btn" onclick="switchTab('in-progress')"><i class="fa-solid fa-gears"></i> In Progress</button>
+        <button class="sidebar-btn" onclick="switchTab('verification')"><i class="fa-solid fa-square-check"></i> Verification</button>
+        <button class="sidebar-btn" onclick="switchTab('sla-alerts')"><i class="fa-solid fa-triangle-exclamation"></i> SLA Alerts</button>
+        <button class="sidebar-btn" onclick="switchTab('map-view')"><i class="fa-solid fa-map-location-dot"></i> Live Map</button>
+        <button class="sidebar-btn" onclick="switchTab('workers-view')"><i class="fa-solid fa-users-gear"></i> Workers</button>
+        <button class="sidebar-btn" onclick="switchTab('ward-health')"><i class="fa-solid fa-heart-pulse"></i> Ward Health</button>
+        <button class="sidebar-btn" onclick="switchTab('recurring')"><i class="fa-solid fa-arrows-spin"></i> Recurring hotspots</button>
+    </div>
+
+    <!-- Main Dynamic Content container -->
+    <div class="panel-container" id="panelContainer">
+        
+        <!-- Tab Content: Overview -->
+        <div class="tab-panel" id="tab-overview">
+            <!-- AI Daily Briefing Panel -->
+            <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2);">
+                <h4 style="font-family: var(--font-display); font-weight: 700; margin-bottom: 0.50rem; color: var(--accent-primary); display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fa-solid fa-clipboard-list"></i> TODAY'S AI BRIEFING</span>
+                    <button onclick="loadBriefing(true)" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: var(--text-muted); cursor: pointer; padding: 0.3rem 0.8rem; font-size: 0.8rem;"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+                </h4>
+                <div id="briefingText" style="font-size: 0.95rem; line-height: 1.5; color: var(--text-main); margin-bottom: 1rem;">
+                    Loading daily officer briefing...
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+                    <strong>Recommended Actions:</strong>
+                    <ul id="recommendedActions" style="margin-top: 0.25rem; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <li>Loading recommendation queue...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="glass-panel stat-card">
+                    <div class="stat-lbl">Total complaints</div>
+                    <div class="stat-val" id="statTotal">0</div>
+                </div>
+                <div class="glass-panel stat-card">
+                    <div class="stat-lbl">Resolved Today</div>
+                    <div class="stat-val" id="statResolved" style="color: var(--success)">0</div>
+                </div>
+                <div class="glass-panel stat-card">
+                    <div class="stat-lbl">Pending Issues</div>
+                    <div class="stat-val" id="statPending" style="color: var(--warning)">0</div>
+                </div>
+                <div class="glass-panel stat-card">
+                    <div class="stat-lbl">Critical Active</div>
+                    <div class="stat-val" id="statCritical" style="color: var(--danger)">0</div>
+                </div>
+            </div>
+            
+            <div class="glass-panel health-container" style="margin-top: 1.5rem;">
+                <h4 style="font-family: var(--font-display); font-weight: 700;">Service Level Agreement (SLA) Health Rate</h4>
+                <div class="health-bar-wrapper">
+                    <div class="health-segment" id="seg-ontrack" style="background: var(--success); width: 0%"></div>
+                    <div class="health-segment" id="seg-warning" style="background: var(--warning); width: 0%"></div>
+                    <div class="health-segment" id="seg-urgent" style="background: var(--danger); width: 0%"></div>
+                    <div class="health-segment" id="seg-breached" style="background: var(--critical); width: 0%"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">
+                    <div><i class="fa-solid fa-circle" style="color: var(--success)"></i> On Track: <span id="lbl-ontrack">0%</span></div>
+                    <div><i class="fa-solid fa-circle" style="color: var(--warning)"></i> Warning: <span id="lbl-warning">0%</span></div>
+                    <div><i class="fa-solid fa-circle" style="color: var(--danger)"></i> Urgent: <span id="lbl-urgent">0%</span></div>
+                    <div><i class="fa-solid fa-circle" style="color: var(--critical)"></i> Breached: <span id="lbl-breached">0%</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Issues Grid (Used for New Complaints, Priority Queue, In Progress, Verification, SLA Alerts) -->
+        <div class="tab-panel" id="tab-issues-list" style="display: none;">
+            <!-- Emergency Alert Bar -->
+            <div id="emergencyBar" class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); display: none;">
+                <h4 style="font-family: var(--font-display); font-weight: 700; color: #ef4444; margin-bottom: 0.5rem;"><i class="fa-solid fa-triangle-exclamation"></i> 🚨 ACTIVE EMERGENCIES REPORTED</h4>
+                <div id="emergencyList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <!-- Emergencies here -->
+                </div>
+            </div>
+
+            <!-- Search Filter Bar -->
+            <div class="glass-panel" style="padding: 1.25rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: flex; gap: 1rem;">
+                    <input type="text" id="searchQuery" class="form-control" placeholder="Search issues using natural language... (e.g. 'critical water leaks in Ward 1')" style="flex-grow: 1;">
+                    <button onclick="searchIssues()" style="background: var(--primary); border: none; border-radius: 6px; color: #fff; cursor: pointer; padding: 0.6rem 1.2rem;"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+                </div>
+                <div id="searchTags" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <!-- Filter tag badges -->
+                </div>
+            </div>
+
+            <h3 class="panel-header" id="listTitle">Issues Queue</h3>
+            <div class="queue-grid" id="issuesGrid">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Tab Content: Map View -->
+        <div class="tab-panel" id="tab-map-view" style="display: none;">
+            <div class="map-container">
+                <div id="officerMap"></div>
+                
+                <!-- Map Sidebar Detail Panel -->
+                <div class="map-sidebar-overlay" id="mapSidebar">
+                    <!-- Filled dynamically when marker/cluster is clicked -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Workers View -->
+        <div class="tab-panel" id="tab-workers-view" style="display: none;">
+            <h3 class="panel-header"><i class="fa-solid fa-users-gear" style="color: var(--primary)"></i> Field Crew Status</h3>
+            <div class="queue-grid" id="workersGrid">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Tab Content: Ward Health -->
+        <div class="tab-panel" id="tab-ward-health" style="display: none;">
+            <h3 class="panel-header"><i class="fa-solid fa-heart-pulse" style="color: var(--danger)"></i> Ward Health Scores</h3>
+            <div class="queue-grid" id="wardHealthGrid">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Tab Content: Recurring Hotspots -->
+        <div class="tab-panel" id="tab-recurring" style="display: none;">
+            <h3 class="panel-header"><i class="fa-solid fa-arrows-spin" style="color: var(--warning)"></i> Recurring Hotspots</h3>
+            <div class="queue-grid" id="recurringGrid">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Backdrop -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeAssignModal()"></div>
+
+<!-- Assign Worker Dialog Modal -->
+<div class="assign-modal" id="assignModal">
+    <h3 style="font-family: var(--font-display); font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+        Recommend & Assign Worker
+    </h3>
+    <input type="hidden" id="assignIssueId">
+    
+    <div style="display: flex; flex-direction: column; gap: 1rem;" id="recommendList">
+        <!-- Recommended workers loaded dynamically -->
+    </div>
+    
+    <div style="display: flex; justify-content: flex-end; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <button class="btn btn-secondary" onclick="closeAssignModal()">Cancel</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

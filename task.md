@@ -2,7 +2,8 @@
 
 - [x] Install/update requirements.txt
 - [x] Apply Part 1: Bug Fixes (app.py, main.css, base.html, main.js)
-- [x] Create Part 2: AI modules (ai/ folder files)
+- [x] 3. Module C — Infrastructure Health Scoring
+- [ ] 4. Module D — What-If Simulation Engines)
 - [x] Create Part 2: Blueprint routes/ai_routes.py
 - [x] Apply Part 2: Integration in app.py, config.py, routes/issues.py
 - [x] Create Part 3: Background Schedulers (scheduler_service.py) & modify routes/dashboard.py

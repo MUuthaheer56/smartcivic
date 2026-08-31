@@ -1,1 +1,1 @@
-# Models package init
+# Models package initialization

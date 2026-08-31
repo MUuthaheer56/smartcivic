@@ -1,157 +1,185 @@
 """
-SmartCivic — Verification Service
-Analyzes voting rings and coordiated collusion.
-Applies monthly score decay to inactive users.
+SmartCivic+ — Resolution Verification Service
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 from bson import ObjectId
+import uuid
+import shutil
+import os
+from flask import current_app
+from app import db
+from services import ai_service
+from services.complaint_service import update_status
+from services.notification_service import send, WORK_COMPLETED, CITIZEN_VERIFICATION_REQ, COMPLAINT_CLOSED, COMPLAINT_REOPENED
+from services.audit_service import log_audit
+from models.user import derive_citizen_tier
 
-COLLUSION_MIN_GAP_SECONDS = 10  # legitimate voters take time
-NEW_ACCOUNT_DAYS = 7           # accounts < 7 days old are suspicious
-RISK_THRESHOLD = 0.6
-
-DECAY_RATE = 0.05              # 5% monthly decay
-INACTIVITY_DAYS = 30
-
-
-def detect_vote_collusion(complaint_id: str, db) -> dict:
+def submit_resolution(issue_id, worker_id, before_image: dict, after_image: dict, notes: str) -> dict:
     """
-    Analyses timing gaps between votes, account age of voters, and shared registration
-    IP patterns to detect coordinated voting rings.
+    Worker submits work resolution, triggering AI verification and status updates.
+    before_image & after_image: dict -> {"filename": str, "filepath": str, "url": str}
     """
-    comp = db.issues.find_one({"_id": ObjectId(complaint_id)})
-    if not comp:
-        return {
-            "collusion_risk": 0.0,
-            "flagged_voter_ids": [],
-            "risk_factors": [],
-            "recommend_action": "NONE"
-        }
+    issue = db.issues.find_one({"_id": ObjectId(issue_id)})
+    if not issue:
+        raise ValueError("Issue not found")
         
-    votes = list(db.votes.find({"issue_id": ObjectId(complaint_id)}))
-    if len(votes) < 2:
-        return {
-            "collusion_risk": 0.0,
-            "flagged_voter_ids": [],
-            "risk_factors": [],
-            "recommend_action": "NONE"
-        }
-        
-    risk_score = 0.0
-    factors = []
-    flagged = []
     now = datetime.utcnow()
     
-    # 1. Rapid voting: all votes within a small window
-    timestamps = [v.get("timestamp") for v in votes if v.get("timestamp")]
-    if len(timestamps) >= 2:
-        # Convert string timestamps if stored as strings
-        parsed_ts = []
-        for ts in timestamps:
-            if isinstance(ts, str):
-                parsed_ts.append(datetime.fromisoformat(ts.replace("Z", "+00:00")).replace(tzinfo=None))
-            else:
-                parsed_ts.append(ts)
-        span = (max(parsed_ts) - min(parsed_ts)).total_seconds()
-        if span < COLLUSION_MIN_GAP_SECONDS * len(votes):
-            risk_score += 0.4
-            factors.append(f"All {len(votes)} votes cast within {int(span)}s")
-            
-    # 2. New accounts
-    for vote in votes:
-        voter_id = vote.get("voter_id")
-        if voter_id and ObjectId.is_valid(str(voter_id)):
-            voter = db.users.find_one({"_id": ObjectId(str(voter_id))}, {"created_at": 1})
-            if voter:
-                created_at = voter.get("created_at")
-                if type(created_at).__name__ == 'MagicMock':
-                    created_at = now - timedelta(days=2)
-                elif isinstance(created_at, str):
-                    created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00")).replace(tzinfo=None)
-                age_days = (now - (created_at or now)).days
-                if age_days < NEW_ACCOUNT_DAYS:
-                    risk_score += 0.2
-                    flagged.append(str(voter_id))
-                    factors.append(f"Voter {str(voter_id)[:8]}.. account age: {age_days} days")
-                    
-    # 3. All votes same direction (unanimous confirming/denying with no dissent)
-    vote_types = [v.get("vote_type") for v in votes if v.get("vote_type")]
-    if len(set(vote_types)) == 1 and len(votes) >= 3:
-        risk_score = min(risk_score + 0.2, 1.0)
-        factors.append("All votes unanimous with no dissent")
-        
-    risk_score = min(round(risk_score, 2), 1.0)
-    action = "FLAG_FOR_REVIEW" if risk_score >= RISK_THRESHOLD else "MONITOR"
+    # 1. Run AI Verification comparing before and after photos
+    ai_result = ai_service.verify_resolution(
+        before_image.get("filepath"),
+        after_image.get("filepath"),
+        issue.get("type", "other")
+    )
     
-    if risk_score >= RISK_THRESHOLD:
-        db.issues.update_one(
-            {"_id": ObjectId(complaint_id)},
-            {"$set": {"vote_collusion_risk": risk_score, "vote_flagged": True}}
-        )
-        
-    return {
-        "collusion_risk": risk_score,
-        "flagged_voter_ids": list(set(flagged)),
-        "risk_factors": factors,
-        "recommend_action": action
+    ai_verification = {
+        "status": ai_result.get("status", "uncertain"),
+        "confidence": ai_result.get("confidence", 0.0),
+        "reasoning": ai_result.get("reasoning", ""),
+        "timestamp": now
     }
-
-
-def decay_civic_points(db) -> int:
-    """
-    Applies 5% decay to inactive users. Returns count of users updated.
-    """
-    cutoff = datetime.utcnow() - timedelta(days=INACTIVITY_DAYS)
-    updated = 0
     
-    inactive_users = list(db.users.find({
-        "role": {"$in": ["citizen", "resident"]},
-        "$or": [
-            {"civic_points": {"$gt": 0}},
-            {"reputation_score": {"$gt": 0}}
-        ],
-        "$or": [
-            {"last_active": {"$lt": cutoff}},
-            {"last_active": {"$exists": False}}
-        ]
-    }))
+    # Append resolution images to issue images list
+    images_list = issue.get("images", [])
     
-    for user in inactive_users:
-        # PDF fields
-        current_civic = user.get("civic_points", 0)
-        decayed_civic = max(0, int(current_civic * (1 - DECAY_RATE)))
-        new_civic_tier = _calc_tier(decayed_civic)
+    # Add after image record
+    images_list.append({
+        "filename": after_image.get("filename"),
+        "url": after_image.get("url"),
+        "type": "after",
+        "uploaded_by": ObjectId(worker_id),
+        "uploaded_at": now
+    })
+    
+    db.issues.update_one(
+        {"_id": ObjectId(issue_id)},
+        {
+            "$set": {
+                "ai_verification": ai_verification,
+                "images": images_list,
+                "resolution_notes": notes
+            }
+        }
+    )
+    
+    # 2. Update status to work_completed
+    update_status(issue_id, "work_completed", worker_id, reason="Worker completed repair task.")
+    
+    # 3. Log audit log & notify officer
+    log_audit("issue", issue_id, worker_id, "RESOLUTION_SUBMIT", reason=f"Resolution submitted. AI Verdict: {ai_verification['status']}")
+    
+    officer_id = issue.get("officer_id")
+    if officer_id:
+        send(WORK_COMPLETED, str(officer_id), str(issue_id))
         
-        # Existing codebase reputation fields (compatibility)
-        current_rep = user.get("reputation_score", 0)
-        decayed_rep = max(0, int(current_rep * (1 - DECAY_RATE)))
-        from services.reputation_service import get_tier
-        new_rep_tier = get_tier(decayed_rep)
+    return ai_verification
+
+def officer_verify(issue_id, officer_id, approved: bool, notes: str) -> dict:
+    """
+    Officer reviews the worker's resolution. If approved, escalates to citizen verification.
+    """
+    issue = db.issues.find_one({"_id": ObjectId(issue_id)})
+    if not issue:
+        raise ValueError("Issue not found")
         
-        db.users.update_one(
-            {"_id": user["_id"]},
+    if approved:
+        update_status(issue_id, "officer_verified", officer_id, reason=f"Officer approved resolution: {notes}")
+        # Transition to citizen verification
+        update_status(issue_id, "citizen_verification", officer_id, reason="Pending citizen confirmation.")
+        
+        # Notify citizen
+        send(CITIZEN_VERIFICATION_REQ, str(issue["citizen_id"]), str(issue_id))
+    else:
+        # Reject resolution - revert status to assigned so worker can repair it again
+        update_status(issue_id, "assigned", officer_id, reason=f"Officer rejected resolution: {notes}")
+        
+        # Notify worker
+        worker_id = issue.get("worker_id")
+        if worker_id:
+            send(COMPLAINT_REOPENED, str(worker_id), str(issue_id), extra={"note": notes})
+            
+    return {"success": True}
+
+def citizen_verify(issue_id, citizen_id, resolved: bool, feedback: str) -> dict:
+    """
+    Citizen confirms if the issue is successfully resolved.
+    """
+    issue = db.issues.find_one({"_id": ObjectId(issue_id)})
+    if not issue:
+        raise ValueError("Issue not found")
+        
+    now = datetime.utcnow()
+    
+    if resolved:
+        # Update status to closed
+        update_status(issue_id, "closed", citizen_id, reason=f"Citizen confirmed resolution. Feedback: {feedback}")
+        
+        db.issues.update_one(
+            {"_id": ObjectId(issue_id)},
             {"$set": {
-                "civic_points": decayed_civic,
-                "civic_tier": new_civic_tier,
-                "reputation_score": decayed_rep,
-                "reputation_tier": new_rep_tier,
-                "last_decay_at": datetime.utcnow()
-            }, "$push": {"decay_log": {
-                "timestamp": datetime.utcnow(),
-                "before_civic": current_civic,
-                "after_civic": decayed_civic,
-                "before_rep": current_rep,
-                "after_rep": decayed_rep
-            }}}
+                "citizen_verified": True,
+                "citizen_feedback": feedback
+            }}
         )
-        updated += 1
         
-    return updated
-
-
-def _calc_tier(points: int) -> str:
-    if points >= 150:
-        return "Ward Guardian"
-    if points >= 50:
-        return "Verifier"
-    return "Reporter"
+        # Award reputation to citizen
+        db.users.update_one(
+            {"_id": ObjectId(citizen_id)},
+            {
+                "$inc": {
+                    "civic_score": 10,
+                    "reports_verified_accurate": 1
+                }
+            }
+        )
+        # Refresh citizen tier
+        citizen = db.users.find_one({"_id": ObjectId(citizen_id)})
+        new_tier = derive_citizen_tier(citizen.get("civic_score", 0))
+        db.users.update_one({"_id": ObjectId(citizen_id)}, {"$set": {"role_tier": new_tier}})
+        
+        # Release worker workload capacity
+        worker_id = issue.get("worker_id")
+        if worker_id:
+            worker = db.users.find_one({"_id": ObjectId(worker_id)})
+            if worker:
+                active_jobs = max(0, worker.get("active_assignments", 0) - 1)
+                db.users.update_one(
+                    {"_id": ObjectId(worker_id)},
+                    {"$set": {
+                        "active_assignments": active_jobs,
+                        "is_available": active_jobs < 5
+                    }}
+                )
+                
+        # Close Assignment record
+        db.assignments.update_one(
+            {"issue_id": ObjectId(issue_id), "status": "assigned"},
+            {"$set": {
+                "status": "completed",
+                "completed_at": now,
+                "updated_at": now
+            }}
+        )
+        
+        send(COMPLAINT_CLOSED, str(citizen_id), str(issue_id))
+        send("feedback_requested", str(citizen_id), str(issue_id), extra={"message": "Please rate your experience with this issue resolution."})
+    else:
+        # Reopen complaint
+        update_status(issue_id, "reopened", citizen_id, reason=f"Citizen disputed resolution. Feedback: {feedback}")
+        # Transition back to assigned for the worker
+        update_status(issue_id, "assigned", citizen_id, reason="Re-assigned to worker for correction.")
+        
+        db.issues.update_one(
+            {"_id": ObjectId(issue_id)},
+            {"$set": {
+                "citizen_verified": False,
+                "citizen_feedback": feedback
+            }}
+        )
+        
+        # Penalty/Notif for worker
+        worker_id = issue.get("worker_id")
+        if worker_id:
+            send(COMPLAINT_REOPENED, str(worker_id), str(issue_id), extra={"feedback": feedback})
+            
+    return {"success": True}

@@ -1,1 +1,1 @@
-# Routes package init
+# Routes blueprint registrations

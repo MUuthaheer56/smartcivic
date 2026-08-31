@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .auth-container {
+        max-width: 500px;
+        margin: 2rem auto;
+        padding: 2.5rem;
+    }
+    .auth-title {
+        font-family: var(--font-display);
+        font-weight: 800;
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+        text-align: center;
+    }
+    .auth-subtitle {
+        color: var(--text-muted);
+        text-align: center;
+        margin-bottom: 2rem;
+        font-size: 0.95rem;
+    }
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    .form-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: white;
+        font-family: var(--font-body);
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+    }
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.08);
+    }
+    .auth-footer {
+        margin-top: 1.5rem;
+        text-align: center;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+    .auth-footer a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 600;
+    }
+    #skillsGroup {
+        display: none;
+    }
+</style>
+
+<div class="glass-panel auth-container">
+    <h2 class="auth-title">Join SmartCivic+</h2>
+    <p class="auth-subtitle">Create your secure civic account</p>
+    
+    <form id="registerForm">
+        <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" id="name" class="form-control" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" id="email" class="form-control" placeholder="name@domain.com" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="password" class="form-control" placeholder="Min. 6 characters" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Role</label>
+            <select id="role" class="form-control" onchange="toggleSkills()" required>
+                <option value="citizen">Citizen (Resident)</option>
+                <option value="officer">Officer (Administrator)</option>
+                <option value="worker">Worker (Field Crew)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Ward / Zone Area</label>
+            <input type="text" id="ward" class="form-control" placeholder="Ward 1, TC Palya, etc." required>
+        </div>
+        <div class="form-group" id="skillsGroup">
+            <label class="form-label">Skills (comma-separated list)</label>
+            <input type="text" id="skills" class="form-control" placeholder="road_repair, electrical, sanitation, drainage">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;"><i class="fa-solid fa-user-plus"></i> Register</button>
+    </form>
+    
+    <div class="auth-footer">
+        Already have an account? <a href="/login">Sign in</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleSkills() {
+        const role = document.getElementById('role').value;
+        const skillsGroup = document.getElementById('skillsGroup');
+        if (role === 'worker') {
+            skillsGroup.style.display = 'block';
+        } else {
+            skillsGroup.style.display = 'none';
+        }
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const role = document.getElementById('role').value;
+        const ward = document.getElementById('ward').value;
+        
+        let skills = [];
+        if (role === 'worker') {
+            const skillsVal = document.getElementById('skills').value;
+            skills = skillsVal.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        }
+        
+        try {
+            const res = await fetch('/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password, role, ward, skills })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                showToast("Registration successful! Redirecting to login...", "success");
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+            } else {
+                showToast(data.error.message || "Registration failed.", "danger");
+            }
+        } catch (err) {
+            showToast("Server communication error.", "danger");
+        }
+    });
+</script>
+{% endblock %}

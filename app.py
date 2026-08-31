@@ -1,89 +1,217 @@
+"""
+SmartCivic+ — Core Application Factory
+Initializes database connections, Socket.IO, security rate limiters, and background task schedulers.
+"""
 import os
-from flask import Flask, jsonify
-from flask_socketio import SocketIO
-from flask_mail import Mail
+import jwt
+from datetime import datetime
+from bson import ObjectId
+from flask import Flask, render_template, request, redirect, g, jsonify
 from pymongo import MongoClient
+from flask_socketio import SocketIO, emit, join_room
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from apscheduler.schedulers.background import BackgroundScheduler
+
 from config import Config
 
-socketio = SocketIO()
-mail = Mail()
-db = None
+# Connect to MongoDB at module level for thread safety and easy service imports
+mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/smartcivic")
+db_name = mongo_uri.split('/')[-1] if '/' in mongo_uri else 'smartcivic'
+if not db_name or db_name.strip() == "" or '?' in db_name:
+    db_name = 'smartcivic'
+client = MongoClient(mongo_uri)
+db = client[db_name]
+
+# Initialize Socket.IO and Limiter
+socketio = SocketIO(cors_allowed_origins="*")
+limiter = Limiter(key_func=get_remote_address, default_limits=["100 per minute"], storage_uri="memory://")
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'docs'), exist_ok=True)
     
-    socketio.init_app(app, cors_allowed_origins='*', async_mode='eventlet')
-    mail.init_app(app)
+    # Initialize extensions with app context
+    socketio.init_app(app)
+    limiter.init_app(app)
     
-    global db
-    client = MongoClient(app.config['MONGO_URI'])
-    db = client[app.config['DB_NAME']]
-    
-
-
-    import routes.sockets  # registers Socket.IO event handlers
-    
-    # MongoDB Indexes
-    db.users.create_index('email', unique=True)
-    db.issues.create_index([('lat', 1), ('lng', 1)])
-    db.issues.create_index('community_id')
-    db.issues.create_index('status')
-    db.issues.create_index([('title', 'text'), ('description', 'text'), ('address', 'text')])
-    db.votes.create_index([('issue_id', 1), ('voter_id', 1)], unique=True)
-    db.notifications.create_index([('user_id', 1), ('is_read', 1)])
-    db.announcements.create_index('community_id')
-    db.login_attempts.create_index("ip", expireAfterSeconds=900)
-    db.notifications.create_index([("user_id", 1), ("delivery_status", 1)])
-    db.audit_logs.create_index([("user_id", 1), ("timestamp", -1)])
-    db.issues.create_index("suppressed")
-    
-    # Rate limiter state (in-memory, per IP, per minute)
-    app.rate_limit_store = {}
-    
-    # Blueprints
+    # Register page blueprints
     from routes.auth import auth_bp
-    from routes.issues import issues_bp
-    from routes.votes import votes_bp
-    from routes.communities import communities_bp
-    from routes.workers import workers_bp
-    from routes.dashboard import dashboard_bp
-    from routes.announcements import announcements_bp
-    from routes.pages import pages_bp
+    from routes.citizen import citizen_bp
+    from routes.officer import officer_bp
+    from routes.worker import worker_bp
     
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(issues_bp, url_prefix='/api/issues')
-    app.register_blueprint(votes_bp, url_prefix='/api/votes')
-    app.register_blueprint(communities_bp, url_prefix='/api/communities')
-    app.register_blueprint(workers_bp, url_prefix='/api/workers')
-    app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
-    app.register_blueprint(announcements_bp, url_prefix='/api/announcements')
-    app.register_blueprint(pages_bp)
-    from routes.notifications import notifications_bp
-    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
+    app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(citizen_bp)
+    app.register_blueprint(officer_bp)
+    app.register_blueprint(worker_bp)
     
-    from routes.ai_routes import ai_bp
-    from routes.issues import complaints_bp
-    app.register_blueprint(ai_bp, url_prefix='/api/ai')
-    app.register_blueprint(complaints_bp, url_prefix='/api/complaints')
+    # Register REST API blueprints
+    from routes.api.issues import issues_api_bp
+    from routes.api.workers import workers_api_bp
+    from routes.api.analytics import analytics_api_bp
+    from routes.api.map import map_api_bp
     
-    # Start background scheduler (do not run in testing)
-    if not app.config.get('TESTING') and os.environ.get('WERKZEUG_RUN_MAIN') != 'false':
-        from services.scheduler_service import start_scheduler
-        start_scheduler(app)
+    app.register_blueprint(issues_api_bp)
+    app.register_blueprint(workers_api_bp)
+    app.register_blueprint(analytics_api_bp)
+    app.register_blueprint(map_api_bp)
+    # Legacy and general page routes
+    @app.route('/login')
+    def login_page():
+        return render_template('auth/login.html')
+        
+    @app.route('/register')
+    def register_page():
+        return render_template('auth/register.html')
+        
+    @app.route('/transparency')
+    def transparency_page():
+        return render_template('public/transparency.html')
+        
+    @app.route('/')
+    def index():
+        token = request.cookies.get("access_token")
+        if token:
+            try:
+                payload = jwt.decode(token, app.config["JWT_SECRET"], algorithms=["HS256"])
+                role = payload.get("role")
+                if role == "citizen":
+                    return redirect('/citizen/dashboard')
+                elif role == "officer":
+                    return redirect('/officer/dashboard')
+                elif role == "worker":
+                    return redirect('/worker/dashboard')
+            except Exception:
+                pass
+        return redirect('/login')
+        
+    # Before request hook to populate g.current_user if token is valid
+    @app.before_request
+    def load_user_context():
+        import time
+        g.request_start_time = time.time()
+        g.current_user = None
+        token = request.cookies.get("access_token")
+        if token:
+            try:
+                payload = jwt.decode(token, app.config["JWT_SECRET"], algorithms=["HS256"])
+                user_id = payload.get("user_id")
+                user = db.users.find_one({"_id": ObjectId(user_id)})
+                if user:
+                    g.current_user = user
+            except Exception:
+                pass
+                
+    @app.after_request
+    def add_security_headers(response):
+        import time
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        # CSP allowing Leaflet tile servers and Google fonts
+        response.headers['Content-Security-Policy'] = "default-src 'self' *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *; img-src 'self' data: blob: *; font-src 'self' data: *; connect-src 'self' *;"
+        
+        # Log request
+        duration = 0.0
+        if hasattr(g, "request_start_time"):
+            duration = round((time.time() - g.request_start_time) * 1000.0, 1)
+        user_id = str(g.current_user["_id"]) if (hasattr(g, "current_user") and g.current_user) else None
+        
+        try:
+            from services.logger_service import log_api_request
+            log_api_request(request.method, request.path, user_id, response.status_code, duration)
+        except Exception:
+            pass
+            
+        return response
+
+    # Global error handlers to prevent trace leakage
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        # Log error server-side
+        app.logger.error(f"Server error: {e}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": {
+                "code": "SERVER_ERROR",
+                "message": "An internal server error occurred."
+            }
+        }), 500
+
+    # Start SLA tracking sweep scheduler (runs every 15 mins)
+    scheduler = BackgroundScheduler()
     
-    # Error handlers
-    @app.errorhandler(400)
-    def e400(e): return jsonify({'success': False, 'message': 'Bad request', 'data': None}), 400
-    @app.errorhandler(401)
-    def e401(e): return jsonify({'success': False, 'message': 'Unauthorized', 'data': None}), 401
-    @app.errorhandler(403)
-    def e403(e): return jsonify({'success': False, 'message': 'Forbidden', 'data': None}), 403
-    @app.errorhandler(404)
-    def e404(e): return jsonify({'success': False, 'message': 'Not found', 'data': None}), 404
-    @app.errorhandler(500)
-    def e500(e): return jsonify({'success': False, 'message': 'Server error', 'data': None}), 500
+    def sla_sweep_job():
+        # Find all open issues
+        open_issues = list(db.issues.find({"status": {"$nin": ["closed", "rejected"]}}))
+        from services.sla_service import check_sla_status
+        for issue in open_issues:
+            try:
+                check_sla_status(issue)
+            except Exception as sweep_err:
+                app.logger.error(f"SLA Sweep error on issue {issue.get('_id')}: {sweep_err}")
+                
+    scheduler.add_job(sla_sweep_job, 'interval', seconds=app.config["SLA_CHECK_INTERVAL"])
+    
+    def briefing_and_health_job():
+        try:
+            from services.briefing_service import regenerate_briefing, calculate_ward_health_score
+            regenerate_briefing()
+            wards = db.issues.distinct("ward")
+            for w in wards:
+                if w:
+                    calculate_ward_health_score(w)
+        except Exception as err:
+            app.logger.error(f"Briefing & Health job background exception: {err}")
+            
+    scheduler.add_job(briefing_and_health_job, 'interval', minutes=30)
+    
+    def prediction_hotspots_job():
+        try:
+            from services.prediction_service import compute_hotspots
+            compute_hotspots()
+        except Exception as err:
+            app.logger.error(f"Weekly predictive hotspot computation exception: {err}")
+            
+    scheduler.add_job(prediction_hotspots_job, 'cron', day_of_week='sun', hour=1)
+    
+    def infrastructure_health_sweep_job():
+        try:
+            from services.infrastructure_service import trigger_all_infrastructure_recalc
+            trigger_all_infrastructure_recalc()
+        except Exception as err:
+            app.logger.error(f"Infrastructure Health sweep exception: {err}")
+            
+    scheduler.add_job(infrastructure_health_sweep_job, 'interval', hours=6)
+    
+    def weekly_intelligence_report_job():
+        try:
+            from services.report_service import trigger_report_generation_job
+            trigger_report_generation_job()
+        except Exception as err:
+            app.logger.error(f"Weekly Intelligence Report generation exception: {err}")
+            
+    scheduler.add_job(weekly_intelligence_report_job, 'cron', day_of_week='mon', hour=6)
+    
+    def daily_database_backup_job():
+        try:
+            from scripts.backup_db import run_backup
+            run_backup()
+        except Exception as err:
+            app.logger.error(f"Daily Database Backup sweep exception: {err}")
+            
+    scheduler.add_job(daily_database_backup_job, 'cron', hour=2, minute=0)
+    scheduler.start()
     
     return app
+
+# Socket.IO Handlers in /civic namespace
+@socketio.on('join_room', namespace='/civic')
+def on_join(data):
+    room = data.get('room')
+    if room:
+        join_room(room)
+        print(f"[Socket.IO] Client joined notification room: {room}")

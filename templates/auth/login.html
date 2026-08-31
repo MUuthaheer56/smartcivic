@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .auth-container {
+        max-width: 450px;
+        margin: 4rem auto;
+        padding: 2.5rem;
+    }
+    .auth-title {
+        font-family: var(--font-display);
+        font-weight: 800;
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+        text-align: center;
+    }
+    .auth-subtitle {
+        color: var(--text-muted);
+        text-align: center;
+        margin-bottom: 2rem;
+        font-size: 0.95rem;
+    }
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    .form-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: white;
+        font-family: var(--font-body);
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+    }
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.08);
+    }
+    .auth-footer {
+        margin-top: 1.5rem;
+        text-align: center;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+    .auth-footer a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 600;
+    }
+</style>
+
+<div class="glass-panel auth-container">
+    <h2 class="auth-title">Welcome Back</h2>
+    <p class="auth-subtitle">Sign in to report or manage civic complaints</p>
+    
+    <form id="loginForm">
+        <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" id="email" class="form-control" placeholder="name@smartcivic.com" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;"><i class="fa-solid fa-sign-in-alt"></i> Login</button>
+    </form>
+    
+    <div class="auth-footer">
+        Don't have an account? <a href="/register">Create one</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        try {
+            const res = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                showToast("Login successful!", "success");
+                const role = data.data.user.role;
+                setTimeout(() => {
+                    if (role === 'citizen') window.location.href = '/citizen/dashboard';
+                    else if (role === 'officer') window.location.href = '/officer/dashboard';
+                    else if (role === 'worker') window.location.href = '/worker/dashboard';
+                }, 1000);
+            } else {
+                showToast(data.error.message || "Login failed.", "danger");
+            }
+        } catch (err) {
+            showToast("Server communication error.", "danger");
+        }
+    });
+</script>
+{% endblock %}
