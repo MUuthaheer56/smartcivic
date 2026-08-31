@@ -19,7 +19,7 @@ LEGAL_TRANSITIONS = {
     "officer_reviewed":      ["assigned"],
     "assigned":              ["work_started"],
     "work_started":          ["work_completed"],
-    "work_completed":        ["officer_verified"],
+    "work_completed":        ["officer_verified", "work_started"],
     "officer_verified":      ["citizen_verification"],
     "citizen_verification":  ["closed", "reopened"],
     "reopened":              ["assigned"],
@@ -88,9 +88,7 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         ward=ward,
         images=images
     )
-    
-    result = db.issues.insert_one(issue_doc)
-    issue_id = result.inserted_id
+    issue_id = ObjectId()
     issue_doc["_id"] = issue_id
     
     # 3. AI Text Analysis
@@ -124,6 +122,12 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
     if duplicates and duplicates[0]["similarity"] > 0.85:
         duplicate_of = ObjectId(duplicates[0]["issue_id"])
         is_suppressed = True
+        
+        # Add to parent's duplicate children
+        db.issues.update_one(
+            {"_id": duplicate_of},
+            {"$addToSet": {"duplicate_children": ObjectId(issue_id)}}
+        )
         
         # Link to the same cluster as original
         original = db.issues.find_one({"_id": duplicate_of})
@@ -197,27 +201,9 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
     issue_doc["sla_deadline"] = assign_sla(issue_doc)
     issue_doc["priority_score"] = calculate_priority(issue_doc, db)
     issue_doc["status"] = "ai_reviewed"
+    issue_doc["updated_at"] = datetime.utcnow()
     
-    db.issues.update_one(
-        {"_id": ObjectId(issue_id)},
-        {"$set": {
-            "category": category,
-            "type": issue_type,
-            "severity": severity,
-            "department": department,
-            "duplicate_of": duplicate_of,
-            "cluster_id": cluster_id,
-            "suppressed": is_suppressed,
-            "original_language": orig_lang,
-            "original_description": orig_desc,
-            "translated_description": trans_desc,
-            "ai_analysis": ai_analysis,
-            "sla_deadline": issue_doc["sla_deadline"],
-            "priority_score": issue_doc["priority_score"],
-            "status": "ai_reviewed",
-            "updated_at": datetime.utcnow()
-        }}
-    )
+    db.issues.insert_one(issue_doc)
     
     # Increment Citizen Reports Submitted Count
     db.users.update_one(

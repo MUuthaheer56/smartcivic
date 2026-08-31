@@ -36,8 +36,8 @@ def get_system_health() -> dict:
         pass
         
     # 3. Notification statistics (mock or actual from DB)
-    sent_count = db.notifications.count_documents({"read": True})
-    pending_count = db.notifications.count_documents({"read": False})
+    sent_count = db.notifications.count_documents({"is_read": True})
+    pending_count = db.notifications.count_documents({"is_read": False})
     
     # 4. Background Scheduler (fake/fallback details or read from global registry)
     # Since background scheduler is in memory, we construct scheduled targets
@@ -51,6 +51,11 @@ def get_system_health() -> dict:
     
     # 5. Uptime
     uptime = int(time.time() - START_TIME)
+    
+    # CivicPulse prediction summary
+    civicpulse_critical = db.civicpulse_predictions.count_documents({"risk_band": "CRITICAL"})
+    civicpulse_high = db.civicpulse_predictions.count_documents({"risk_band": "HIGH"})
+    civicpulse_total = db.civicpulse_predictions.count_documents({})
     
     return {
         "database": {
@@ -69,6 +74,11 @@ def get_system_health() -> dict:
         "scheduler": {
             "status": "Online",
             "jobs": jobs_summary
+        },
+        "civicpulse": {
+            "total_segments_predicted": civicpulse_total,
+            "critical_risk": civicpulse_critical,
+            "high_risk": civicpulse_high,
         },
         "uptime_seconds": uptime
     }

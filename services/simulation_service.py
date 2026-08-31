@@ -96,8 +96,6 @@ def simulate_category_priority_shift(prioritize_category: str) -> dict:
         }}
     ]
     res_priority = list(db.issues.aggregate(priority_pipeline))
-    current_avg = round(res_priority[0]["avg_conf"] if res_priority and res_priority[0].get("avg_hours") else 24.0, 1)
-    # Check key: avg_hours
     current_avg = round(res_priority[0]["avg_hours"] if res_priority and res_priority[0].get("avg_hours") else 24.0, 1)
     
     estimated_priority_avg = round(current_avg * 0.60, 1)

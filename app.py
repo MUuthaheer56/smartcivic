@@ -56,6 +56,11 @@ def create_app():
     app.register_blueprint(workers_api_bp)
     app.register_blueprint(analytics_api_bp)
     app.register_blueprint(map_api_bp)
+    
+    from routes.api.simulation import simulation_api_bp
+    from routes.api.civicpulse import civicpulse_api_bp
+    app.register_blueprint(simulation_api_bp)
+    app.register_blueprint(civicpulse_api_bp)
     # Legacy and general page routes
     @app.route('/login')
     def login_page():
@@ -204,6 +209,16 @@ def create_app():
             app.logger.error(f"Daily Database Backup sweep exception: {err}")
             
     scheduler.add_job(daily_database_backup_job, 'cron', hour=2, minute=0)
+    
+    def civicpulse_prediction_job():
+        try:
+            from services.civicpulse_service import compute_civicpulse_predictions
+            compute_civicpulse_predictions()
+        except Exception as err:
+            app.logger.error(f"CivicPulse prediction sweep exception: {err}")
+
+    # Run every Tuesday at 2am (offset from the hotspot job on Sunday)
+    scheduler.add_job(civicpulse_prediction_job, 'cron', day_of_week='tue', hour=2)
     scheduler.start()
     
     return app

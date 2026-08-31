@@ -59,7 +59,7 @@ def get_route(origin_coords: tuple, destination_coords: tuple) -> dict:
     return {
         "distance_km": round(dist, 3),
         "duration_minutes": duration,
-        "polyline": [[lat1, lon1], [[lat2, lon2]]]
+        "polyline": [[lat1, lon1], [lat2, lon2]]
     }
 
 def optimize_multi_stop_route(worker_location: tuple, issue_locations: list) -> list:

@@ -21,7 +21,11 @@ CATEGORY_KEYWORDS: Dict[str, List[Tuple[str, float]]] = {
     "streetlight": [
         ("streetlight", 3.0), ("street light", 3.0), ("lamp post", 2.5), ("dark lane", 2.5),
         ("no light", 2.0), ("bulb", 1.5), ("electrical", 1.5), ("light out", 2.0),
-        ("led", 1.5), ("darkness", 1.8), ("power outage", 1.5)
+        ("led", 1.5), ("darkness", 1.8), ("power outage", 1.5),
+        ("wire", 2.0), ("spark", 2.5), ("wiring", 2.0), ("sparking", 2.5),
+        ("live wire", 3.0), ("hanging wire", 3.0), ("transformer", 2.5),
+        ("voltage", 2.0), ("short circuit", 3.0), ("electric", 2.0),
+        ("electricity", 2.5)
     ],
     "water": [
         ("water", 2.0), ("pipe", 2.0), ("leak", 2.5), ("water shortage", 3.0),
@@ -106,8 +110,8 @@ def classify_issue(title: str, description: str = "") -> dict:
     sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     top_category, top_score = sorted_scores[0]
 
-    # Normalise confidence (cap at 10.0 raw for 1.0 confidence)
-    confidence = min(1.0, top_score / 10.0)
+    # Normalise confidence (cap at 6.0 raw for 1.0 confidence)
+    confidence = min(1.0, top_score / 6.0)
 
     return {
         "category": top_category,

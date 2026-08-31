@@ -3,9 +3,6 @@ SmartCivic+ — Resolution Verification Service
 """
 from datetime import datetime
 from bson import ObjectId
-import uuid
-import shutil
-import os
 from flask import current_app
 from app import db
 from services import ai_service
@@ -90,8 +87,8 @@ def officer_verify(issue_id, officer_id, approved: bool, notes: str) -> dict:
         # Notify citizen
         send(CITIZEN_VERIFICATION_REQ, str(issue["citizen_id"]), str(issue_id))
     else:
-        # Reject resolution - revert status to assigned so worker can repair it again
-        update_status(issue_id, "assigned", officer_id, reason=f"Officer rejected resolution: {notes}")
+        # Reject resolution - revert status to work_started so worker can repair it again
+        update_status(issue_id, "work_started", officer_id, reason=f"Officer rejected resolution: {notes}")
         
         # Notify worker
         worker_id = issue.get("worker_id")
@@ -166,8 +163,6 @@ def citizen_verify(issue_id, citizen_id, resolved: bool, feedback: str) -> dict:
     else:
         # Reopen complaint
         update_status(issue_id, "reopened", citizen_id, reason=f"Citizen disputed resolution. Feedback: {feedback}")
-        # Transition back to assigned for the worker
-        update_status(issue_id, "assigned", citizen_id, reason="Re-assigned to worker for correction.")
         
         db.issues.update_one(
             {"_id": ObjectId(issue_id)},
@@ -177,6 +172,16 @@ def citizen_verify(issue_id, citizen_id, resolved: bool, feedback: str) -> dict:
             }}
         )
         
+        # Notify assigning officer or ward officer
+        officer_id = issue.get("assigned_officer_id")
+        if not officer_id:
+            ward_officer = db.users.find_one({"role": "officer", "ward": issue.get("ward")})
+            if ward_officer:
+                officer_id = ward_officer["_id"]
+                
+        if officer_id:
+            send(COMPLAINT_REOPENED, str(officer_id), str(issue_id), extra={"feedback": feedback, "role": "officer"})
+            
         # Penalty/Notif for worker
         worker_id = issue.get("worker_id")
         if worker_id:

@@ -10,7 +10,7 @@ import magic
 from datetime import datetime
 from app import db, limiter
 from routes.auth import require_auth, require_role
-from models.issue import IssueCreateSchema
+from models.issue import IssueCreateSchema, CATEGORIES, SEVERITIES, DEPARTMENTS
 from services import complaint_service, assignment_service, verification_service, priority_service, sla_service
 from services.audit_service import log_audit
 from utils import serialize

@@ -21,3 +21,5 @@
 {"timestamp": "2026-08-31T08:10:10.247197", "log_type": "api_request", "method": "POST", "path": "/auth/login", "user_id": "anonymous", "status_code": 500, "duration_ms": 30020.4}
 {"timestamp": "2026-08-31T08:10:10.257007", "log_type": "api_request", "method": "POST", "path": "/auth/login", "user_id": "anonymous", "status_code": 500, "duration_ms": 30202.8}
 {"timestamp": "2026-08-31T08:10:10.748314", "log_type": "api_request", "method": "POST", "path": "/auth/login", "user_id": "anonymous", "status_code": 500, "duration_ms": 30303.2}
+{"log_type": "civicpulse", "msg": "Starting CivicPulse prediction sweep"}
+{"log_type": "civicpulse", "msg": "Sweep complete", "segments": 1}

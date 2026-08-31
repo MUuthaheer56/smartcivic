@@ -22,6 +22,16 @@ if not logger.handlers:
     handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)
     logger.addHandler(handler)
 
+class MongoJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        from bson import ObjectId
+        from datetime import datetime
+        if isinstance(o, ObjectId):
+            return str(o)
+        if isinstance(o, datetime):
+            return o.isoformat()
+        return super().default(o)
+
 def _write_log(log_type: str, data: dict):
     """
     Formulates a JSON log string and writes it to the log file.
@@ -32,7 +42,7 @@ def _write_log(log_type: str, data: dict):
     }
     log_entry.update(data)
     try:
-        logger.info(json.dumps(log_entry))
+        logger.info(json.dumps(log_entry, cls=MongoJSONEncoder))
     except Exception as e:
         print(f"[Logging System] Error writing log: {e}")
 

@@ -37,6 +37,7 @@ def create_issue_doc(citizen_id, title, description, category, issue_type, lat, 
         "worker_id": None,
         "cluster_id": None,
         "duplicate_of": None,
+        "duplicate_children": [],
         "ai_analysis": {
             "category": category,
             "type": issue_type.strip(),

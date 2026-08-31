@@ -34,6 +34,12 @@ def setup_indexes():
     db.infrastructure.create_index([("location", "2dsphere")])
     db.infrastructure.create_index([("health_score", 1)])
     
+    print("[Indexes] Creating civicpulse predictions indexes...")
+    db.civicpulse_predictions.create_index("segment_id", unique=True)
+    db.civicpulse_predictions.create_index("ward")
+    db.civicpulse_predictions.create_index([("days_until_failure", 1)])
+    db.civicpulse_predictions.create_index("risk_band")
+    
     print("[Indexes] MongoDB index configurations completed successfully.")
 
 if __name__ == '__main__':

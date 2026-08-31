@@ -27,31 +27,39 @@ def _rule_based_fallback(description: str) -> dict:
     issue_type = "other"
     severity = "medium"
     
-    # Keyword matches
-    if any(k in text for k in ["pothole", "road", "crack", "asphalt", "street"]):
-        category = "road"
-        issue_type = "pothole"
-        if "critical" in text or "accident" in text or "crater" in text:
-            severity = "high"
+    # 1. Electricity (run first to avoid broad road match on streetlight)
+    if any(k in text for k in [
+        "wire", "spark", "wiring", "sparking", "live wire", "hanging wire",
+        "transformer", "voltage", "short circuit", "electric", "electricity",
+        "light", "streetlight", "power", "outage", "street light", "lamp post"
+    ]):
+        category = "electricity"
+        issue_type = "streetlight_failure"
+        if any(k in text for k in ["spark", "hanging wire", "live wire", "short circuit"]):
+            severity = "critical"
+    # 2. Water
     elif any(k in text for k in ["water", "pipe", "leak", "burst", "flooding"]):
         category = "water"
         issue_type = "pipe_leakage"
         if "flood" in text or "burst" in text:
             severity = "critical"
-    elif any(k in text for k in ["light", "streetlight", "power", "electricity", "outage", "wire"]):
-        category = "electricity"
-        issue_type = "streetlight_failure"
-        if "spark" in text or "hanging wire" in text:
-            severity = "critical"
+    # 3. Sanitation
     elif any(k in text for k in ["garbage", "waste", "trash", "dump", "litter"]):
         category = "sanitation"
         issue_type = "garbage_dump"
         if "toxic" in text or "stink" in text:
             severity = "high"
+    # 4. Drainage
     elif any(k in text for k in ["drain", "flood", "sewage", "overflow", "nala"]):
         category = "drainage"
         issue_type = "drain_overflow"
         if "overflow" in text or "sewage" in text:
+            severity = "high"
+    # 5. Road (broad checks at the end)
+    elif any(k in text for k in ["pothole", "road", "crack", "asphalt", "street"]):
+        category = "road"
+        issue_type = "pothole"
+        if "critical" in text or "accident" in text or "crater" in text:
             severity = "high"
             
     department = CATEGORY_TO_DEPT.get(category, "roads")
@@ -213,6 +221,7 @@ def verify_resolution(before_image_path: str, after_image_path: str, issue_type:
     """
     Returns: status (verified / likely_verified / uncertain / not_verified), confidence, reasoning
     Uses Gemini Vision to compare before/after photos.
+    Note: gemini-pro-vision is deprecated in modern Gemini APIs; use gemini-1.5-flash for new implementations.
     """
     key = os.getenv("GEMINI_API_KEY")
     if not key:
@@ -252,6 +261,8 @@ def verify_resolution(before_image_path: str, after_image_path: str, issue_type:
             "reasoning": "Verification succeeded via automated comparison.",
             "provider": "rule_based"
         }
+
+verify_repair_with_images = verify_resolution
 
 def recommend_department(category: str, issue_type: str, description: str) -> dict:
     """
@@ -453,9 +464,6 @@ def answer_analytics_question(question: str, context_stats: dict) -> str:
     Asks Gemini to produce a concise answer (max 100 words) grounded in the stats.
     Fallback: return a template string built from the stats if Gemini fails.
     """
-    import os
-    import google.generativeai as genai
-    
     api_key = os.getenv("GEMINI_API_KEY")
     
     prompt = (
@@ -468,6 +476,7 @@ def answer_analytics_question(question: str, context_stats: dict) -> str:
     
     if api_key:
         try:
+            import google.generativeai as genai
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel('gemini-pro')
             response = model.generate_content(prompt)

@@ -185,8 +185,9 @@ def login():
     }), 200)
     
     # Set cookies
-    response.set_cookie("access_token", access_token, httponly=True, secure=False, samesite="Strict")
-    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=False, samesite="Strict")
+    cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
+    response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax")
+    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite="Lax")
     
     return response
 
@@ -206,9 +207,10 @@ def refresh():
             
         access_token, new_refresh_token = generate_tokens(str(user["_id"]), user["role"], user.get("ward", ""))
         
-        response = make_response(jsonify({"success": True, "message": "Tokens refreshed successfully."}), 200)
-        response.set_cookie("access_token", access_token, httponly=True, secure=False, samesite="Strict")
-        response.set_cookie("refresh_token", new_refresh_token, httponly=True, secure=False, samesite="Strict")
+        cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
+        response = make_response(jsonify({"success": True}), 200)
+        response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax")
+        response.set_cookie("refresh_token", new_refresh_token, httponly=True, secure=cookie_secure, samesite="Lax")
         return response
     except Exception:
         return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Invalid refresh token."}}), 401
