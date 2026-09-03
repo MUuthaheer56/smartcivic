@@ -6,7 +6,7 @@ import os
 from pymongo import MongoClient
 
 def setup_indexes():
-    mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/smartcivic")
+    mongo_uri = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/smartcivic")
     client = MongoClient(mongo_uri)
     db = client.get_database()
     

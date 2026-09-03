@@ -2,7 +2,7 @@
 SmartCivic+ — CivicPulse Prediction API Blueprint
 Exposes the proactive maintenance queue and per-segment decay predictions.
 """
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, current_app
 from routes.auth import require_auth, require_role
 from services.civicpulse_service import (
     get_proactive_maintenance_queue,
@@ -24,12 +24,16 @@ def get_maintenance_queue():
       ward   — filter to a specific ward (optional)
       limit  — max results, default 20
     """
-    ward = request.args.get("ward")
-    limit = int(request.args.get("limit", 20))
-    limit = max(1, min(limit, 100))
+    try:
+        ward = request.args.get("ward")
+        limit = int(request.args.get("limit", 20))
+        limit = max(1, min(limit, 100))
 
-    queue = get_proactive_maintenance_queue(ward=ward, limit=limit)
-    return jsonify({"success": True, "data": serialize(queue), "count": len(queue)}), 200
+        queue = get_proactive_maintenance_queue(ward=ward, limit=limit)
+        return jsonify({"success": True, "data": serialize(queue), "count": len(queue)}), 200
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 
 @civicpulse_api_bp.route('/api/civicpulse/segment/<segment_id>', methods=['GET'])
@@ -37,13 +41,17 @@ def get_maintenance_queue():
 @require_role('officer')
 def get_segment_decay(segment_id):
     """Returns the decay prediction for a single infrastructure segment."""
-    pred = get_segment_prediction(segment_id)
-    if not pred:
-        return jsonify({"success": False,
-                        "error": {"code": "NOT_FOUND",
-                                  "message": "No prediction computed for this segment yet. "
-                                             "Run /api/civicpulse/trigger to compute."}}), 404
-    return jsonify({"success": True, "data": serialize(pred)}), 200
+    try:
+        pred = get_segment_prediction(segment_id)
+        if not pred:
+            return jsonify({"success": False,
+                            "error": {"code": "NOT_FOUND",
+                                      "message": "No prediction computed for this segment yet. "
+                                                 "Run /api/civicpulse/trigger to compute."}}), 404
+        return jsonify({"success": True, "data": serialize(pred)}), 200
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 
 @civicpulse_api_bp.route('/api/civicpulse/trigger', methods=['POST'])
@@ -69,5 +77,6 @@ def trigger_prediction_sweep():
             }
         }), 200
     except Exception as e:
+        current_app.logger.exception(e)
         return jsonify({"success": False,
-                        "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+                        "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500

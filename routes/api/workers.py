@@ -2,12 +2,12 @@
 SmartCivic+ — Workers API Blueprint
 Provides worker search, recommendation profiles, and real-time gps locations.
 """
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, current_app
 from bson import ObjectId
 from app import db
 from routes.auth import require_auth, require_role
 from services import assignment_service
-from utils import serialize
+from utils import serialize, parse_object_id
 
 workers_api_bp = Blueprint('workers_api', __name__)
 
@@ -19,7 +19,11 @@ def recommend_workers():
     if not issue_id:
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "issue_id query parameter required."}}), 422
         
-    issue = db.issues.find_one({"_id": ObjectId(issue_id)})
+    parsed_id = parse_object_id(issue_id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Invalid issue_id format."}}), 422
+        
+    issue = db.issues.find_one({"_id": parsed_id})
     if not issue:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
         
@@ -27,7 +31,8 @@ def recommend_workers():
         recs = assignment_service.recommend_workers(issue)
         return jsonify({"success": True, "data": recs}), 200
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @workers_api_bp.route('/api/workers', methods=['GET'])
 @require_auth

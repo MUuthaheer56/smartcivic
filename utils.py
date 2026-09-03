@@ -1,6 +1,16 @@
 from bson import ObjectId
 from datetime import datetime
 
+def parse_object_id(value):
+    try:
+        if value is None:
+            return None
+        if isinstance(value, ObjectId):
+            return value
+        return ObjectId(value)
+    except Exception:
+        return None
+
 def serialize(obj):
     if isinstance(obj, list): return [serialize(i) for i in obj]
     if isinstance(obj, dict): return {k: serialize(v) for k, v in obj.items()}

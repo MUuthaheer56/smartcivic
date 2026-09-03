@@ -6,26 +6,23 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 
-# Load local .env file
 load_dotenv()
 
-def _require_secret(name, default=None):
+def _require_secret(name: str) -> str:
     val = os.getenv(name)
-    if val:
-        return val
-    if os.getenv("FLASK_ENV", "development").lower() == "production":
-        raise RuntimeError(f"CRITICAL CONFIG ERROR: Missing required production secret environment variable: {name}")
-    if default:
-        return default
-    import secrets
-    return secrets.token_hex(32)
+    if not val or not val.strip():
+        raise RuntimeError(
+            f"CRITICAL: Required environment variable '{name}' is missing or empty. "
+            f"Set a strong secret value before starting the application."
+        )
+    return val.strip()
 
 class Config:
-    SECRET_KEY            = _require_secret("SECRET_KEY", "dev_fallback_secret_key_456")
+    SECRET_KEY            = _require_secret("SECRET_KEY")
+    JWT_SECRET            = _require_secret("JWT_SECRET")
     MONGO_URI             = os.getenv("MONGO_URI", "mongodb://localhost:27017/smartcivic")
     GEMINI_API_KEY        = os.getenv("GEMINI_API_KEY", "")
     
-    JWT_SECRET            = _require_secret("JWT_SECRET", "dev_fallback_jwt_secret_789")
     JWT_ACCESS_EXPIRES    = timedelta(minutes=30)
     JWT_REFRESH_EXPIRES   = timedelta(days=7)
     
@@ -34,7 +31,10 @@ class Config:
     ALLOWED_EXTENSIONS    = {"jpg", "jpeg", "png", "webp"}
     
     SLA_CHECK_INTERVAL    = 900  # 15 minutes
-    DEBUG                 = False  # Never True in production
+    DEBUG                 = False
+    
+    # Cookie secure flag – set COOKIE_SECURE=false for local HTTP development
+    COOKIE_SECURE         = os.getenv("COOKIE_SECURE", "false").lower() == "true"
     
     # OSRM router endpoint
     OSRM_BASE             = os.getenv("OSRM_BASE", "http://router.project-osrm.org")

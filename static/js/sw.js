@@ -2,7 +2,7 @@ const CACHE_NAME = 'smartcivic-worker-cache-v1';
 const ASSETS = [
   '/worker/dashboard',
   '/static/css/main.css',
-  '/static/js/main.js'
+  '/static/js/worker.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -30,8 +30,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // API Requests: Network First with cache fallback
-  if (url.pathname.startsWith('/api/')) {
+  // API Requests: Network First with cache fallback (GET only)
+  if (url.pathname.startsWith('/api/') && event.request.method === 'GET') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -47,7 +47,8 @@ self.addEventListener('fetch', (event) => {
         })
     );
   } else {
-    // Static assets: Cache First with network fallback
+    // Static assets & non-GET API requests: Cache First with network fallback
+    // Note: Non-GET requests (POST/PUT/DELETE) will fail caches.match and fall back to fetch(event.request)
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         return cachedResponse || fetch(event.request);

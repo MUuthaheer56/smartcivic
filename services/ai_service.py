@@ -70,7 +70,8 @@ def _rule_based_fallback(description: str) -> dict:
         "severity": severity,
         "department": department,
         "confidence": 0.75,
-        "provider": "rule_based"
+        "provider": "rule_based",
+        "ai_available": False
     }
 
 def analyze_complaint_text(description: str) -> dict:
@@ -105,6 +106,7 @@ def analyze_complaint_text(description: str) -> dict:
         dur = round((time.time() - t0) * 1000.0, 1)
         parsed = json.loads(response.text.strip())
         parsed["provider"] = "gemini"
+        parsed["ai_available"] = True
         parsed["analyzed_at"] = datetime.utcnow()
         log_ai_call("classification", "gemini", True, parsed.get("confidence", 0.9), dur)
         return parsed
@@ -112,6 +114,8 @@ def analyze_complaint_text(description: str) -> dict:
         print(f"[AI Service] Gemini error: {e}. Falling back to rules.")
         log_ai_call("classification", "gemini", False, 0.0, 0.0, str(e))
         res = _rule_based_fallback(description)
+        res["provider"] = "rule_based"
+        res["ai_available"] = False
         res["analyzed_at"] = datetime.utcnow()
         return res
 
@@ -127,6 +131,7 @@ def analyze_complaint_image(image_path: str) -> dict:
             "severity": "medium",
             "confidence": 0.80,
             "provider": "rule_based",
+            "ai_available": False,
             "image_detections": ["road_damage"],
             "analyzed_at": datetime.utcnow()
         }
@@ -147,6 +152,7 @@ def analyze_complaint_image(image_path: str) -> dict:
         response = model.generate_content([prompt, img])
         parsed = json.loads(response.text.strip())
         parsed["provider"] = "gemini"
+        parsed["ai_available"] = True
         parsed["image_detections"] = parsed.get("detected_issues", [])
         parsed["analyzed_at"] = datetime.utcnow()
         return parsed
@@ -157,6 +163,7 @@ def analyze_complaint_image(image_path: str) -> dict:
             "severity": "medium",
             "confidence": 0.60,
             "provider": "rule_based",
+            "ai_available": False,
             "image_detections": [],
             "analyzed_at": datetime.utcnow()
         }

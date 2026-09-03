@@ -10,7 +10,7 @@ from bson import json_util
 from pymongo import MongoClient
 
 def run_backup():
-    mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/smartcivic")
+    mongo_uri = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/smartcivic")
     client = MongoClient(mongo_uri)
     db = client.get_database()
     
@@ -77,7 +77,7 @@ def run_restore(backup_file_name: str):
         print(f"[Restore] Backup file not found: {zip_path}")
         return False
         
-    mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/smartcivic")
+    mongo_uri = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/smartcivic")
     client = MongoClient(mongo_uri)
     db = client.get_database()
     

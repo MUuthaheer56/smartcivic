@@ -55,7 +55,10 @@ def create_user_doc(name: str, email: str, password_hash: str, role: str, ward: 
 class UserRegisterSchema(Schema):
     name = fields.Str(required=True, validate=validate.Length(min=2, max=100))
     email = fields.Email(required=True)
-    password = fields.Str(required=True, validate=validate.Length(min=6, max=100))
+    password = fields.Str(required=True, validate=[
+        validate.Length(min=8, max=100),
+        validate.Regexp(r'^(?=.*[A-Za-z])(?=.*\d).+$', error="Password must contain at least one letter and one number.")
+    ])
     role = fields.Str(required=True, validate=validate.OneOf(["citizen", "officer", "worker"]))
     ward = fields.Str(required=True, validate=validate.Length(min=2, max=100))
     skills = fields.List(fields.Str(), required=False)

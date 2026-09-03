@@ -1,52 +1,37 @@
-import base64
+"""
+Road damage detector module.
+Supports YOLOv8 detection if model weights exist, otherwise returns a transparent simulation status.
+"""
 import io
+import os
 from PIL import Image
 
-try:
-    from ultralytics import YOLO
-    HAS_YOLO = True
-except ImportError:
-    HAS_YOLO = False
+MODEL_PATH = "yolov8n-rdd.pt"
 
 def detect_road_damage(image_data: bytes) -> dict:
     """
-    Detect road damage using YOLOv8 or fallback to heuristic validation.
+    Detect road damage using YOLOv8 if weights file exists,
+    otherwise fallback cleanly to simulation mode.
     """
-    # Verify we can open the image
     try:
         img = Image.open(io.BytesIO(image_data))
         width, height = img.size
     except Exception:
         raise ValueError("Invalid image file payload")
 
-    if HAS_YOLO:
+    if os.path.exists(MODEL_PATH):
         try:
-            # Safe initialization and inference
-            model = YOLO("yolov8n-rdd.pt")
+            from ultralytics import YOLO
+            model = YOLO(MODEL_PATH)
             results = model(img)
-            # Parse predictions...
             if results and len(results[0].boxes) > 0:
                 box = results[0].boxes[0]
                 cls_id = int(box.cls[0])
                 cls_name = model.names.get(cls_id, "pothole")
                 conf = float(box.conf[0])
                 xyxy = box.xyxy[0].tolist()
-                
-                # Calculate relative bounding box area
-                bbox_w = xyxy[2] - xyxy[0]
-                bbox_h = xyxy[3] - xyxy[1]
-                rel_area = (bbox_w * bbox_h) / (width * height)
-                
-                # Visual severity calculation
-                cat_weight = 1.5 if cls_name == "pothole" else 1.0
-                visual_severity = min(10.0, round(conf * rel_area * len(results[0].boxes) * cat_weight * 10, 1))
-                severity_level = "LOW"
-                if visual_severity >= 7.0:
-                    severity_level = "HIGH"
-                elif visual_severity >= 4.0:
-                    severity_level = "MEDIUM"
-
                 return {
+                    "is_simulation": False,
                     "detected_class": cls_name,
                     "confidence": round(conf, 3),
                     "bounding_box": {
@@ -55,35 +40,20 @@ def detect_road_damage(image_data: bytes) -> dict:
                         "x2": int(xyxy[2]),
                         "y2": int(xyxy[3])
                     },
-                    "visual_severity": visual_severity,
-                    "severity_level": severity_level,
-                    "requires_review": conf < 0.60
+                    "message": "Detection performed using YOLOv8 weights."
                 }
         except Exception as e:
-            print(f"[YOLO] Inference error: {e}. Falling back to simulation.")
-
-    # Fallback/Simulation mode (deterministic based on image dimensions)
-    # We choose a category based on the width to make it testable
-    detected_class = "pothole" if width % 2 == 0 else "alligator crack"
-    confidence = 0.942 if width % 2 == 0 else 0.785
-    bbox = {"x1": 120, "y1": 80, "x2": 310, "y2": 240}
-    
-    # Formula: confidence * relative_bbox_area * defect_count * cat_weight
-    # mock relative area = 0.25, defect count = 1
-    cat_weight = 1.5 if detected_class == "pothole" else 1.2
-    visual_severity = min(10.0, round(confidence * 0.25 * 1 * cat_weight * 10, 1))
-    
-    severity_level = "LOW"
-    if visual_severity >= 7.0:
-        severity_level = "HIGH"
-    elif visual_severity >= 4.0:
-        severity_level = "MEDIUM"
+            return {
+                "is_simulation": True,
+                "detected_class": "unknown",
+                "confidence": 0.0,
+                "message": f"YOLOv8 execution error: {e}. Running in simulation mode."
+            }
 
     return {
-        "detected_class": detected_class,
-        "confidence": confidence,
-        "bounding_box": bbox,
-        "visual_severity": visual_severity,
-        "severity_level": severity_level,
-        "requires_review": confidence < 0.60
+        "is_simulation": True,
+        "detected_class": "pothole",
+        "confidence": 0.0,
+        "bounding_box": {"x1": 0, "y1": 0, "x2": width, "y2": height},
+        "message": "Model weights (yolov8n-rdd.pt) not found. Running in simulation mode."
     }

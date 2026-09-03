@@ -2,12 +2,12 @@
 SmartCivic+ — Map GIS Layers API Blueprint
 Provides geo-clusters, heatmaps, live worker locations, and OSRM route calculations.
 """
-from flask import Blueprint, jsonify, g, request
+from flask import Blueprint, jsonify, g, request, current_app
 from bson import ObjectId
 from app import db
 from routes.auth import require_auth, require_role
 from services import route_service
-from utils import serialize
+from utils import serialize, parse_object_id
 
 map_api_bp = Blueprint('map_api', __name__)
 
@@ -101,7 +101,11 @@ def get_optimized_route():
     if not worker_id:
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "worker_id required."}}), 422
         
-    worker = db.users.find_one({"_id": ObjectId(worker_id), "role": "worker"})
+    parsed_worker_id = parse_object_id(worker_id)
+    if not parsed_worker_id:
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Invalid worker_id format."}}), 422
+        
+    worker = db.users.find_one({"_id": parsed_worker_id, "role": "worker"})
     if not worker:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Worker not found."}}), 404
         
@@ -111,7 +115,11 @@ def get_optimized_route():
     # Resolve issue coordinates
     issue_coords_list = []
     if issue_ids_raw:
-        issue_ids = [ObjectId(id.strip()) for id in issue_ids_raw.split(",") if id.strip()]
+        issue_ids = []
+        for id_str in issue_ids_raw.split(","):
+            p_id = parse_object_id(id_str.strip())
+            if p_id:
+                issue_ids.append(p_id)
         issues = list(db.issues.find({"_id": {"$in": issue_ids}}))
         
         for iss in issues:
@@ -124,7 +132,7 @@ def get_optimized_route():
                 
     if not issue_coords_list:
         # If no explicit issue_ids provided, query worker's currently active assigned jobs
-        query = {"worker_id": ObjectId(worker_id), "status": {"$in": ["assigned", "work_started"]}}
+        query = {"worker_id": parsed_worker_id, "status": {"$in": ["assigned", "work_started"]}}
         active_issues = list(db.issues.find(query))
         for iss in active_issues:
             c = iss.get("location", {}).get("coordinates", [])
@@ -145,7 +153,8 @@ def get_optimized_route():
         )
         return jsonify({"success": True, "data": optimized_stops}), 200
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @map_api_bp.route('/api/public/map', methods=['GET'])
 def get_public_map():

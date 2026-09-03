@@ -5,14 +5,17 @@ from marshmallow import Schema, fields, validate
 from datetime import datetime
 from bson import ObjectId
 
-CATEGORIES = ["road", "water", "electricity", "sanitation", "drainage", "other"]
+CATEGORIES = [
+    "road", "water", "electricity", "sanitation",
+    "drainage", "noise", "other"
+]
 SEVERITIES = ["low", "medium", "high", "critical"]
 STATUSES = [
     "submitted", "ai_reviewed", "officer_reviewed", "assigned",
     "work_started", "work_completed", "officer_verified",
     "citizen_verification", "closed", "reopened"
 ]
-DEPARTMENTS = ["roads", "water_supply", "electrical", "sanitation", "drainage"]
+DEPARTMENTS = ["roads", "water_supply", "electrical", "sanitation", "drainage", "other"]
 SLA_STATUSES = ["on_track", "warning", "urgent", "breached"]
 
 def create_issue_doc(citizen_id, title, description, category, issue_type, lat, lng, address, ward, images=None) -> dict:

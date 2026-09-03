@@ -16,7 +16,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from config import Config
 
 # Connect to MongoDB at module level for thread safety and easy service imports
-mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/smartcivic")
+mongo_uri = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/smartcivic")
 db_name = mongo_uri.split('/')[-1] if '/' in mongo_uri else 'smartcivic'
 if not db_name or db_name.strip() == "" or '?' in db_name:
     db_name = 'smartcivic'
@@ -24,7 +24,7 @@ client = MongoClient(mongo_uri)
 db = client[db_name]
 
 # Initialize Socket.IO and Limiter
-socketio = SocketIO(cors_allowed_origins="*")
+socketio = SocketIO(cors_allowed_origins=["http://localhost:5000", "http://127.0.0.1:5000"])
 limiter = Limiter(key_func=get_remote_address, default_limits=["100 per minute"], storage_uri="memory://")
 
 def create_app():
@@ -116,8 +116,16 @@ def create_app():
         response.headers['X-XSS-Protection'] = '1; mode=block'
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        # CSP allowing Leaflet tile servers and Google fonts
-        response.headers['Content-Security-Policy'] = "default-src 'self' *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *; img-src 'self' data: blob: *; font-src 'self' data: *; connect-src 'self' *;"
+        
+        trusted_cdns = "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com https://*.openstreetmap.org"
+        response.headers['Content-Security-Policy'] = (
+            f"default-src 'self'; "
+            f"script-src 'self' 'unsafe-inline' 'unsafe-eval' {trusted_cdns}; "
+            f"style-src 'self' 'unsafe-inline' {trusted_cdns}; "
+            f"img-src 'self' data: blob: {trusted_cdns}; "
+            f"font-src 'self' data: {trusted_cdns}; "
+            f"connect-src 'self' {trusted_cdns} ws: wss:;"
+        )
         
         # Log request
         duration = 0.0
@@ -219,7 +227,10 @@ def create_app():
 
     # Run every Tuesday at 2am (offset from the hotspot job on Sunday)
     scheduler.add_job(civicpulse_prediction_job, 'cron', day_of_week='tue', hour=2)
-    scheduler.start()
+    
+    # Start SLA tracking sweep scheduler conditionally
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+        scheduler.start()
     
     return app
 
@@ -227,6 +238,40 @@ def create_app():
 @socketio.on('join_room', namespace='/civic')
 def on_join(data):
     room = data.get('room')
-    if room:
-        join_room(room)
-        print(f"[Socket.IO] Client joined notification room: {room}")
+    if not room:
+        return
+        
+    token = request.cookies.get("access_token")
+    if not token:
+        print("[Socket.IO] Access token cookie missing, reject join.")
+        return
+        
+    try:
+        secret = current_app.config.get("JWT_SECRET", "default_secret")
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        user_id = payload.get("user_id")
+        user_role = payload.get("role")
+        user_ward = payload.get("ward")
+        
+        # Enforce entitlements
+        allowed = False
+        if room == f"user_{user_id}":
+            allowed = True
+        elif room.startswith("ward_"):
+            room_ward = room.replace("ward_", "", 1)
+            # If user is officer with 'all' access or their ward matches the room's ward
+            if user_role == "officer" and user_ward == "all":
+                allowed = True
+            elif user_ward == room_ward:
+                allowed = True
+        elif room == "role_officer":
+            if user_role == "officer":
+                allowed = True
+                
+        if allowed:
+            join_room(room)
+            print(f"[Socket.IO] Authorized join: User {user_id} joined room: {room}")
+        else:
+            print(f"[Socket.IO] Unauthorized join request to room: {room} by User {user_id}")
+    except Exception as e:
+        print(f"[Socket.IO] Join validation exception: {e}")

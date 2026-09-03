@@ -9,7 +9,7 @@ def hash_password(plain_text: str) -> str:
     return bcrypt.hashpw(plain_text.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def seed_db():
-    client = MongoClient("mongodb://localhost:27017/")
+    client = MongoClient("mongodb://127.0.0.1:27017/")
     db = client.smartcivic
     
     print("Clearing legacy database collections...")
@@ -20,7 +20,13 @@ def seed_db():
     db.notifications.drop()
     db.audit_logs.drop()
     
-    pwd_hash = hash_password("smartcivic123")
+    import secrets
+    plain_password = secrets.token_urlsafe(12)
+    pwd_hash = hash_password(plain_password)
+    
+    with open("seed_credentials.txt", "w", encoding="utf-8") as f:
+        f.write(f"SEED_PASSWORD={plain_password}\n")
+    print("[Seeder] Credentials generated and written to seed_credentials.txt")
     
     print("Seeding new SmartCivic+ user profiles...")
     users = [
@@ -93,7 +99,7 @@ def seed_db():
     ]
     
     db.users.insert_many(users)
-    print("Database seeded successfully with SmartCivic+ credentials (password: 'smartcivic123').")
+    print("Database seeded successfully with SmartCivic+ user credentials.")
 
 if __name__ == '__main__':
     seed_db()

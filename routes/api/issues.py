@@ -13,7 +13,7 @@ from routes.auth import require_auth, require_role
 from models.issue import IssueCreateSchema, CATEGORIES, SEVERITIES, DEPARTMENTS
 from services import complaint_service, assignment_service, verification_service, priority_service, sla_service
 from services.audit_service import log_audit
-from utils import serialize
+from utils import serialize, parse_object_id
 
 issues_api_bp = Blueprint('issues_api', __name__)
 
@@ -37,8 +37,8 @@ def validate_image_file(file):
         if mime not in {"image/jpeg", "image/png", "image/webp"}:
             return False, f"Invalid image MIME type: {mime}"
     except Exception as e:
-        # Fallback to extension validation if magic fails
         print(f"[Security Check] python-magic exception: {e}")
+        return False, "Could not determine file type."
         
     return True, None
 
@@ -141,13 +141,18 @@ def create_issue():
             "data": serialize(issue)
         }), 201
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @issues_api_bp.route('/api/issues/<id>', methods=['GET'])
 @require_auth
 def get_issue(id):
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
     try:
-        issue = db.issues.find_one({"_id": ObjectId(id)})
+        issue = db.issues.find_one({"_id": parsed_id})
         if not issue:
             return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
             
@@ -160,7 +165,7 @@ def get_issue(id):
             return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to your assigned ward."}}), 403
             
         # Compile timeline from audit logs
-        logs = list(db.audit_logs.find({"entity_id": ObjectId(id)}).sort("timestamp", 1))
+        logs = list(db.audit_logs.find({"entity_id": parsed_id}).sort("timestamp", 1))
         timeline = []
         for log in logs:
             actor = db.users.find_one({"_id": log.get("actor_id")}, {"name": 1, "role": 1})
@@ -176,12 +181,17 @@ def get_issue(id):
         issue_data["timeline"] = timeline
         return jsonify({"success": True, "data": issue_data}), 200
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @issues_api_bp.route('/api/issues/<id>/citizen-verify', methods=['POST'])
 @require_auth
 @require_role('citizen')
 def citizen_verify_issue(id):
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
     data = request.get_json() or {}
     resolved = data.get("resolved")
     feedback = data.get("feedback", "")
@@ -190,10 +200,11 @@ def citizen_verify_issue(id):
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "resolved boolean parameter required."}}), 422
         
     try:
-        verification_service.citizen_verify(id, str(g.current_user["_id"]), resolved, feedback)
+        verification_service.citizen_verify(str(parsed_id), str(g.current_user["_id"]), resolved, feedback)
         return jsonify({"success": True, "message": "Resolution status submitted successfully."}), 200
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @issues_api_bp.route('/api/issues', methods=['GET'])
 @require_auth
@@ -259,7 +270,11 @@ def list_issues():
 @require_auth
 @require_role('officer')
 def review_issue(id):
-    issue = db.issues.find_one({"_id": ObjectId(id)})
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
+    issue = db.issues.find_one({"_id": parsed_id})
     if not issue:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
         
@@ -296,7 +311,7 @@ def review_issue(id):
     from services.ai_evaluation_service import record_ai_evaluation
     try:
         record_ai_evaluation(
-            issue_id=id,
+            issue_id=str(parsed_id),
             ai_task="classification",
             ai_prediction=ai_prediction,
             human_decision=human_decision,
@@ -317,20 +332,20 @@ def review_issue(id):
                 old_val = issue.get(field)
                 if field.startswith("ai_analysis."):
                     old_val = issue.get("ai_analysis", {}).get(field.split(".")[-1])
-                log_audit("issue", id, g.current_user["_id"], "OVERRIDE", field, old_val, new_val, reason)
+                log_audit("issue", str(parsed_id), g.current_user["_id"], "OVERRIDE", field, old_val, new_val, reason)
                 
-        db.issues.update_one({"_id": ObjectId(id)}, {"$set": update_fields})
+        db.issues.update_one({"_id": parsed_id}, {"$set": update_fields})
     else:
-        db.issues.update_one({"_id": ObjectId(id)}, {"$set": {"status": "officer_reviewed", "updated_at": datetime.utcnow()}})
-        log_audit("issue", id, g.current_user["_id"], "APPROVE_AI", reason="AI auto-classification confirmed by Officer.")
+        db.issues.update_one({"_id": parsed_id}, {"$set": {"status": "officer_reviewed", "updated_at": datetime.utcnow()}})
+        log_audit("issue", str(parsed_id), g.current_user["_id"], "APPROVE_AI", reason="AI auto-classification confirmed by Officer.")
         
     # Recalculate priority & SLA target
-    updated_issue = db.issues.find_one({"_id": ObjectId(id)})
+    updated_issue = db.issues.find_one({"_id": parsed_id})
     new_deadline = sla_service.assign_sla(updated_issue)
     new_priority = priority_service.calculate_priority(updated_issue, db)
     
     db.issues.update_one(
-        {"_id": ObjectId(id)},
+        {"_id": parsed_id},
         {"$set": {
             "sla_deadline": new_deadline,
             "priority_score": new_priority
@@ -343,21 +358,30 @@ def review_issue(id):
 @require_auth
 @require_role('officer')
 def assign_issue(id):
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
     data = request.get_json() or {}
     worker_id = data.get("worker_id")
     if not worker_id:
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "worker_id required."}}), 422
         
     try:
-        assignment_service.assign_worker(id, worker_id, str(g.current_user["_id"]))
+        assignment_service.assign_worker(str(parsed_id), worker_id, str(g.current_user["_id"]))
         return jsonify({"success": True, "message": "Worker assigned successfully."}), 200
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @issues_api_bp.route('/api/issues/<id>/officer-verify', methods=['POST'])
 @require_auth
 @require_role('officer')
 def officer_verify_issue(id):
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
     data = request.get_json() or {}
     approved = data.get("approved")
     notes = data.get("notes", "")
@@ -366,10 +390,11 @@ def officer_verify_issue(id):
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "approved boolean required."}}), 422
         
     try:
-        verification_service.officer_verify(id, str(g.current_user["_id"]), approved, notes)
+        verification_service.officer_verify(str(parsed_id), str(g.current_user["_id"]), approved, notes)
         return jsonify({"success": True, "message": "Resolution verified successfully."}), 200
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @issues_api_bp.route('/api/worker/jobs', methods=['GET'])
 @require_auth
@@ -386,7 +411,11 @@ def list_worker_jobs():
 @require_auth
 @require_role('worker')
 def start_work(id):
-    issue = db.issues.find_one({"_id": ObjectId(id)})
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
+    issue = db.issues.find_one({"_id": parsed_id})
     if not issue:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
         
@@ -394,16 +423,21 @@ def start_work(id):
         return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Job not assigned to you."}}), 403
         
     try:
-        complaint_service.update_status(id, "work_started", str(g.current_user["_id"]))
+        complaint_service.update_status(str(parsed_id), "work_started", str(g.current_user["_id"]))
         return jsonify({"success": True, "message": "Task started successfully."}), 200
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @issues_api_bp.route('/api/issues/<id>/resolve', methods=['POST'])
 @require_auth
 @require_role('worker')
 def resolve_issue(id):
-    issue = db.issues.find_one({"_id": ObjectId(id)})
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
+    issue = db.issues.find_one({"_id": parsed_id})
     if not issue:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
         
@@ -428,7 +462,7 @@ def resolve_issue(id):
     
     safe_uid = uuid.uuid4().hex[:8]
     ext = file.filename.rsplit('.', 1)[-1].lower()
-    filename = f"issue_{id}_after_{safe_uid}.{ext}"
+    filename = f"issue_{parsed_id}_after_{safe_uid}.{ext}"
     filepath = os.path.join(upload_dir, filename)
     file.save(filepath)
     
@@ -445,21 +479,26 @@ def resolve_issue(id):
         before_image["filepath"] = os.path.join(upload_dir, before_imgs[0]["filename"])
         
     try:
-        ai_ver = verification_service.submit_resolution(id, str(g.current_user["_id"]), before_image, after_image, notes)
+        ai_ver = verification_service.submit_resolution(str(parsed_id), str(g.current_user["_id"]), before_image, after_image, notes)
         return jsonify({
             "success": True,
             "message": "Resolution uploaded successfully.",
             "data": ai_ver
         }), 200
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @issues_api_bp.route('/api/issues/<id>/declare-emergency', methods=['POST'])
 @require_auth
 @require_role('citizen', 'officer')
 def declare_issue_emergency(id):
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
     try:
-        issue = db.issues.find_one({"_id": ObjectId(id)})
+        issue = db.issues.find_one({"_id": parsed_id})
         if not issue:
             return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
             
@@ -470,25 +509,30 @@ def declare_issue_emergency(id):
         data = request.get_json() or {}
         emergency_category = data.get("emergency_category", "DANGEROUS_INFRASTRUCTURE")
         
-        updated = complaint_service.declare_emergency(id, str(g.current_user["_id"]), emergency_category)
+        updated = complaint_service.declare_emergency(str(parsed_id), str(g.current_user["_id"]), emergency_category)
         return jsonify({
             "success": True,
             "message": "Emergency successfully declared.",
             "data": serialize(updated)
         }), 200
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @issues_api_bp.route('/api/issues/<id>/confirm', methods=['POST'])
 @require_auth
 @require_role('citizen')
 def confirm_issue(id):
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
     try:
         data = request.get_json() or {}
         note = data.get("note", "")
         
         new_count = complaint_service.add_community_confirmation(
-            issue_id=id,
+            issue_id=str(parsed_id),
             citizen_id=str(g.current_user["_id"]),
             note=note
         )
@@ -503,12 +547,17 @@ def confirm_issue(id):
     except ValueError as e:
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": str(e)}}), 400
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @issues_api_bp.route('/api/issues/<id>/feedback', methods=['POST'])
 @require_auth
 @require_role('citizen')
 def post_issue_feedback(id):
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
     try:
         data = request.get_json() or {}
         rating = data.get("rating")
@@ -518,7 +567,7 @@ def post_issue_feedback(id):
             return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Rating field is required."}}), 422
             
         updated = complaint_service.submit_feedback(
-            issue_id=id,
+            issue_id=str(parsed_id),
             citizen_id=str(g.current_user["_id"]),
             rating=int(rating),
             feedback_text=feedback_text
@@ -532,14 +581,19 @@ def post_issue_feedback(id):
     except ValueError as e:
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": str(e)}}), 400
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
 @issues_api_bp.route('/api/issues/<id>/audit-log', methods=['GET'])
 @require_auth
 @require_role('officer')
 def get_issue_audit_log(id):
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+        
     try:
-        logs = list(db.audit_logs.find({"entity_id": ObjectId(id)}).sort("timestamp", 1))
+        logs = list(db.audit_logs.find({"entity_id": parsed_id}).sort("timestamp", 1))
         data = []
         for log in logs:
             actor = db.users.find_one({"_id": log.get("actor_id")}, {"name": 1, "role": 1})
@@ -558,4 +612,5 @@ def get_issue_audit_log(id):
             })
         return jsonify({"success": True, "data": data}), 200
     except Exception as e:
-        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500

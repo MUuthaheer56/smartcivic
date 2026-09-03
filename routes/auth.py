@@ -10,6 +10,7 @@ import bcrypt
 from bson import ObjectId
 from app import db, limiter
 from models.user import create_user_doc, UserRegisterSchema, UserLoginSchema
+import os
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -84,12 +85,21 @@ def require_role(*roles):
     return decorator
 
 @auth_bp.route('/register', methods=['POST'])
+@limiter.limit("5 per minute")
 def register():
     data = request.get_json() or {}
     schema = UserRegisterSchema()
     errors = schema.validate(data)
     if errors:
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "fields": errors}}), 422
+        
+    role = data.get("role", "citizen").lower().strip()
+    if role != "citizen":
+        return jsonify({
+            "success": False,
+            "error": {"code": "FORBIDDEN", "message": "Only citizen registration is allowed."}
+        }), 403
+    data["role"] = "citizen"
         
     email = data["email"].lower().strip()
     if db.users.find_one({"email": email}):
@@ -116,7 +126,7 @@ def register():
     }), 201
 
 @auth_bp.route('/login', methods=['POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("10 per minute")
 def login():
     # Rate limit inside the controller if Flask-Limiter is configured, otherwise fallback
     data = request.get_json() or {}
@@ -185,9 +195,9 @@ def login():
     }), 200)
     
     # Set cookies
-    cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
-    response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax")
-    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite="Lax")
+    cookie_secure = current_app.config.get("COOKIE_SECURE", False)
+    response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=1800)
+    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=7*24*3600)
     
     return response
 
@@ -207,10 +217,10 @@ def refresh():
             
         access_token, new_refresh_token = generate_tokens(str(user["_id"]), user["role"], user.get("ward", ""))
         
-        cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
+        cookie_secure = current_app.config.get("COOKIE_SECURE", False)
         response = make_response(jsonify({"success": True}), 200)
-        response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax")
-        response.set_cookie("refresh_token", new_refresh_token, httponly=True, secure=cookie_secure, samesite="Lax")
+        response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=1800)
+        response.set_cookie("refresh_token", new_refresh_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=7*24*3600)
         return response
     except Exception:
         return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Invalid refresh token."}}), 401
@@ -218,6 +228,6 @@ def refresh():
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     response = make_response(jsonify({"success": True, "message": "Logged out successfully."}), 200)
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
     return response
