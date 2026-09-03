@@ -7,7 +7,14 @@ let clusterLayer = L.layerGroup();
 let heatmapLayer = L.layerGroup(); // simplified placeholder or custom logic
 let workerLayer = L.layerGroup();
 
+let officerFilter;
+let allOfficerQueueIssues = [];
+
 document.addEventListener("DOMContentLoaded", () => {
+    officerFilter = new SmartCivicFilter({
+        containerId: 'filterBar',
+        onFilterChange: () => renderOfficerIssuesQueue()
+    });
     switchTab("overview");
     loadOverviewStats();
     loadBriefing();
@@ -109,54 +116,73 @@ async function loadIssuesQueue(queueType) {
         const res = await fetch(url);
         const data = await res.json();
         if (data.success) {
-            issuesGrid.innerHTML = "";
-            if (data.data.length === 0) {
-                issuesGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem;">No complaints in this queue.</div>`;
-                return;
-            }
-            
-            data.data.forEach(issue => {
-                const ageHours = Math.round((new Date() - new Date(issue.created_at)) / 3600000);
-                const hasDuplicate = issue.duplicate_of ? "Yes" : "No";
-                
-                const card = document.createElement("div");
-                card.className = "glass-panel queue-card";
-                card.innerHTML = `
-                    <div class="queue-card-header">
-                        <span class="badge ${issue.severity === 'critical' ? 'badge-critical' : 'badge-severity'}">${issue.severity}</span>
-                        <span class="badge badge-status">${issue.status}</span>
-                    </div>
-                    <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;">${issue.title}</h4>
-                    <div style="font-size: 0.85rem; color: var(--text-muted);">${issue.description}</div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
-                        <div><strong>Category:</strong> ${issue.category}</div>
-                        <div><strong>Age:</strong> ${ageHours} hours old</div>
-                        <div><strong>Priority Score:</strong> ${issue.priority_score}</div>
-                        <div><strong>SLA Target:</strong> ${new Date(issue.sla_deadline).toLocaleTimeString()}</div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                        ${issue.status === 'ai_reviewed' ? `
-                            <button onclick="approveAIReview('${issue._id}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-check"></i> Approve</button>
-                            <button onclick="overrideAIReview('${issue._id}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-edit"></i> Override</button>
-                        ` : ''}
-                        
-                        ${issue.status === 'officer_reviewed' ? `
-                            <button onclick="openAssignWorker('${issue._id}')" class="btn btn-primary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-user-plus"></i> Assign Worker</button>
-                        ` : ''}
-                        
-                        ${issue.status === 'work_completed' ? `
-                            <button onclick="verifyResolution('${issue._id}', true)" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-circle-check"></i> Approve</button>
-                            <button onclick="verifyResolution('${issue._id}', false)" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-rotate-left"></i> Reject</button>
-                        ` : ''}
-                    </div>
-                `;
-                issuesGrid.appendChild(card);
-            });
+            allOfficerQueueIssues = data.data || [];
+            renderOfficerIssuesQueue();
         }
     } catch (err) {
         console.error("Queue fetch failed: ", err);
     }
+}
+
+function renderOfficerIssuesQueue() {
+    const issuesGrid = document.getElementById("issuesGrid");
+    if (!issuesGrid) return;
+    issuesGrid.innerHTML = "";
+    
+    const filtered = allOfficerQueueIssues.filter(item => officerFilter ? officerFilter.filterItem(item) : true);
+    if (officerFilter) officerFilter.updateBadge(filtered.length, allOfficerQueueIssues.length);
+    
+    if (filtered.length === 0) {
+        issuesGrid.innerHTML = `
+            <div class="empty-state" style="grid-column: 1/-1;">
+                <i class="fa-solid fa-inbox empty-state-icon"></i>
+                <div>No complaints match the selected filters.</div>
+            </div>`;
+        return;
+    }
+    
+    filtered.forEach(issue => {
+        const ageHours = Math.round((new Date() - new Date(issue.created_at)) / 3600000);
+        const sev = (issue.severity || 'medium').toLowerCase();
+        let badgeClass = 'badge-medium';
+        if (sev === 'critical') badgeClass = 'badge-critical';
+        else if (sev === 'high') badgeClass = 'badge-high';
+        else if (sev === 'low') badgeClass = 'badge-low';
+        
+        const card = document.createElement("div");
+        card.className = "glass-panel queue-card";
+        card.innerHTML = `
+            <div class="queue-card-header">
+                <span class="badge ${badgeClass}">${issue.severity}</span>
+                <span class="badge badge-status">${issue.status}</span>
+            </div>
+            <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #ffffff;">${issue.title}</h4>
+            <div style="font-size: 0.85rem; color: var(--sc-muted);">${issue.description}</div>
+            <div style="font-size: 0.85rem; color: var(--sc-muted); display: flex; flex-direction: column; gap: 0.25rem;">
+                <div><strong>Category:</strong> ${issue.category}</div>
+                <div><strong>Age:</strong> ${ageHours} hours old</div>
+                <div><strong>Priority Score:</strong> ${issue.priority_score || 0}</div>
+                <div><strong>SLA Target:</strong> ${new Date(issue.sla_deadline || Date.now()).toLocaleTimeString()}</div>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                ${issue.status === 'ai_reviewed' ? `
+                    <button onclick="approveAIReview('${issue._id}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-check"></i> Approve</button>
+                    <button onclick="overrideAIReview('${issue._id}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-edit"></i> Override</button>
+                ` : ''}
+                
+                ${issue.status === 'officer_reviewed' ? `
+                    <button onclick="openAssignWorker('${issue._id}')" class="btn btn-primary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-user-plus"></i> Assign Worker</button>
+                ` : ''}
+                
+                ${issue.status === 'work_completed' ? `
+                    <button onclick="verifyResolution('${issue._id}', true)" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-circle-check"></i> Approve</button>
+                    <button onclick="verifyResolution('${issue._id}', false)" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--sc-critical-border); color: var(--sc-critical-text);"><i class="fa-solid fa-rotate-left"></i> Reject</button>
+                ` : ''}
+            </div>
+        `;
+        issuesGrid.appendChild(card);
+    });
 }
 
 async function approveAIReview(issueId) {

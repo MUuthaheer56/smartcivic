@@ -216,7 +216,8 @@
 
     <!-- Right Column: Track Issues List -->
     <div class="glass-panel tracker-panel">
-        <h3 class="panel-header"><i class="fa-solid fa-list-check" style="color: var(--critical)"></i> Active Report Tracker</h3>
+        <h3 class="panel-header"><i class="fa-solid fa-list-check" style="color: var(--primary)"></i> Active Report Tracker</h3>
+        {% include "components/filter_bar.html" %}
         <div id="trackerList" style="display: flex; flex-direction: column; gap: 1rem;">
             <!-- Filled dynamically -->
         </div>

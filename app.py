@@ -6,7 +6,7 @@ import os
 import jwt
 from datetime import datetime
 from bson import ObjectId
-from flask import Flask, render_template, request, redirect, g, jsonify
+from flask import Flask, render_template, request, redirect, g, jsonify, current_app
 from pymongo import MongoClient
 from flask_socketio import SocketIO, emit, join_room
 from flask_limiter import Limiter
@@ -24,7 +24,7 @@ client = MongoClient(mongo_uri)
 db = client[db_name]
 
 # Initialize Socket.IO and Limiter
-socketio = SocketIO(cors_allowed_origins=["http://localhost:5000", "http://127.0.0.1:5000"])
+socketio = SocketIO(cors_allowed_origins="*")
 limiter = Limiter(key_func=get_remote_address, default_limits=["100 per minute"], storage_uri="memory://")
 
 def create_app():
@@ -34,6 +34,14 @@ def create_app():
     # Initialize extensions with app context
     socketio.init_app(app)
     limiter.init_app(app)
+    
+    @app.route('/api/health', methods=['GET'])
+    def health_check():
+        return jsonify({
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "service": "SmartCivic+"
+        }), 200
     
     # Register page blueprints
     from routes.auth import auth_bp
@@ -237,6 +245,8 @@ def create_app():
 # Socket.IO Handlers in /civic namespace
 @socketio.on('join_room', namespace='/civic')
 def on_join(data):
+    if not isinstance(data, dict):
+        return
     room = data.get('room')
     if not room:
         return
@@ -260,7 +270,7 @@ def on_join(data):
         elif room.startswith("ward_"):
             room_ward = room.replace("ward_", "", 1)
             # If user is officer with 'all' access or their ward matches the room's ward
-            if user_role == "officer" and user_ward == "all":
+            if user_role == "officer" and (user_ward == "all" or user_ward == room_ward):
                 allowed = True
             elif user_ward == room_ward:
                 allowed = True

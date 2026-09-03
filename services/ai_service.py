@@ -88,7 +88,7 @@ def analyze_complaint_text(description: str) -> dict:
     try:
         import google.generativeai as genai
         genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-pro")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         prompt = f"""
         Analyze the following civic complaint description and output a JSON object containing:
@@ -140,7 +140,7 @@ def analyze_complaint_image(image_path: str) -> dict:
         import google.generativeai as genai
         from PIL import Image
         genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-pro-vision")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         img = Image.open(image_path)
         prompt = """
@@ -244,7 +244,7 @@ def verify_resolution(before_image_path: str, after_image_path: str, issue_type:
         import google.generativeai as genai
         from PIL import Image
         genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-pro-vision")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         img_before = Image.open(before_image_path)
         img_after = Image.open(after_image_path)
@@ -299,7 +299,7 @@ def detect_and_translate(text: str) -> dict:
             import google.generativeai as genai
             import json
             genai.configure(api_key=key)
-            model = genai.GenerativeModel("gemini-pro")
+            model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f"""
             Analyze the following text from a civic complaint:
             "{text}"
@@ -355,7 +355,7 @@ def generate_officer_briefing(stats: dict) -> str:
         try:
             import google.generativeai as genai
             genai.configure(api_key=key)
-            model = genai.GenerativeModel("gemini-pro")
+            model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f"""
             Synthesize a brief, professional daily briefing (maximum 150 words) for the on-duty civic officer based on these metrics:
             - Active emergencies: {stats.get('emergency_count', 0)}
@@ -397,7 +397,7 @@ def parse_search_query(query: str) -> dict:
             import google.generativeai as genai
             import json
             genai.configure(api_key=key)
-            model = genai.GenerativeModel("gemini-pro")
+            model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f"""
             Analyze this natural language search query for civic issues:
             "{query}"
@@ -485,7 +485,7 @@ def answer_analytics_question(question: str, context_stats: dict) -> str:
         try:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-1.5-flash')
             response = model.generate_content(prompt)
             if response and response.text:
                 return response.text.strip()

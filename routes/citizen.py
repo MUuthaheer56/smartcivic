@@ -33,3 +33,9 @@ def require_citizen_page(f):
 @require_citizen_page
 def dashboard():
     return render_template('citizen/dashboard.html', user=g.current_user)
+
+@citizen_bp.route('/report')
+@citizen_bp.route('/citizen/report')
+@require_citizen_page
+def report_issue_page():
+    return render_template('report_issue.html', user=g.current_user)

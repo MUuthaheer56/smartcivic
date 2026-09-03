@@ -262,16 +262,8 @@
                 </div>
             </div>
 
-            <!-- Search Filter Bar -->
-            <div class="glass-panel" style="padding: 1.25rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
-                <div style="display: flex; gap: 1rem;">
-                    <input type="text" id="searchQuery" class="form-control" placeholder="Search issues using natural language... (e.g. 'critical water leaks in Ward 1')" style="flex-grow: 1;">
-                    <button onclick="searchIssues()" style="background: var(--primary); border: none; border-radius: 6px; color: #fff; cursor: pointer; padding: 0.6rem 1.2rem;"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
-                </div>
-                <div id="searchTags" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <!-- Filter tag badges -->
-                </div>
-            </div>
+            <!-- Search & 21st.dev Filter Bar -->
+            {% include "components/filter_bar.html" %}
 
             <h3 class="panel-header" id="listTitle">Issues Queue</h3>
             <div class="queue-grid" id="issuesGrid">

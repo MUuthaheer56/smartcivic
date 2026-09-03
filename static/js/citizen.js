@@ -3,9 +3,15 @@
  */
 let map;
 let marker;
+let allCitizenIssues = [];
+let citizenFilter;
 
 document.addEventListener("DOMContentLoaded", () => {
     initMap();
+    citizenFilter = new SmartCivicFilter({
+        containerId: 'filterBar',
+        onFilterChange: () => renderCitizenIssues()
+    });
     loadMyIssues();
     
     document.getElementById("reportForm").addEventListener("submit", submitIssue);
@@ -140,75 +146,67 @@ function dismissAiPanel() {
 
 async function loadMyIssues() {
     try {
-        // Since the current user can only access their own issues, we can fetch all issues
-        // which will be automatically filtered by session citizen_id server-side inside `/api/issues` if role is citizen!
-        // Wait, since `/api/issues` is for officers, we should create a citizen endpoint or filter by citizen.
-        // Let's verify: In routes/api/issues.py, we have `GET /api/issues` which queries issues.
-        // If the user's role is `citizen`, it can query citizen's own issues.
-        // Wait, let's verify if `list_issues()` in `routes/api/issues.py` is restricted to `officer` role.
-        // Ah! In `routes/api/issues.py`, `list_issues()` has `@require_role('officer')`.
-        // So citizens CANNOT call `GET /api/issues`!
-        // Wait! How do citizens list their issues then?
-        // Ah! Let's check `routes/api/issues.py`. We didn't define a citizen list route there.
-        // Let's verify: can we support citizen role in `list_issues()` or add a `/api/citizen/issues` endpoint?
-        // Yes! Let's check `routes/api/issues.py`:
-        // We can modify `list_issues()` to support citizen role and filter by `citizen_id` if role is citizen!
-        // That is extremely simple and clean!
-        // Let's double check `list_issues()` decorator:
-        // `@require_role('officer')`
-        // We should change it to:
-        // `@require_role('officer', 'citizen')`
-        // And in the function body:
-        // ```python
-        // if g.current_user["role"] == "citizen":
-        //     query["citizen_id"] = ObjectId(g.current_user["_id"])
-        // ```
-        // This is incredibly elegant! We will make this change to `routes/api/issues.py` in a bit, but first let's complete `citizen.js`.
-        
         const res = await fetch("/api/issues");
         const data = await res.json();
         
         if (data.success) {
-            const listEl = document.getElementById("trackerList");
-            listEl.innerHTML = "";
-            
-            if (data.data.length === 0) {
-                listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 2rem;">No active reports filed yet.</div>`;
-                return;
-            }
-            
-            data.data.forEach(issue => {
-                const isVerification = issue.status === "citizen_verification";
-                const isCritical = issue.severity === "critical";
-                
-                const card = document.createElement("div");
-                card.className = "issue-card";
-                card.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <strong style="font-size: 0.95rem;">${issue.title}</strong>
-                        <div>
-                            <span class="badge ${isCritical ? 'badge-critical' : 'badge-severity'}">${issue.severity}</span>
-                            <span class="badge badge-status">${issue.status}</span>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted);">${issue.description}</div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted);">
-                        <i class="fa-solid fa-location-dot"></i> ${issue.address}
-                    </div>
-                    
-                    ${isVerification ? `
-                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                            <button onclick="verifyResolution('${issue._id}', true)" class="btn btn-primary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;"><i class="fa-solid fa-thumbs-up"></i> Fixed</button>
-                            <button onclick="verifyResolution('${issue._id}', false)" class="btn btn-secondary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-rotate-left"></i> Reopen</button>
-                        </div>
-                    ` : ''}
-                `;
-                listEl.appendChild(card);
-            });
+            allCitizenIssues = data.data || [];
+            renderCitizenIssues();
         }
     } catch (err) {
         console.error("Failed to load issues: ", err);
     }
+}
+
+function renderCitizenIssues() {
+    const listEl = document.getElementById("trackerList");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+    
+    const filtered = allCitizenIssues.filter(item => citizenFilter ? citizenFilter.filterItem(item) : true);
+    if (citizenFilter) citizenFilter.updateBadge(filtered.length, allCitizenIssues.length);
+    
+    if (filtered.length === 0) {
+        listEl.innerHTML = `
+            <div class="empty-state">
+                <i class="fa-solid fa-inbox empty-state-icon"></i>
+                <div>No reports match the selected filters.</div>
+            </div>`;
+        return;
+    }
+    
+    filtered.forEach(issue => {
+        const isVerification = issue.status === "citizen_verification";
+        const sev = (issue.severity || 'medium').toLowerCase();
+        let badgeClass = 'badge-medium';
+        if (sev === 'critical') badgeClass = 'badge-critical';
+        else if (sev === 'high') badgeClass = 'badge-high';
+        else if (sev === 'low') badgeClass = 'badge-low';
+        
+        const card = document.createElement("div");
+        card.className = "issue-card";
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                <strong style="font-size: 0.95rem; color: #ffffff;">${issue.title}</strong>
+                <div style="display: flex; gap: 0.35rem;">
+                    <span class="badge ${badgeClass}">${issue.severity}</span>
+                    <span class="badge badge-status">${issue.status}</span>
+                </div>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--sc-muted);">${issue.description}</div>
+            <div style="font-size: 0.82rem; color: var(--sc-muted); display: flex; align-items: center; gap: 0.4rem;">
+                <i class="fa-solid fa-location-dot" style="color: var(--sc-primary)"></i> ${issue.address || 'Address not specified'}
+            </div>
+            
+            ${isVerification ? `
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button onclick="verifyResolution('${issue._id}', true)" class="btn btn-primary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;"><i class="fa-solid fa-thumbs-up"></i> Fixed</button>
+                    <button onclick="verifyResolution('${issue._id}', false)" class="btn btn-secondary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem; border-color: var(--sc-critical-border); color: var(--sc-critical-text);"><i class="fa-solid fa-rotate-left"></i> Reopen</button>
+                </div>
+            ` : ''}
+        `;
+        listEl.appendChild(card);
+    });
 }
 
 async function verifyResolution(issueId, resolved) {

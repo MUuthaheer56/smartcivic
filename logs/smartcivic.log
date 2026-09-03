@@ -94,3 +94,64 @@
 {"timestamp": "2026-08-31T09:38:32.415603", "log_type": "api_request", "method": "GET", "path": "/officer/dashboard", "user_id": "6a954acf6b7db0e201b78b4e", "status_code": 200, "duration_ms": 4.4}
 {"timestamp": "2026-08-31T09:38:32.486041", "log_type": "api_request", "method": "GET", "path": "/static/js/dashboard.js", "user_id": "6a954acf6b7db0e201b78b4e", "status_code": 304, "duration_ms": 3.0}
 {"timestamp": "2026-08-31T09:38:33.072980", "log_type": "api_request", "method": "GET", "path": "/favicon.ico", "user_id": "6a954acf6b7db0e201b78b4e", "status_code": 500, "duration_ms": 3.1}
+{"timestamp": "2026-09-03T05:47:04.595770", "log_type": "api_request", "method": "GET", "path": "/api/health", "user_id": "anonymous", "status_code": 200, "duration_ms": 0.0}
+{"timestamp": "2026-09-03T05:49:21.492007", "log_type": "api_request", "method": "GET", "path": "/api/health", "user_id": "anonymous", "status_code": 200, "duration_ms": 0.5}
+{"timestamp": "2026-09-03T06:53:00.811091", "log_type": "api_request", "method": "GET", "path": "/", "user_id": "anonymous", "status_code": 302, "duration_ms": 1.0}
+{"timestamp": "2026-09-03T06:53:00.976132", "log_type": "api_request", "method": "GET", "path": "/login", "user_id": "anonymous", "status_code": 200, "duration_ms": 101.4}
+{"timestamp": "2026-09-03T06:53:01.422879", "log_type": "api_request", "method": "GET", "path": "/static/css/main.css", "user_id": "anonymous", "status_code": 200, "duration_ms": 254.6}
+{"timestamp": "2026-09-03T06:53:01.430239", "log_type": "api_request", "method": "GET", "path": "/static/js/filters.js", "user_id": "anonymous", "status_code": 200, "duration_ms": 2.3}
+{"timestamp": "2026-09-03T06:53:01.441946", "log_type": "api_request", "method": "GET", "path": "/static/js/toast.js", "user_id": "anonymous", "status_code": 200, "duration_ms": 5.1}
+{"timestamp": "2026-09-03T06:53:01.448948", "log_type": "api_request", "method": "GET", "path": "/static/css/dashboard.css", "user_id": "anonymous", "status_code": 200, "duration_ms": 3.4}
+{"timestamp": "2026-09-03T06:53:02.375188", "log_type": "api_request", "method": "GET", "path": "/favicon.ico", "user_id": "anonymous", "status_code": 500, "duration_ms": 146.3}
+{"timestamp": "2026-09-03T06:53:13.272508", "log_type": "security_event", "event_type": "failed_login", "user_id": "6a990f74933b4010bb9f5013", "ip": "127.0.0.1", "details": {"email": "authority@smartcivic.com", "attempt": 1}}
+{"timestamp": "2026-09-03T06:53:13.273524", "log_type": "api_request", "method": "POST", "path": "/auth/login", "user_id": "anonymous", "status_code": 401, "duration_ms": 388.8}
+{"timestamp": "2026-09-03T06:53:23.442303", "log_type": "security_event", "event_type": "failed_login", "user_id": "6a990f74933b4010bb9f5013", "ip": "127.0.0.1", "details": {"email": "authority@smartcivic.com", "attempt": 2}}
+{"timestamp": "2026-09-03T06:53:23.442841", "log_type": "api_request", "method": "POST", "path": "/auth/login", "user_id": "anonymous", "status_code": 401, "duration_ms": 242.3}
+{"timestamp": "2026-09-03T06:53:35.601578", "log_type": "api_request", "method": "GET", "path": "/login", "user_id": "anonymous", "status_code": 200, "duration_ms": 0.0}
+{"timestamp": "2026-09-03T06:53:35.770769", "log_type": "api_request", "method": "GET", "path": "/static/css/main.css", "user_id": "anonymous", "status_code": 304, "duration_ms": 1.6}
+{"timestamp": "2026-09-03T06:53:35.774888", "log_type": "api_request", "method": "GET", "path": "/static/js/filters.js", "user_id": "anonymous", "status_code": 304, "duration_ms": 1.0}
+{"timestamp": "2026-09-03T06:53:35.778003", "log_type": "api_request", "method": "GET", "path": "/static/js/toast.js", "user_id": "anonymous", "status_code": 304, "duration_ms": 1.1}
+{"timestamp": "2026-09-03T06:53:35.783587", "log_type": "api_request", "method": "GET", "path": "/static/css/dashboard.css", "user_id": "anonymous", "status_code": 304, "duration_ms": 3.5}
+{"timestamp": "2026-09-03T06:53:35.991808", "log_type": "api_request", "method": "GET", "path": "/favicon.ico", "user_id": "anonymous", "status_code": 500, "duration_ms": 5.0}
+{"timestamp": "2026-09-03T06:53:52.750065", "log_type": "security_event", "event_type": "failed_login", "user_id": "6a990f74933b4010bb9f5013", "ip": "127.0.0.1", "details": {"email": "authority@smartcivic.com", "attempt": 3}}
+{"timestamp": "2026-09-03T06:53:52.751459", "log_type": "api_request", "method": "POST", "path": "/auth/login", "user_id": "anonymous", "status_code": 401, "duration_ms": 243.8}
+{"timestamp": "2026-09-03T06:54:23.648267", "log_type": "security_event", "event_type": "failed_login", "user_id": "6a990f74933b4010bb9f5013", "ip": "127.0.0.1", "details": {"email": "authority@smartcivic.com", "attempt": 4}}
+{"timestamp": "2026-09-03T06:54:23.650563", "log_type": "api_request", "method": "POST", "path": "/auth/login", "user_id": "anonymous", "status_code": 401, "duration_ms": 253.7}
+{"timestamp": "2026-09-03T06:54:59.353863", "log_type": "security_event", "event_type": "login", "user_id": "6a990f74933b4010bb9f5013", "ip": "127.0.0.1", "details": {}}
+{"timestamp": "2026-09-03T06:54:59.383765", "log_type": "api_request", "method": "POST", "path": "/auth/login", "user_id": "anonymous", "status_code": 200, "duration_ms": 294.1}
+{"timestamp": "2026-09-03T06:55:00.721158", "log_type": "api_request", "method": "GET", "path": "/officer/dashboard", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 78.6}
+{"timestamp": "2026-09-03T06:55:01.016491", "log_type": "api_request", "method": "GET", "path": "/static/css/main.css", "user_id": "6a990f74933b4010bb9f5013", "status_code": 304, "duration_ms": 53.4}
+{"timestamp": "2026-09-03T06:55:01.033779", "log_type": "api_request", "method": "GET", "path": "/static/js/filters.js", "user_id": "6a990f74933b4010bb9f5013", "status_code": 304, "duration_ms": 29.5}
+{"timestamp": "2026-09-03T06:55:01.039311", "log_type": "api_request", "method": "GET", "path": "/static/css/dashboard.css", "user_id": "6a990f74933b4010bb9f5013", "status_code": 304, "duration_ms": 57.1}
+{"timestamp": "2026-09-03T06:55:01.044646", "log_type": "api_request", "method": "GET", "path": "/static/js/toast.js", "user_id": "6a990f74933b4010bb9f5013", "status_code": 304, "duration_ms": 48.8}
+{"timestamp": "2026-09-03T06:55:01.049642", "log_type": "api_request", "method": "GET", "path": "/static/js/dashboard.js", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 41.1}
+{"timestamp": "2026-09-03T06:55:01.634225", "log_type": "api_request", "method": "GET", "path": "/favicon.ico", "user_id": "6a990f74933b4010bb9f5013", "status_code": 500, "duration_ms": 19.8}
+{"timestamp": "2026-09-03T06:55:06.837541", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 17.1}
+{"timestamp": "2026-09-03T06:55:06.839639", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 20.2}
+{"timestamp": "2026-09-03T06:55:11.245232", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 6.5}
+{"timestamp": "2026-09-03T06:55:11.246616", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 7.9}
+{"timestamp": "2026-09-03T06:55:12.822342", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 4.1}
+{"timestamp": "2026-09-03T06:55:12.824353", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 5.2}
+{"timestamp": "2026-09-03T06:55:13.946896", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 7.4}
+{"timestamp": "2026-09-03T06:55:13.949589", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 10.1}
+{"timestamp": "2026-09-03T06:55:18.174369", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 5.3}
+{"timestamp": "2026-09-03T06:55:18.180907", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 4.1}
+{"timestamp": "2026-09-03T06:55:21.234653", "log_type": "api_request", "method": "GET", "path": "/api/workers", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 10.3}
+{"timestamp": "2026-09-03T06:55:22.877804", "log_type": "api_request", "method": "GET", "path": "/api/analytics/recurring", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 7.9}
+{"timestamp": "2026-09-03T06:55:24.009464", "log_type": "api_request", "method": "GET", "path": "/api/analytics/by-ward", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 77.5}
+{"timestamp": "2026-09-03T06:55:25.608175", "log_type": "api_request", "method": "GET", "path": "/api/analytics/overview", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 28.5}
+{"timestamp": "2026-09-03T06:55:25.627885", "log_type": "api_request", "method": "GET", "path": "/api/officer/briefing", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 48.7}
+{"timestamp": "2026-09-03T06:55:33.582406", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 5.1}
+{"timestamp": "2026-09-03T06:55:33.585461", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 8.2}
+{"timestamp": "2026-09-03T06:55:35.573570", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 6.0}
+{"timestamp": "2026-09-03T06:55:35.577851", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 9.3}
+{"timestamp": "2026-09-03T06:55:37.078186", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 4.0}
+{"timestamp": "2026-09-03T06:55:37.079172", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 5.0}
+{"timestamp": "2026-09-03T06:55:38.404421", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 7.4}
+{"timestamp": "2026-09-03T06:55:38.407984", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 10.0}
+{"timestamp": "2026-09-03T06:55:39.599687", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 6.8}
+{"timestamp": "2026-09-03T06:55:39.612466", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 6.7}
+{"timestamp": "2026-09-03T06:55:47.817449", "log_type": "api_request", "method": "GET", "path": "/api/workers", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 2.0}
+{"timestamp": "2026-09-03T06:55:49.599113", "log_type": "api_request", "method": "GET", "path": "/api/analytics/by-ward", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 5.5}
+{"timestamp": "2026-09-03T06:55:51.798911", "log_type": "api_request", "method": "GET", "path": "/api/officer/briefing", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 6.2}
+{"timestamp": "2026-09-03T06:55:51.821827", "log_type": "api_request", "method": "GET", "path": "/api/analytics/overview", "user_id": "6a990f74933b4010bb9f5013", "status_code": 200, "duration_ms": 28.1}
