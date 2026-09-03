@@ -20,8 +20,7 @@ def seed_db():
     db.notifications.drop()
     db.audit_logs.drop()
     
-    import secrets
-    plain_password = secrets.token_urlsafe(12)
+    plain_password = "smartcivic123"
     pwd_hash = hash_password(plain_password)
     
     with open("seed_credentials.txt", "w", encoding="utf-8") as f:
