@@ -1,19 +1,91 @@
 {% extends "base.html" %}
-{% block title %}Report Civic Issue — SmartCivic{% endblock %}
+
+{% block extra_head %}
+<style>
+    .report-container {
+        max-width: 750px;
+        margin: 1.5rem auto;
+        padding: 2.25rem;
+    }
+    #map {
+        height: 280px;
+        border-radius: 8px;
+        margin-top: 0.5rem;
+        border: 1px solid var(--border-color);
+        z-index: 10;
+    }
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    .form-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 0.35rem;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: white;
+        font-family: var(--font-body);
+        font-size: 0.9rem;
+        box-sizing: border-box;
+    }
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+    .ai-feedback-modal {
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid var(--border-color);
+        padding: 1.75rem;
+        border-radius: 14px;
+        margin-top: 1.5rem;
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container" style="max-width: 600px; margin-top: 2rem;">
-    <h2>Report Civic Issue</h2>
+<div class="glass-panel report-container">
+    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+        <div>
+            <h2 style="font-family: var(--font-display); font-weight: 800; font-size: 1.8rem;">Report a Civic Complaint</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Pin location on map or use GPS to lodge local infrastructure issues</p>
+        </div>
+        <a href="/citizen/dashboard" class="btn btn-secondary" style="font-size: 0.8rem;"><i class="fa-solid fa-arrow-left"></i> Dashboard</a>
+    </div>
+
     <form id="reportForm" enctype="multipart/form-data">
         <div class="form-group">
-            <label for="title">Issue Title</label>
-            <input type="text" id="title" name="title" class="form-control" required>
+            <label class="form-label">Language / ಭಾಷೆ / भाषा</label>
+            <select id="language" class="form-control" onchange="updateLanguagePlaceholder()">
+                <option value="english">English</option>
+                <option value="kannada">ಕನ್ನಡ (Kannada)</option>
+                <option value="hindi">हिंदी (Hindi)</option>
+                <option value="tamil">தமிழ் (Tamil)</option>
+                <option value="telugu">తెలుగు (Telugu)</option>
+            </select>
         </div>
         <div class="form-group">
-            <label for="description">Description</label>
-            <textarea id="description" name="description" class="form-control" rows="3" required></textarea>
+            <label class="form-label">Issue Title</label>
+            <input type="text" id="title" class="form-control" placeholder="Pothole in the middle of main road" required>
         </div>
         <div class="form-group">
-            <label for="category">Category</label>
+            <label class="form-label">Description</label>
+            <textarea id="description" class="form-control" rows="3" placeholder="Describe the issue here..." required></textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Category</label>
             <select id="category" name="category" class="form-control" required>
                 <option value="road">Pothole / Road Damage</option>
                 <option value="water">Water Supply</option>
@@ -25,20 +97,72 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="type">Issue Type</label>
-            <input type="text" id="type" name="type" class="form-control" placeholder="e.g. pothole" required>
+            <label class="form-label">Type Detail</label>
+            <input type="text" id="type" class="form-control" placeholder="e.g. pothole, streetlight_out" required>
         </div>
         <div class="form-group">
-            <label for="address">Address</label>
-            <input type="text" id="address" name="address" class="form-control" required>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <label class="form-label" style="margin-bottom: 0;">Pin Location on Map</label>
+                <button type="button" onclick="useCurrentLocation(true)" class="btn btn-secondary" style="padding: 0.3rem 0.75rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.35rem;">
+                    <i class="fa-solid fa-location-crosshairs" style="color: var(--primary);"></i> Use My Location
+                </button>
+            </div>
+            <div id="map"></div>
+            <input type="hidden" id="lat">
+            <input type="hidden" id="lng">
         </div>
         <div class="form-group">
-            <label for="ward">Ward</label>
-            <input type="text" id="ward" name="ward" class="form-control" required>
+            <label class="form-label">Location Address</label>
+            <input type="text" id="address" class="form-control" placeholder="Automatically resolved from map pin..." required>
         </div>
-        <input type="hidden" id="lat" name="lat" value="12.9716">
-        <input type="hidden" id="lng" name="lng" value="77.5946">
-        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Submit Issue</button>
+        <div class="form-group">
+            <label class="form-label">Ward</label>
+            <input type="text" id="ward" class="form-control" placeholder="e.g. Ward 1" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Evidence Image Photo</label>
+            <input type="file" id="image" class="form-control" accept="image/*" required>
+        </div>
+        
+        <div class="form-group" style="background: rgba(239, 68, 68, 0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2); margin-bottom: 1.5rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; color: #ef4444; cursor: pointer;">
+                <input type="checkbox" id="isEmergency" onchange="toggleEmergencyCategory()">
+                Is this an emergency situation?
+            </label>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                ⚠ False emergency reports may affect your CivicScore.
+            </p>
+            <div id="emergencyCategoryContainer" style="display: none; margin-top: 0.75rem;">
+                <label class="form-label" style="font-size: 0.85rem;">Emergency Category</label>
+                <select id="emergencyCategory" class="form-control">
+                    <option value="FLOODING">FLOODING</option>
+                    <option value="MAJOR_WATER_LEAK">MAJOR_WATER_LEAK</option>
+                    <option value="ELECTRICAL_DANGER">ELECTRICAL_DANGER</option>
+                    <option value="COLLAPSED_ROAD">COLLAPSED_ROAD</option>
+                    <option value="FALLEN_TREE">FALLEN_TREE</option>
+                    <option value="DANGEROUS_INFRASTRUCTURE">DANGEROUS_INFRASTRUCTURE</option>
+                    <option value="GAS_LEAK">GAS_LEAK</option>
+                    <option value="FIRE_HAZARD">FIRE_HAZARD</option>
+                </select>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;"><i class="fa-solid fa-paper-plane"></i> File Complaint</button>
     </form>
+
+    <!-- AI Feedback Panel -->
+    <div class="ai-feedback-modal" id="aiPanel">
+        <h4 style="font-family: var(--font-display); font-weight: 700; margin-bottom: 0.75rem; color: var(--success); display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-robot"></i> AI Automated Review Complete
+        </h4>
+        <div style="font-size: 0.95rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;" id="aiResults">
+            <!-- Filled dynamically -->
+        </div>
+        <button onclick="window.location.href='/citizen/dashboard'" class="btn btn-primary" style="width: 100%">Go to Citizen Dashboard</button>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/citizen.js"></script>
 {% endblock %}

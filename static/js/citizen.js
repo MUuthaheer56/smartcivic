@@ -18,8 +18,14 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initMap() {
+    const mapEl = document.getElementById('map');
+    if (!mapEl) return;
+
     // Default location: Bangalore (12.9716, 77.5946)
-    map = L.map('map').setView([12.9716, 77.5946], 13);
+    const initialLat = 12.9716;
+    const initialLng = 77.5946;
+
+    map = L.map('map').setView([initialLat, initialLng], 13);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -27,8 +33,9 @@ function initMap() {
     }).addTo(map);
     
     // Add default marker
-    marker = L.marker([12.9716, 77.5946], { draggable: true }).addTo(map);
-    updateCoords(12.9716, 77.5946);
+    marker = L.marker([initialLat, initialLng], { draggable: true }).addTo(map);
+    updateCoords(initialLat, initialLng);
+    reverseGeocode(initialLat, initialLng);
     
     marker.on('dragend', function (e) {
         const position = marker.getLatLng();
@@ -41,6 +48,46 @@ function initMap() {
         updateCoords(e.latlng.lat, e.latlng.lng);
         reverseGeocode(e.latlng.lat, e.latlng.lng);
     });
+
+    // Attempt silent GPS geolocation on load
+    useCurrentLocation(false);
+}
+
+function useCurrentLocation(notifyUser = true) {
+    if (!navigator.geolocation) {
+        if (notifyUser && typeof showToast === 'function') {
+            showToast("Geolocation is not supported by your browser.", "warning");
+        }
+        return;
+    }
+
+    if (notifyUser && typeof showToast === 'function') {
+        showToast("Detecting your location via GPS...", "info");
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            if (map && marker) {
+                map.setView([lat, lng], 15);
+                marker.setLatLng([lat, lng]);
+                updateCoords(lat, lng);
+                reverseGeocode(lat, lng);
+                if (notifyUser && typeof showToast === 'function') {
+                    showToast("GPS location pinned successfully!", "success");
+                }
+            }
+        },
+        (error) => {
+            console.warn("GPS Geolocation error:", error);
+            if (notifyUser && typeof showToast === 'function') {
+                showToast("Could not detect GPS location. Please click or drag the pin on the map.", "warning");
+            }
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
 }
 
 function updateCoords(lat, lng) {

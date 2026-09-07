@@ -6,7 +6,10 @@ from flask import Blueprint, request, jsonify, g, current_app
 from bson import ObjectId
 import os
 import uuid
-import magic
+try:
+    import magic
+except Exception:
+    magic = None
 from datetime import datetime
 from app import db, limiter
 from routes.auth import require_auth, require_role
@@ -29,16 +32,27 @@ def validate_image_file(file):
     if size > current_app.config.get("MAX_UPLOAD_SIZE", 5 * 1024 * 1024):
         return False, "File exceeds maximum size limits (5MB)."
         
-    # Validate MIME type
+    # Validate MIME type / header
     header = file.read(2048)
     file.seek(0)
+    
+    if magic is not None:
+        try:
+            mime = magic.from_buffer(header, mime=True)
+            if mime in {"image/jpeg", "image/png", "image/webp"}:
+                return True, None
+        except Exception as e:
+            print(f"[Security Check] python-magic exception: {e}")
+            
+    # PIL Fallback for image verification
     try:
-        mime = magic.from_buffer(header, mime=True)
-        if mime not in {"image/jpeg", "image/png", "image/webp"}:
-            return False, f"Invalid image MIME type: {mime}"
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(header))
+        if img.format and img.format.lower() in {"jpeg", "png", "webp", "mpo"}:
+            return True, None
     except Exception as e:
-        print(f"[Security Check] python-magic exception: {e}")
-        return False, "Could not determine file type."
+        print(f"[Security Check] PIL fallback exception: {e}")
         
     return True, None
 
@@ -99,6 +113,7 @@ def create_issue():
             
             images.append({
                 "filename": filename,
+                "filepath": filepath,
                 "url": f"/static/uploads/issues/{filename}",
                 "type": "before",
                 "uploaded_by": ObjectId(g.current_user["_id"]),
@@ -132,6 +147,7 @@ def create_issue():
                 
             # Update image ref in issue record
             images[0]["filename"] = new_filename
+            images[0]["filepath"] = new_filepath
             images[0]["url"] = f"/static/uploads/issues/{new_filename}"
             db.issues.update_one({"_id": issue["_id"]}, {"$set": {"images": images}})
             

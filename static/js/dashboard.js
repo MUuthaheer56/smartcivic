@@ -45,7 +45,10 @@ function switchTab(tabId) {
         loadBriefing();
     } else if (tabId === "map-view") {
         document.getElementById("tab-map-view").style.display = "block";
-        setTimeout(initMap, 100);
+        setTimeout(() => {
+            initMap();
+            if (map) map.invalidateSize();
+        }, 100);
     } else if (tabId === "workers-view") {
         document.getElementById("tab-workers-view").style.display = "block";
         loadWorkers();
@@ -484,12 +487,50 @@ async function loadWorkers() {
                         <div><strong>Active Tasks:</strong> ${w.active_assignments} / 5 limit</div>
                         <div><strong>Skills:</strong> ${w.skills.join(', ') || 'General Repair'}</div>
                     </div>
+                    <div style="margin-top: 0.75rem;">
+                        <button onclick="drawWorkerRouteOnOfficerMap('${w._id}')" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">
+                            <i class="fa-solid fa-route" style="color: var(--primary);"></i> View Route on Map
+                        </button>
+                    </div>
                 `;
                 workersGrid.appendChild(card);
             });
         }
     } catch (err) {
         workersGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load worker profiles.</div>`;
+    }
+}
+
+let officerRouteLine;
+async function drawWorkerRouteOnOfficerMap(workerId) {
+    switchTab('map-view');
+    try {
+        const res = await fetch(`/api/map/route?worker_id=${workerId}`);
+        const data = await res.json();
+        if (data.success && data.data.length > 0) {
+            if (officerRouteLine) map.removeLayer(officerRouteLine);
+            
+            const latlngs = [];
+            data.data.forEach(stop => {
+                if (stop.polyline) {
+                    latlngs.push(...stop.polyline);
+                }
+            });
+            
+            if (latlngs.length > 0) {
+                officerRouteLine = L.polyline(latlngs, { color: 'var(--primary)', weight: 5, opacity: 0.85 }).addTo(map);
+                map.fitBounds(officerRouteLine.getBounds());
+                if (typeof showToast === 'function') {
+                    showToast(`Loaded route itinerary (${data.data.length} stops).`, "info");
+                }
+            }
+        } else {
+            if (typeof showToast === 'function') {
+                showToast("No active assigned tasks for this worker to draw route.", "info");
+            }
+        }
+    } catch (err) {
+        console.error("Failed to draw worker route on map:", err);
     }
 }
 

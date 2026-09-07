@@ -91,15 +91,25 @@ def register():
     schema = UserRegisterSchema()
     errors = schema.validate(data)
     if errors:
-        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "fields": errors}}), 422
+        first_field = list(errors.keys())[0]
+        first_err_list = errors[first_field]
+        first_msg = first_err_list[0] if isinstance(first_err_list, list) and first_err_list else str(first_err_list)
+        error_message = f"{first_field.capitalize()}: {first_msg}"
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": error_message, "fields": errors}}), 422
         
     role = data.get("role", "citizen").lower().strip()
-    if role != "citizen":
-        return jsonify({
-            "success": False,
-            "error": {"code": "FORBIDDEN", "message": "Only citizen registration is allowed."}
-        }), 403
-    data["role"] = "citizen"
+    if role in ["officer", "worker"]:
+        admin_code = current_app.config.get("ADMIN_INVITE_CODE") or os.getenv("ADMIN_INVITE_CODE", "SMARTCIVIC-ADMIN-2025")
+        invite_code = data.get("invite_code", "").strip()
+        if not invite_code or invite_code != admin_code:
+            return jsonify({
+                "success": False,
+                "error": {"code": "FORBIDDEN", "message": "Officer/Worker registration requires a valid Admin Invite Code."}
+            }), 403
+    elif role != "citizen":
+        role = "citizen"
+        
+    data["role"] = role
         
     email = data["email"].lower().strip()
     if db.users.find_one({"email": email}):

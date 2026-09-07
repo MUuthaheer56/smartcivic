@@ -361,7 +361,7 @@ def declare_emergency(issue_id, declared_by_id, emergency_category: str) -> dict
         socketio.emit(
             "emergency_declared",
             serialize(updated),
-            room="officers", # broadcast to officer room
+            room="role_officer", # broadcast to officer room
             namespace="/civic"
         )
     except Exception as e:
@@ -428,7 +428,7 @@ def add_community_confirmation(issue_id, citizen_id, note: str = None) -> int:
             socketio.emit(
                 "notification",
                 {"event_type": "high_confirmations", "message": f"Issue has reached {new_count} community confirmations.", "issue_id": str(issue_id)},
-                room="officers",
+                room="role_officer",
                 namespace="/civic"
             )
         except Exception:
@@ -551,7 +551,7 @@ def check_recurrence(issue: dict) -> dict:
                     "message": f"Recurring {category} issue hotspot detected (Ward {issue.get('ward')}).",
                     "issue_id": str(issue_id)
                 },
-                room="officers",
+                room="role_officer",
                 namespace="/civic"
             )
         except Exception:

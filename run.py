@@ -1,9 +1,9 @@
 """
 SmartCivic+ — Main entry point
-Starts the eventlet WSGI web server.
+Starts the web server using native threading async mode.
 """
-import eventlet
-eventlet.monkey_patch()
+import sys
+import os
 
 from app import create_app, socketio, start_background_jobs
 
@@ -22,4 +22,4 @@ if __name__ == '__main__':
     print(" [*] Press Ctrl+C to terminate the server", flush=True)
     print("==================================================", flush=True)
     sys.stdout.flush()
-    socketio.run(app, host='0.0.0.0', port=5000, debug=False)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)

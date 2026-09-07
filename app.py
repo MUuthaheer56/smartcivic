@@ -24,7 +24,7 @@ client = MongoClient(mongo_uri)
 db = client[db_name]
 
 # Initialize Socket.IO and Limiter
-socketio = SocketIO(cors_allowed_origins="*")
+socketio = SocketIO(cors_allowed_origins="*", async_mode="threading")
 limiter = Limiter(key_func=get_remote_address, default_limits=["100 per minute"], storage_uri="memory://")
 
 def create_app():

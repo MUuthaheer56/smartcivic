@@ -7,8 +7,12 @@ from pymongo import MongoClient
 
 def setup_indexes():
     mongo_uri = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/smartcivic")
-    client = MongoClient(mongo_uri)
-    db = client.get_database()
+    client = MongoClient(mongo_uri, serverSelectionTimeoutMS=3000)
+    
+    db_name = mongo_uri.rsplit("/", 1)[-1].split("?")[0] if '/' in mongo_uri else "smartcivic"
+    if not db_name or db_name.strip() in ("", "mongodb:", "mongodb"):
+        db_name = "smartcivic"
+    db = client[db_name]
     
     print("[Indexes] Creating issues indexes...")
     db.issues.create_index([("status", 1)])
@@ -27,7 +31,9 @@ def setup_indexes():
     db.audit_logs.create_index([("timestamp", -1)])
     
     print("[Indexes] Creating notifications indexes...")
+    db.notifications.create_index([("user_id", 1), ("is_read", 1)])
     db.notifications.create_index([("recipient_id", 1), ("read", 1)])
+    db.notifications.create_index([("created_at", -1)])
     
     print("[Indexes] Creating infrastructure indexes...")
     db.infrastructure.create_index([("segment_id", 1)], unique=True)
