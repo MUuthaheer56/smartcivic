@@ -6,9 +6,33 @@ let routeLine;
 let markerLayer = L.layerGroup();
 let currentWorkerId = ""; // Resolved from active jobs
 
+function startLocationTracking() {
+    if (!navigator.geolocation) {
+        console.warn("Geolocation not supported");
+        return;
+    }
+    const sendLocation = (pos) => {
+        fetch('/api/workers/me/location', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude
+            })
+        }).catch(err => console.error("Location update failed", err));
+    };
+    // Initial
+    navigator.geolocation.getCurrentPosition(sendLocation, err => console.warn(err), {enableHighAccuracy: true});
+    // Poll every 3 minutes
+    setInterval(() => {
+        navigator.geolocation.getCurrentPosition(sendLocation, () => {}, {enableHighAccuracy: true, maximumAge: 60000});
+    }, 180000);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     initMap();
     loadMyJobs();
+    startLocationTracking();
 });
 
 function initMap() {

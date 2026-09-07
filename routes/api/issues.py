@@ -614,3 +614,36 @@ def get_issue_audit_log(id):
     except Exception as e:
         current_app.logger.exception(e)
         return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
+
+
+@issues_api_bp.route('/api/issues/<id>/reject', methods=['POST'])
+@require_auth
+@require_role('officer')
+def reject_issue(id):
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+
+    issue = db.issues.find_one({"_id": parsed_id})
+    if not issue:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
+
+    # Only reject if in a rejectable state
+    if issue.get("status") not in ("submitted", "ai_reviewed", "officer_reviewed"):
+        return jsonify({"success": False, "error": {"code": "CONFLICT", "message": "Issue cannot be rejected from its current status."}}), 409
+
+    # Officer ward check
+    if g.current_user.get("ward") != "all" and issue.get("ward") != g.current_user.get("ward"):
+        return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to your assigned ward."}}), 403
+
+    data = request.get_json() or {}
+    reason = data.get("reason", "Rejected by officer.").strip() or "Rejected by officer."
+
+    try:
+        db.issues.update_one({"_id": parsed_id}, {"$set": {"rejection_reason": reason}})
+        complaint_service.update_status(str(parsed_id), "rejected", str(g.current_user["_id"]), reason=reason)
+        return jsonify({"success": True, "message": "Issue rejected successfully."}), 200
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
+

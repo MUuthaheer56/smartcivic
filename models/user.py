@@ -1,7 +1,7 @@
 """
 SmartCivic+ — User Data Model Schema and Helpers
 """
-from marshmallow import Schema, fields, validate, post_load
+from marshmallow import Schema, fields, validate
 from datetime import datetime
 
 # Citizen reputation tiers

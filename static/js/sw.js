@@ -1,58 +1,34 @@
-const CACHE_NAME = 'smartcivic-worker-cache-v1';
-const ASSETS = [
+/* SmartCivic+ Field Worker Service Worker */
+const CACHE_NAME = 'smartcivic-worker-v1';
+const ASSETS_TO_CACHE = [
+  '/',
   '/worker/dashboard',
   '/static/css/main.css',
+  '/static/css/dashboard.css',
   '/static/js/worker.js'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
-  );
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  
-  // API Requests: Network First with cache fallback (GET only)
-  if (url.pathname.startsWith('/api/') && event.request.method === 'GET') {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // Clone the response and save it to the cache
-          const clonedResponse = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clonedResponse);
-          });
-          return response;
-        })
-        .catch(() => {
-          return caches.match(event.request);
-        })
-    );
-  } else {
-    // Static assets & non-GET API requests: Cache First with network fallback
-    // Note: Non-GET requests (POST/PUT/DELETE) will fail caches.match and fall back to fetch(event.request)
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        return cachedResponse || fetch(event.request);
-      })
-    );
-  }
+  if (event.request.method !== 'GET') return;
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+          }
+        }).catch(() => {});
+        return cachedResponse;
+      }
+      return fetch(event.request);
+    })
+  );
 });

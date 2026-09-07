@@ -4,7 +4,7 @@ Provides worker search, recommendation profiles, and real-time gps locations.
 """
 from flask import Blueprint, request, jsonify, g, current_app
 from bson import ObjectId
-from app import db
+from app import db, limiter
 from routes.auth import require_auth, require_role
 from services import assignment_service
 from utils import serialize, parse_object_id
@@ -50,3 +50,41 @@ def list_workers():
         "last_login": 0
     }))
     return jsonify({"success": True, "data": serialize(workers)}), 200
+
+
+@workers_api_bp.route('/api/workers/me/location', methods=['PUT'])
+@require_auth
+@require_role('worker')
+@limiter.limit("30 per minute")
+def update_my_location():
+    """Allow field workers to update their current GPS coordinates."""
+    data = request.get_json() or {}
+    lat = data.get("lat")
+    lng = data.get("lng")
+
+    if lat is None or lng is None:
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "lat and lng are required."}}), 422
+
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "lat and lng must be numeric."}}), 422
+
+    # Basic coordinate sanity check
+    if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Coordinates out of valid range."}}), 422
+
+    from datetime import datetime
+    db.users.update_one(
+        {"_id": g.current_user["_id"]},
+        {"$set": {
+            "current_location": {
+                "type": "Point",
+                "coordinates": [lng, lat]
+            },
+            "location_updated_at": datetime.utcnow()
+        }}
+    )
+    return jsonify({"success": True, "message": "Location updated."}), 200
+

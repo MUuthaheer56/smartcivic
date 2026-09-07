@@ -24,7 +24,7 @@ def check_password(plain_text: str, hashed: str) -> bool:
         return False
 
 def generate_tokens(user_id: str, role: str, ward: str):
-    secret = current_app.config.get("JWT_SECRET", "default_secret")
+    secret = current_app.config["JWT_SECRET"]
     
     access_expiry = datetime.utcnow() + current_app.config.get("JWT_ACCESS_EXPIRES", timedelta(minutes=30))
     refresh_expiry = datetime.utcnow() + current_app.config.get("JWT_REFRESH_EXPIRES", timedelta(days=7))
@@ -53,7 +53,7 @@ def require_auth(f):
         if not token:
             return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Access token cookie missing."}}), 401
             
-        secret = current_app.config.get("JWT_SECRET", "default_secret")
+        secret = current_app.config["JWT_SECRET"]
         try:
             payload = jwt.decode(token, secret, algorithms=["HS256"])
             user_id = payload.get("user_id")
@@ -207,7 +207,7 @@ def refresh():
     if not refresh_token:
         return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Refresh token cookie missing."}}), 401
         
-    secret = current_app.config.get("JWT_SECRET", "default_secret")
+    secret = current_app.config["JWT_SECRET"]
     try:
         payload = jwt.decode(refresh_token, secret, algorithms=["HS256"])
         user_id = payload.get("user_id")

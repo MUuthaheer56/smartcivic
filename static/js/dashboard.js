@@ -37,6 +37,7 @@ function switchTab(tabId) {
     document.getElementById("tab-workers-view").style.display = "none";
     document.getElementById("tab-ward-health").style.display = "none";
     document.getElementById("tab-recurring").style.display = "none";
+    document.getElementById("tab-simulation").style.display = "none";
     
     if (tabId === "overview") {
         document.getElementById("tab-overview").style.display = "block";
@@ -54,6 +55,8 @@ function switchTab(tabId) {
     } else if (tabId === "recurring") {
         document.getElementById("tab-recurring").style.display = "block";
         loadRecurringHotspots();
+    } else if (tabId === "simulation") {
+        document.getElementById("tab-simulation").style.display = "block";
     } else {
         document.getElementById("tab-issues-list").style.display = "block";
         loadIssuesQueue(tabId);
@@ -169,10 +172,12 @@ function renderOfficerIssuesQueue() {
                 ${issue.status === 'ai_reviewed' ? `
                     <button onclick="approveAIReview('${issue._id}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-check"></i> Approve</button>
                     <button onclick="overrideAIReview('${issue._id}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-edit"></i> Override</button>
+                    <button onclick="rejectIssue('${issue._id}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-ban"></i> Reject</button>
                 ` : ''}
                 
                 ${issue.status === 'officer_reviewed' ? `
-                    <button onclick="openAssignWorker('${issue._id}')" class="btn btn-primary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-user-plus"></i> Assign Worker</button>
+                    <button onclick="openAssignWorker('${issue._id}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-user-plus"></i> Assign Worker</button>
+                    <button onclick="rejectIssue('${issue._id}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-ban"></i> Reject</button>
                 ` : ''}
                 
                 ${issue.status === 'work_completed' ? `
@@ -222,6 +227,27 @@ async function overrideAIReview(issueId) {
         }
     } catch (err) {
         showToast("Action failed.", "danger");
+    }
+}
+
+async function rejectIssue(issueId) {
+    const reason = prompt("Reason for rejection (required):");
+    if (!reason || !reason.trim()) return;
+    try {
+        const res = await fetch(`/api/issues/${issueId}/reject`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast("Issue rejected successfully", "success");
+            loadIssuesQueue("new-complaints");
+        } else {
+            showToast(data.error?.message || "Reject failed", "danger");
+        }
+    } catch (err) {
+        showToast("Server error during reject action.", "danger");
     }
 }
 
@@ -779,3 +805,95 @@ async function showAuditInPopup(issueId) {
         container.innerHTML = `<div style="font-size:0.75rem; color:var(--danger);">Network error.</div>`;
     }
 }
+
+async function runWorkerSim() {
+    const ward = document.getElementById("simWard").value.trim();
+    const department = document.getElementById("simDept").value;
+    const additional_workers = parseInt(document.getElementById("simWorkerCount").value) || 1;
+    const resultDiv = document.getElementById("workerSimResult");
+
+    resultDiv.innerHTML = `<div style="text-align:center; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Running simulation…</div>`;
+    resultDiv.style.display = "block";
+
+    try {
+        const res = await fetch("/api/simulate/worker-addition", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ward: ward || "", department, additional_workers })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            resultDiv.innerHTML = `<p style="color: var(--danger);">${data.error?.message || "Simulation failed."}</p>`;
+            return;
+        }
+        const d = data.data;
+        resultDiv.innerHTML = `
+            <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div class="sim-metric"><span class="sim-label">Current Workers</span><span class="sim-value">${d.current_workers}</span></div>
+                <div class="sim-metric"><span class="sim-label">After Addition</span><span class="sim-value" style="color:var(--primary)">${d.current_workers + d.additional_workers}</span></div>
+                <div class="sim-metric"><span class="sim-label">Avg Resolution Now</span><span class="sim-value">${d.current_avg_resolution_hours}h</span></div>
+                <div class="sim-metric"><span class="sim-label">Estimated New Avg</span><span class="sim-value" style="color:var(--success)">${d.estimated_avg_resolution_hours}h</span></div>
+                <div class="sim-metric"><span class="sim-label">Open Complaints</span><span class="sim-value">${d.open_complaints}</span></div>
+                <div class="sim-metric"><span class="sim-label">Clearance Estimate</span><span class="sim-value">${d.estimated_clearance_hours}h</span></div>
+                <div class="sim-metric"><span class="sim-label">SLA Compliance Now</span><span class="sim-value">${d.current_sla_compliance_pct}%</span></div>
+                <div class="sim-metric"><span class="sim-label">Estimated New SLA</span><span class="sim-value" style="color:var(--success)">${d.estimated_sla_compliance_pct}%</span></div>
+            </div>`;
+    } catch (err) {
+        resultDiv.innerHTML = `<p style="color: var(--danger);">Network error. Please try again.</p>`;
+        console.error("Worker sim error:", err);
+    }
+}
+
+async function runPrioritySim() {
+    const category = document.getElementById("simCategory").value;
+    const resultDiv = document.getElementById("prioritySimResult");
+
+    resultDiv.innerHTML = `<div style="text-align:center; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Running simulation…</div>`;
+    resultDiv.style.display = "block";
+
+    try {
+        const res = await fetch("/api/simulate/category-priority", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ category })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            resultDiv.innerHTML = `<p style="color: var(--danger);">${data.error?.message || "Simulation failed."}</p>`;
+            return;
+        }
+        const d = data.data;
+        let otherRows = d.other_categories_impact.map(o =>
+            `<tr>
+                <td style="padding: 0.4rem 0.5rem; text-transform: capitalize;">${o.category}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align:right;">${o.current_avg_hours}h</td>
+                <td style="padding: 0.4rem 0.5rem; text-align:right; color: var(--danger);">${o.estimated_avg_hours}h</td>
+            </tr>`
+        ).join("");
+        resultDiv.innerHTML = `
+            <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem;">
+                <p style="color: var(--success); font-weight: 600;">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span style="text-transform:capitalize;">${d.prioritized_category}</span> resolution improves by
+                    <strong>${d.estimated_resolution_improvement_hours}h</strong>
+                </p>
+                <p style="color: var(--warning); font-size: 0.85rem; margin-top: 0.5rem;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> SLA breach risk on other categories: +${d.sla_risk_increase} issues
+                </p>
+                <table style="width: 100%; margin-top: 1rem; font-size: 0.85rem; border-collapse: collapse;">
+                    <thead>
+                        <tr style="color: var(--text-muted);">
+                            <th style="text-align:left; padding: 0.3rem 0.5rem;">Category</th>
+                            <th style="text-align:right; padding: 0.3rem 0.5rem;">Current Avg</th>
+                            <th style="text-align:right; padding: 0.3rem 0.5rem;">Estimated</th>
+                        </tr>
+                    </thead>
+                    <tbody>${otherRows}</tbody>
+                </table>
+            </div>`;
+    } catch (err) {
+        resultDiv.innerHTML = `<p style="color: var(--danger);">Network error. Please try again.</p>`;
+        console.error("Priority sim error:", err);
+    }
+}
+

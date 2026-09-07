@@ -15,8 +15,8 @@ from services.audit_service import log_audit
 
 LEGAL_TRANSITIONS = {
     "submitted":             ["ai_reviewed"],
-    "ai_reviewed":           ["officer_reviewed"],
-    "officer_reviewed":      ["assigned"],
+    "ai_reviewed":           ["officer_reviewed", "rejected"],
+    "officer_reviewed":      ["assigned", "rejected"],
     "assigned":              ["work_started"],
     "work_started":          ["work_completed"],
     "work_completed":        ["officer_verified", "work_started"],
@@ -104,8 +104,9 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
     if images:
         before_imgs = [img for img in images if img.get("type") == "before"]
         if before_imgs:
-            # We mock resolution or resolve locally if absolute path is set
-            ai_img = ai_service.analyze_complaint_image(before_imgs[0]["url"])
+            # Use filepath (OS path) for Pillow; fall back to url string if filepath missing
+            _img_path = before_imgs[0].get("filepath") or before_imgs[0].get("url", "")
+            ai_img = ai_service.analyze_complaint_image(_img_path)
             image_detections = ai_img.get("image_detections", [])
             # Update severity if image detects higher critical tier
             img_sev = ai_img.get("severity", "medium")

@@ -16,7 +16,7 @@ def require_citizen_page(f):
         token = request.cookies.get("access_token")
         if not token:
             return redirect("/login")
-        secret = current_app.config.get("JWT_SECRET", "default_secret")
+        secret = current_app.config["JWT_SECRET"]
         try:
             payload = jwt.decode(token, secret, algorithms=["HS256"])
             user_id = payload.get("user_id")

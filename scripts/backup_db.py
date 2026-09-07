@@ -12,7 +12,10 @@ from pymongo import MongoClient
 def run_backup():
     mongo_uri = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/smartcivic")
     client = MongoClient(mongo_uri)
-    db = client.get_database()
+    _db_name = mongo_uri.split('/')[-1] if '/' in mongo_uri else 'smartcivic'
+    if not _db_name or '?' in _db_name or _db_name.strip() == '':
+        _db_name = 'smartcivic'
+    db = client[_db_name]
     
     # 1. Create backups directory if not exists
     backups_dir = os.path.join(os.getcwd(), 'backups')
@@ -79,7 +82,10 @@ def run_restore(backup_file_name: str):
         
     mongo_uri = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/smartcivic")
     client = MongoClient(mongo_uri)
-    db = client.get_database()
+    _db_name = mongo_uri.split('/')[-1] if '/' in mongo_uri else 'smartcivic'
+    if not _db_name or '?' in _db_name or _db_name.strip() == '':
+        _db_name = 'smartcivic'
+    db = client[_db_name]
     
     temp_restore_dir = os.path.join(backups_dir, "temp_restore")
     os.makedirs(temp_restore_dir, exist_ok=True)

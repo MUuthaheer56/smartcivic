@@ -21,6 +21,17 @@ CATEGORY_TO_DEPT = {
     "other": "roads"
 }
 
+def _strip_json_fences(text: str) -> str:
+    """Strip markdown code fences Gemini sometimes wraps JSON in."""
+    text = text.strip()
+    if text.startswith("```"):
+        # Remove opening fence (```json or ```)
+        text = text.split("\n", 1)[-1]
+        # Remove closing fence
+        if text.endswith("```"):
+            text = text.rsplit("```", 1)[0]
+    return text.strip()
+
 def _rule_based_fallback(description: str) -> dict:
     text = description.lower()
     category = "other"
@@ -104,7 +115,7 @@ def analyze_complaint_text(description: str) -> dict:
         t0 = time.time()
         response = model.generate_content(prompt)
         dur = round((time.time() - t0) * 1000.0, 1)
-        parsed = json.loads(response.text.strip())
+        parsed = json.loads(_strip_json_fences(response.text))
         parsed["provider"] = "gemini"
         parsed["ai_available"] = True
         parsed["analyzed_at"] = datetime.utcnow()
@@ -150,7 +161,7 @@ def analyze_complaint_image(image_path: str) -> dict:
         "confidence": float 0.0 to 1.0
         """
         response = model.generate_content([prompt, img])
-        parsed = json.loads(response.text.strip())
+        parsed = json.loads(_strip_json_fences(response.text))
         parsed["provider"] = "gemini"
         parsed["ai_available"] = True
         parsed["image_detections"] = parsed.get("detected_issues", [])
@@ -257,7 +268,7 @@ def verify_resolution(before_image_path: str, after_image_path: str, issue_type:
         "reasoning": "explain your decision in one sentence"
         """
         response = model.generate_content([prompt, img_before, img_after])
-        parsed = json.loads(response.text.strip())
+        parsed = json.loads(_strip_json_fences(response.text))
         parsed["provider"] = "gemini"
         return parsed
     except Exception as e:
@@ -312,7 +323,7 @@ def detect_and_translate(text: str) -> dict:
             "confidence": float 0.0 to 1.0
             """
             response = model.generate_content(prompt)
-            parsed = json.loads(response.text.strip())
+            parsed = json.loads(_strip_json_fences(response.text))
             return {
                 "original_text": text,
                 "detected_language": parsed.get("detected_language", "unknown"),
@@ -413,7 +424,7 @@ def parse_search_query(query: str) -> dict:
             "department": "roads" | "water_supply" | "electrical" | "sanitation" | "drainage" | null
             """
             response = model.generate_content(prompt)
-            parsed = json.loads(response.text.strip())
+            parsed = json.loads(_strip_json_fences(response.text))
             return {k: v for k, v in parsed.items() if v is not None}
         except Exception as e:
             print(f"[AI Service] Gemini parse_search_query exception: {e}")

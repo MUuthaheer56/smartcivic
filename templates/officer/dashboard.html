@@ -192,6 +192,7 @@
         <button class="sidebar-btn" onclick="switchTab('workers-view')"><i class="fa-solid fa-users-gear"></i> Workers</button>
         <button class="sidebar-btn" onclick="switchTab('ward-health')"><i class="fa-solid fa-heart-pulse"></i> Ward Health</button>
         <button class="sidebar-btn" onclick="switchTab('recurring')"><i class="fa-solid fa-arrows-spin"></i> Recurring hotspots</button>
+        <button class="sidebar-btn" onclick="switchTab('simulation')"><i class="fa-solid fa-flask-vial"></i> What-If Simulator</button>
     </div>
 
     <!-- Main Dynamic Content container -->
@@ -304,6 +305,74 @@
             <h3 class="panel-header"><i class="fa-solid fa-arrows-spin" style="color: var(--warning)"></i> Recurring Hotspots</h3>
             <div class="queue-grid" id="recurringGrid">
                 <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- What-If Simulation Panel -->
+        <div class="tab-panel" id="tab-simulation" style="display: none;">
+            <h3 class="panel-header"><i class="fa-solid fa-flask-vial" style="color: var(--primary)"></i> What-If Simulator</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Model the hypothetical impact of resource changes before committing.</p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+
+                <!-- Worker Addition Simulator -->
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem; color: var(--primary);"><i class="fa-solid fa-user-plus"></i> Add Workers</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-muted);">Ward (leave blank for all)</label>
+                            <input id="simWard" type="text" placeholder="e.g. Ward 5"
+                                style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-primary); margin-top: 0.25rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-muted);">Department</label>
+                            <select id="simDept"
+                                style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,1); color: var(--text-primary); margin-top: 0.25rem;">
+                                <option value="roads">Roads</option>
+                                <option value="water_supply">Water Supply</option>
+                                <option value="electrical">Electrical</option>
+                                <option value="sanitation">Sanitation</option>
+                                <option value="drainage">Drainage</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-muted);">Additional Workers</label>
+                            <input id="simWorkerCount" type="number" value="2" min="1" max="50"
+                                style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-primary); margin-top: 0.25rem;">
+                        </div>
+                        <button onclick="runWorkerSim()" class="btn-primary" style="margin-top: 0.5rem; padding: 0.6rem 1.2rem; border: none; border-radius: 6px; background: var(--primary); color: #fff; font-weight: 600; cursor: pointer;">
+                            <i class="fa-solid fa-play"></i> Run Simulation
+                        </button>
+                    </div>
+                    <div id="workerSimResult" style="margin-top: 1.25rem; display: none;"></div>
+                </div>
+
+                <!-- Category Priority Simulator -->
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem; color: var(--warning);"><i class="fa-solid fa-arrow-up-wide-short"></i> Prioritise Category</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-muted);">Category to Prioritise</label>
+                            <select id="simCategory"
+                                style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,1); color: var(--text-primary); margin-top: 0.25rem;">
+                                <option value="road">Road</option>
+                                <option value="water">Water</option>
+                                <option value="electricity">Electricity</option>
+                                <option value="sanitation">Sanitation</option>
+                                <option value="drainage">Drainage</option>
+                            </select>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+                            Simulates redirecting crew focus to the selected category.
+                            Other categories will see a ~30% slowdown in resolution time.
+                        </p>
+                        <button onclick="runPrioritySim()" class="btn-primary" style="margin-top: 0.5rem; padding: 0.6rem 1.2rem; border: none; border-radius: 6px; background: var(--warning); color: #fff; font-weight: 600; cursor: pointer;">
+                            <i class="fa-solid fa-play"></i> Run Simulation
+                        </button>
+                    </div>
+                    <div id="prioritySimResult" style="margin-top: 1.25rem; display: none;"></div>
+                </div>
+
             </div>
         </div>
     </div>

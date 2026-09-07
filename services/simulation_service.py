@@ -32,7 +32,16 @@ def simulate_worker_addition(ward: str, department: str, additional_workers: int
     avg_resolution_hours = round(res_closed[0]["avg_hours"], 1) if res_closed and res_closed[0]["avg_hours"] else 24.0
     
     # 3. Get current worker count assigned to ward + department
-    worker_query = {"role": "worker", "skills": department}
+    # Map department name to possible skill aliases used in worker profiles
+    _DEPT_TO_SKILLS = {
+        "roads":        ["roads", "road_repair", "road"],
+        "water_supply": ["water_supply", "water"],
+        "electrical":   ["electrical", "electricity"],
+        "sanitation":   ["sanitation"],
+        "drainage":     ["drainage"],
+    }
+    _skill_aliases = _DEPT_TO_SKILLS.get(department, [department])
+    worker_query = {"role": "worker", "skills": {"$in": _skill_aliases}}
     if ward:
         worker_query["ward"] = ward
     current_workers = db.users.count_documents(worker_query)

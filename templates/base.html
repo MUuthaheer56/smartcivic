@@ -191,6 +191,17 @@
                 <i class="fa-solid fa-moon"></i>
             </button>
             {% if g.current_user %}
+                <div class="notification-bell" style="position: relative; cursor: pointer; display: flex; align-items: center;" onclick="toggleNotifications()">
+                    <i class="fa-solid fa-bell" style="font-size: 1.2rem; color: var(--text-main);"></i>
+                    <span id="notifBadge" style="display:none; position:absolute; top:-6px; right:-8px; background:var(--danger); color:white; border-radius:50%; width:18px; height:18px; font-size:0.7rem; font-weight: 700; align-items:center; justify-content:center;">0</span>
+                </div>
+                <div id="notifDropdown" style="display:none; position:absolute; top:65px; right:140px; width:340px; max-height:400px; overflow-y:auto; z-index:2000; padding:0; background: rgba(15, 23, 42, 0.98);" class="glass-panel">
+                    <div style="padding:1rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                        <strong style="font-size:0.95rem;">Notifications</strong>
+                        <button onclick="markAllRead()" class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;">Mark all read</button>
+                    </div>
+                    <div id="notifList" style="padding:0.5rem;"></div>
+                </div>
                 <div class="nav-user">
                     <i class="fa-solid fa-circle-user"></i>
                     <span>{{ g.current_user.name }} ({{ g.current_user.role.upper() }})</span>
@@ -284,8 +295,61 @@
             }
         }
         
+        async function fetchNotifications() {
+            try {
+                const res = await fetch('/api/notifications');
+                const data = await res.json();
+                if (data.success) {
+                    const badge = document.getElementById('notifBadge');
+                    if (badge) {
+                        badge.textContent = data.unread_count || 0;
+                        badge.style.display = (data.unread_count > 0) ? 'flex' : 'none';
+                    }
+                    const listEl = document.getElementById('notifList');
+                    if (listEl) {
+                        if (!data.data || data.data.length === 0) {
+                            listEl.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.8rem;">No notifications yet.</div>';
+                        } else {
+                            listEl.innerHTML = data.data.map(n => `
+                                <div style="padding:0.6rem 0.8rem; border-bottom:1px solid rgba(255,255,255,0.05); background:${n.is_read ? 'transparent' : 'rgba(59,130,246,0.1)'}; border-radius:6px; margin-bottom:0.25rem;">
+                                    <div style="font-size:0.85rem; color:var(--text-main); font-weight:${n.is_read ? '400' : '600'};">${n.message}</div>
+                                    <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.2rem;">${new Date(n.created_at || Date.now()).toLocaleString()}</div>
+                                </div>
+                            `).join('');
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Notifications load error:", err);
+            }
+        }
+
+        function toggleNotifications() {
+            const dropdown = document.getElementById('notifDropdown');
+            if (!dropdown) return;
+            if (dropdown.style.display === 'none' || !dropdown.style.display) {
+                dropdown.style.display = 'block';
+                fetchNotifications();
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        async function markAllRead() {
+            try {
+                const res = await fetch('/api/notifications/mark-read', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    fetchNotifications();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
         // Socket.IO Notifications Listener
         {% if g.current_user %}
+            fetchNotifications();
             const socket = io('/civic');
             socket.on('connect', () => {
                 console.log('Connected to real-time notification socket.');
@@ -295,6 +359,7 @@
             
             socket.on('notification', (data) => {
                 showToast(data.message, data.event_type.includes('sla') || data.event_type.includes('reopen') ? 'warning' : 'success');
+                fetchNotifications();
             });
         {% endif %}
     </script>

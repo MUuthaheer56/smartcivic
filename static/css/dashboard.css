@@ -477,3 +477,24 @@ html[data-theme="dark"] .tracking-bar {
   border-color: rgba(37, 99, 235, 0.25);
   color: var(--sc-primary-300);
 }
+
+/* What-If Simulation Panel */
+.sim-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.6rem 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sim-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.sim-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}

@@ -5,12 +5,16 @@ Starts the eventlet WSGI web server.
 import eventlet
 eventlet.monkey_patch()
 
-from app import create_app, socketio
+from app import create_app, socketio, start_background_jobs
 
 app = create_app()
 
 if __name__ == '__main__':
     import sys
+    import os
+    os.makedirs("logs", exist_ok=True)
+    os.makedirs("static/uploads/issues", exist_ok=True)
+    scheduler = start_background_jobs(app)
     print("==================================================", flush=True)
     print(" [*] SmartCivic+ Development Web Server Started", flush=True)
     print(" [*] Listening on: http://127.0.0.1:5000", flush=True)

@@ -69,6 +69,9 @@ def create_app():
     from routes.api.civicpulse import civicpulse_api_bp
     app.register_blueprint(simulation_api_bp)
     app.register_blueprint(civicpulse_api_bp)
+
+    from routes.api.notifications import notifications_api_bp
+    app.register_blueprint(notifications_api_bp)
     # Legacy and general page routes
     @app.route('/login')
     def login_page():
@@ -152,95 +155,118 @@ def create_app():
     # Global error handlers to prevent trace leakage
     @app.errorhandler(Exception)
     def handle_exception(e):
-        # Log error server-side
         app.logger.error(f"Server error: {e}", exc_info=True)
-        return jsonify({
-            "success": False,
-            "error": {
-                "code": "SERVER_ERROR",
-                "message": "An internal server error occurred."
-            }
-        }), 500
+        # Return JSON only for API routes; render a plain error page for browser routes
+        if request.path.startswith("/api/"):
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "SERVER_ERROR",
+                    "message": "An internal server error occurred."
+                }
+            }), 500
+        return render_template("error.html",
+                               message="An unexpected error occurred. Please try again."), 500
 
-    # Start SLA tracking sweep scheduler (runs every 15 mins)
+    @app.errorhandler(404)
+    def not_found(e):
+        if request.path.startswith('/api/'):
+            return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Endpoint not found"}}), 404
+        return render_template('errors/404.html'), 404
+
+    # Self-healing index creation
+    try:
+        from scripts.create_indexes import setup_indexes
+        setup_indexes()
+    except Exception as e:
+        app.logger.warning(f"Index setup skipped: {e}")
+
+    return app
+
+
+def start_background_jobs(app):
+    """Starts APScheduler background jobs outside create_app factory."""
     scheduler = BackgroundScheduler()
-    
-    def sla_sweep_job():
-        # Find all open issues
-        open_issues = list(db.issues.find({"status": {"$nin": ["closed", "rejected"]}}))
-        from services.sla_service import check_sla_status
-        for issue in open_issues:
-            try:
-                check_sla_status(issue)
-            except Exception as sweep_err:
-                app.logger.error(f"SLA Sweep error on issue {issue.get('_id')}: {sweep_err}")
-                
-    scheduler.add_job(sla_sweep_job, 'interval', seconds=app.config["SLA_CHECK_INTERVAL"])
-    
-    def briefing_and_health_job():
-        try:
-            from services.briefing_service import regenerate_briefing, calculate_ward_health_score
-            regenerate_briefing()
-            wards = db.issues.distinct("ward")
-            for w in wards:
-                if w:
-                    calculate_ward_health_score(w)
-        except Exception as err:
-            app.logger.error(f"Briefing & Health job background exception: {err}")
-            
-    scheduler.add_job(briefing_and_health_job, 'interval', minutes=30)
-    
-    def prediction_hotspots_job():
-        try:
-            from services.prediction_service import compute_hotspots
-            compute_hotspots()
-        except Exception as err:
-            app.logger.error(f"Weekly predictive hotspot computation exception: {err}")
-            
-    scheduler.add_job(prediction_hotspots_job, 'cron', day_of_week='sun', hour=1)
-    
-    def infrastructure_health_sweep_job():
-        try:
-            from services.infrastructure_service import trigger_all_infrastructure_recalc
-            trigger_all_infrastructure_recalc()
-        except Exception as err:
-            app.logger.error(f"Infrastructure Health sweep exception: {err}")
-            
-    scheduler.add_job(infrastructure_health_sweep_job, 'interval', hours=6)
-    
-    def weekly_intelligence_report_job():
-        try:
-            from services.report_service import trigger_report_generation_job
-            trigger_report_generation_job()
-        except Exception as err:
-            app.logger.error(f"Weekly Intelligence Report generation exception: {err}")
-            
-    scheduler.add_job(weekly_intelligence_report_job, 'cron', day_of_week='mon', hour=6)
-    
-    def daily_database_backup_job():
-        try:
-            from scripts.backup_db import run_backup
-            run_backup()
-        except Exception as err:
-            app.logger.error(f"Daily Database Backup sweep exception: {err}")
-            
-    scheduler.add_job(daily_database_backup_job, 'cron', hour=2, minute=0)
-    
-    def civicpulse_prediction_job():
-        try:
-            from services.civicpulse_service import compute_civicpulse_predictions
-            compute_civicpulse_predictions()
-        except Exception as err:
-            app.logger.error(f"CivicPulse prediction sweep exception: {err}")
 
-    # Run every Tuesday at 2am (offset from the hotspot job on Sunday)
+    def sla_sweep_job():
+        with app.app_context():
+            open_issues = list(db.issues.find({"status": {"$nin": ["closed", "rejected"]}}))
+            from services.sla_service import check_sla_status
+            for issue in open_issues:
+                try:
+                    check_sla_status(issue)
+                except Exception as sweep_err:
+                    app.logger.error(f"SLA Sweep error on issue {issue.get('_id')}: {sweep_err}")
+
+    scheduler.add_job(sla_sweep_job, 'interval', seconds=app.config.get("SLA_CHECK_INTERVAL", 900))
+
+    def briefing_and_health_job():
+        with app.app_context():
+            try:
+                from services.briefing_service import regenerate_briefing, calculate_ward_health_score
+                regenerate_briefing()
+                wards = db.issues.distinct("ward")
+                for w in wards:
+                    if w:
+                        calculate_ward_health_score(w)
+            except Exception as err:
+                app.logger.error(f"Briefing & Health job background exception: {err}")
+
+    scheduler.add_job(briefing_and_health_job, 'interval', minutes=30)
+
+    def prediction_hotspots_job():
+        with app.app_context():
+            try:
+                from services.prediction_service import compute_hotspots
+                compute_hotspots()
+            except Exception as err:
+                app.logger.error(f"Weekly predictive hotspot computation exception: {err}")
+
+    scheduler.add_job(prediction_hotspots_job, 'cron', day_of_week='sun', hour=1)
+
+    def infrastructure_health_sweep_job():
+        with app.app_context():
+            try:
+                from services.infrastructure_service import trigger_all_infrastructure_recalc
+                trigger_all_infrastructure_recalc()
+            except Exception as err:
+                app.logger.error(f"Infrastructure Health sweep exception: {err}")
+
+    scheduler.add_job(infrastructure_health_sweep_job, 'interval', hours=6)
+
+    def weekly_intelligence_report_job():
+        with app.app_context():
+            try:
+                from services.report_service import trigger_report_generation_job
+                trigger_report_generation_job()
+            except Exception as err:
+                app.logger.error(f"Weekly Intelligence Report generation exception: {err}")
+
+    scheduler.add_job(weekly_intelligence_report_job, 'cron', day_of_week='mon', hour=6)
+
+    def daily_database_backup_job():
+        with app.app_context():
+            try:
+                from scripts.backup_db import run_backup
+                run_backup()
+            except Exception as err:
+                app.logger.error(f"Daily Database Backup sweep exception: {err}")
+
+    scheduler.add_job(daily_database_backup_job, 'cron', hour=2, minute=0)
+
+    def civicpulse_prediction_job():
+        with app.app_context():
+            try:
+                from services.civicpulse_service import compute_civicpulse_predictions
+                compute_civicpulse_predictions()
+            except Exception as err:
+                app.logger.error(f"CivicPulse prediction sweep exception: {err}")
+
     scheduler.add_job(civicpulse_prediction_job, 'cron', day_of_week='tue', hour=2)
-    
-    # Start SLA tracking sweep scheduler conditionally
+
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
         scheduler.start()
-    
-    return app
+    return scheduler
 
 # Socket.IO Handlers in /civic namespace
 @socketio.on('join_room', namespace='/civic')
@@ -257,7 +283,7 @@ def on_join(data):
         return
         
     try:
-        secret = current_app.config.get("JWT_SECRET", "default_secret")
+        secret = current_app.config["JWT_SECRET"]
         payload = jwt.decode(token, secret, algorithms=["HS256"])
         user_id = payload.get("user_id")
         user_role = payload.get("role")
