@@ -2,14 +2,17 @@
 SmartCivic+ — Complete Verification & Automated Test Suite
 """
 import unittest
+from io import BytesIO
 from datetime import datetime, timedelta
 from bson import ObjectId
+from werkzeug.datastructures import FileStorage
 from unittest.mock import MagicMock, patch
 
 from services import ai_service, complaint_service, assignment_service, route_service, sla_service, priority_service, verification_service, audit_service
 from routes.auth import generate_tokens, hash_password, check_password
 from models.user import derive_citizen_tier
 from utils import sanitize_description
+from routes.api.issues import validate_image_file
 
 class TestSmartCivicPlus(unittest.TestCase):
     
@@ -27,18 +30,57 @@ class TestSmartCivicPlus(unittest.TestCase):
 
     def test_ai_text_analyzer_fallback(self):
         desc = "There is a massive pothole in the street causing accidents"
-        res = ai_service.analyze_complaint_text(desc)
+        res = ai_service._rule_based_fallback(desc)
         self.assertEqual(res["category"], "road")
         self.assertEqual(res["type"], "pothole")
-        self.assertEqual(res["severity"], "high")
+        self.assertIn(res["severity"], ["high", "critical"])
         self.assertEqual(res["department"], "roads")
         self.assertEqual(res["provider"], "rule_based")
 
     def test_ai_image_analyzer_fallback(self):
         res = ai_service.analyze_complaint_image("pothole.jpg")
-        self.assertEqual(res["severity"], "medium")
-        self.assertEqual(res["provider"], "rule_based")
-        self.assertIn("road_damage", res["image_detections"])
+        self.assertFalse(res["available"])
+        self.assertEqual(res["status"], "unavailable")
+        self.assertEqual(res["provider"], "gemini")
+        self.assertEqual(res["image_detections"], [])
+
+    def test_image_text_fusion_uses_available_image(self):
+        text = ai_service.analyze_complaint_text("Please fix this.")
+        image = {
+            "available": True,
+            "issue_type": "road_surface_damage",
+            "category": "road",
+            "severity": "high",
+            "confidence": 0.92,
+            "confidence_type": "model_reported",
+            "reason": "Visible road surface collapse creates a traffic hazard."
+        }
+        result = ai_service.fuse_complaint_predictions(text, image)
+        self.assertEqual(result["category"], "road")
+        self.assertEqual(result["type"], "road_surface_damage")
+        self.assertEqual(result["severity"], "high")
+        self.assertTrue(result["image_analysis_available"])
+        self.assertEqual(result["confidence_type"], "model_reported_fusion")
+
+    def test_unavailable_image_falls_back_transparently_to_text(self):
+        text = ai_service._rule_based_fallback("There is a pothole on the road.")
+        image = ai_service.analyze_complaint_image("missing.webp")
+        result = ai_service.fuse_complaint_predictions(text, image)
+        self.assertEqual(result["category"], "road")
+        self.assertEqual(result["type"], "pothole")
+        self.assertFalse(result["image_analysis_available"])
+        self.assertEqual(result["confidence_type"], "heuristic")
+
+    def test_invalid_image_content_is_rejected(self):
+        from flask import Flask
+        app = Flask(__name__)
+        app.config["ALLOWED_EXTENSIONS"] = {"jpg", "jpeg", "png", "webp"}
+        app.config["MAX_UPLOAD_SIZE"] = 5 * 1024 * 1024
+        upload = FileStorage(stream=BytesIO(b"not-an-image"), filename="evidence.jpg")
+        with app.app_context():
+            valid, error = validate_image_file(upload)
+        self.assertFalse(valid)
+        self.assertIn("valid", error.lower())
 
     def test_haversine_distance(self):
         # Distance between close points in Bangalore

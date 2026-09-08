@@ -166,6 +166,9 @@ function renderOfficerIssuesQueue() {
             <div style="font-size: 0.85rem; color: var(--sc-muted);">${issue.description}</div>
             <div style="font-size: 0.85rem; color: var(--sc-muted); display: flex; flex-direction: column; gap: 0.25rem;">
                 <div><strong>Category:</strong> ${issue.category}</div>
+                <div><strong>Issue Type:</strong> ${issue.type || 'other'}</div>
+                <div><strong>AI Vision:</strong> ${issue.ai_analysis?.image_analysis_available ? 'Analyzed' : 'Unavailable'}</div>
+                <div><strong>AI Explanation:</strong> ${issue.ai_analysis?.explanation || 'Not available'}</div>
                 <div><strong>Age:</strong> ${ageHours} hours old</div>
                 <div><strong>Priority Score:</strong> ${issue.priority_score || 0}</div>
                 <div><strong>SLA Target:</strong> ${new Date(issue.sla_deadline || Date.now()).toLocaleTimeString()}</div>
@@ -214,6 +217,7 @@ async function overrideAIReview(issueId) {
     const category = prompt("Override Category (road/water/electricity/sanitation/drainage/other):");
     const severity = prompt("Override Severity (low/medium/high/critical):");
     const department = prompt("Override Department (roads/water_supply/electrical/sanitation/drainage):");
+    const type = prompt("Override Issue Type (optional):");
     
     if (!category || !severity || !department) return;
     
@@ -221,7 +225,7 @@ async function overrideAIReview(issueId) {
         const res = await fetch(`/api/issues/${issueId}/review`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ category, severity, department, reason: "Manual override by Officer." })
+            body: JSON.stringify({ category, severity, department, type, reason: "Manual override by Officer." })
         });
         const data = await res.json();
         if (data.success) {

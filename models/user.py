@@ -18,26 +18,27 @@ def derive_citizen_tier(score: int) -> str:
         return "verifier"
     return "reporter"
 
-def create_user_doc(name: str, email: str, password_hash: str, role: str, ward: str, skills: list = None) -> dict:
+def create_user_doc(name: str, email: str, password_hash: str, role: str, ward: str = "Ward 1", skills: list = None) -> dict:
     now = datetime.utcnow()
+    normalized_role = "resident" if role in ["resident", "citizen"] else role
     doc = {
         "name": name.strip(),
         "email": email.lower().strip(),
         "password_hash": password_hash,
-        "role": role, # citizen, officer, worker
-        "ward": ward.strip(),
+        "role": normalized_role, # resident, officer, worker
+        "ward": (ward or "Ward 1").strip(),
         "created_at": now,
         "last_login": None
     }
     
-    if role == "citizen":
+    if normalized_role in ["resident", "citizen"]:
         doc.update({
             "civic_score": 0,
             "role_tier": "reporter",
             "reports_submitted": 0,
             "reports_verified_accurate": 0
         })
-    elif role == "worker":
+    elif normalized_role == "worker":
         doc.update({
             "skills": skills or [],
             "current_location": {
@@ -46,6 +47,7 @@ def create_user_doc(name: str, email: str, password_hash: str, role: str, ward: 
             },
             "active_assignments": 0,
             "is_available": True,
+            "status": "available",
             "average_rating": 0.0,
             "total_ratings": 0
         })
@@ -56,8 +58,8 @@ class UserRegisterSchema(Schema):
     name = fields.Str(required=True, validate=validate.Length(min=2, max=100))
     email = fields.Email(required=True)
     password = fields.Str(required=True, validate=validate.Length(min=6, max=100))
-    role = fields.Str(required=True, validate=validate.OneOf(["citizen", "officer", "worker"]))
-    ward = fields.Str(required=True, validate=validate.Length(min=2, max=100))
+    role = fields.Str(required=True, validate=validate.OneOf(["citizen", "resident", "officer", "worker"]))
+    ward = fields.Str(required=False, validate=validate.Length(min=1, max=100))
     skills = fields.List(fields.Str(), required=False)
     invite_code = fields.Str(required=False)
 

@@ -4,6 +4,7 @@ SmartCivic+ — Database Seeder Script
 from pymongo import MongoClient
 from datetime import datetime
 import bcrypt
+import os
 
 def hash_password(plain_text: str) -> str:
     return bcrypt.hashpw(plain_text.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -20,12 +21,10 @@ def seed_db():
     db.notifications.drop()
     db.audit_logs.drop()
     
-    plain_password = "smartcivic123"
+    plain_password = os.getenv("SEED_PASSWORD", "").strip()
+    if len(plain_password) < 12:
+        raise RuntimeError("SEED_PASSWORD must be set and contain at least 12 characters.")
     pwd_hash = hash_password(plain_password)
-    
-    with open("seed_credentials.txt", "w", encoding="utf-8") as f:
-        f.write(f"SEED_PASSWORD={plain_password}\n")
-    print("[Seeder] Credentials generated and written to seed_credentials.txt")
     
     print("Seeding new SmartCivic+ user profiles...")
     users = [

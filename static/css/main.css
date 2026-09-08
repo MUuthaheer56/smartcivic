@@ -1,16 +1,69 @@
 /* ============================================================
-   SmartCivic Antigravity — 21st.dev / shadcn Inspired Design Tokens
+   SmartCivic Antigravity — Modern Design Tokens & Dynamic Theme
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-:root {
-  /* 21st.dev / Tailwind shadcn tokens */
+:root, html.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --primary: 142.1 70.6% 45.1%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 142.1 76.3% 36%;
+  --radius: 0.75rem;
+
+  /* Theme colors */
+  --sc-bg: #0b0f19;
+  --sc-card: #111827;
+  --sc-card-border: rgba(255, 255, 255, 0.1);
+  --sc-text: #f3f4f6;
+  --sc-muted: #9ca3af;
+  --sc-primary: #22c55e;
+  --sc-primary-hover: #16a34a;
+  --sc-surface: #1f2937;
+  --sc-input-bg: #1f2937;
+  --sc-input-text: #ffffff;
+  
+  /* Status soft badges */
+  --sc-critical-bg: rgba(239, 68, 68, 0.2);
+  --sc-critical-text: #f87171;
+  --sc-critical-border: rgba(239, 68, 68, 0.4);
+
+  --sc-high-bg: rgba(245, 158, 11, 0.2);
+  --sc-high-text: #fbbf24;
+  --sc-high-border: rgba(245, 158, 11, 0.4);
+
+  --sc-medium-bg: rgba(34, 197, 94, 0.2);
+  --sc-medium-text: #86efac;
+  --sc-medium-border: rgba(34, 197, 94, 0.4);
+
+  --sc-low-bg: rgba(16, 185, 129, 0.2);
+  --sc-low-text: #34d399;
+  --sc-low-border: rgba(16, 185, 129, 0.4);
+
+  /* Fonts */
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+html.light {
   --background: 0 0% 100%;
   --foreground: 240 10% 3.9%;
   --card: 0 0% 100%;
   --card-foreground: 240 10% 3.9%;
-  --primary: 221.2 83.2% 53.3%;
+  --primary: 142.1 70.6% 45.1%;
   --primary-foreground: 210 40% 98%;
   --secondary: 210 40% 96.1%;
   --secondary-foreground: 222.2 47.4% 11.2%;
@@ -22,38 +75,36 @@
   --destructive-foreground: 210 40% 98%;
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
-  --radius: 0.75rem;
+  --ring: 142.1 76.3% 36%;
 
-  /* Civic Brand Colors */
-  --sc-bg: #0b0f19;
-  --sc-card: #111827;
-  --sc-card-border: rgba(255, 255, 255, 0.08);
-  --sc-text: #f3f4f6;
-  --sc-muted: #9ca3af;
-  --sc-primary: #3b82f6;
-  --sc-primary-hover: #2563eb;
-  
-  /* Status soft badges */
-  --sc-critical-bg: rgba(239, 68, 68, 0.15);
-  --sc-critical-text: #f87171;
+  /* Light Theme Colors */
+  --sc-bg: #f8fafc;
+  --sc-card: #ffffff;
+  --sc-card-border: rgba(0, 0, 0, 0.1);
+  --sc-text: #0f172a;
+  --sc-muted: #64748b;
+  --sc-primary: #16a34a;
+  --sc-primary-hover: #15803d;
+  --sc-surface: #f1f5f9;
+  --sc-input-bg: #f8fafc;
+  --sc-input-text: #0f172a;
+
+  /* Status soft badges for Light Mode */
+  --sc-critical-bg: rgba(239, 68, 68, 0.12);
+  --sc-critical-text: #dc2626;
   --sc-critical-border: rgba(239, 68, 68, 0.3);
 
-  --sc-high-bg: rgba(245, 158, 11, 0.15);
-  --sc-high-text: #fbbf24;
+  --sc-high-bg: rgba(245, 158, 11, 0.12);
+  --sc-high-text: #d97706;
   --sc-high-border: rgba(245, 158, 11, 0.3);
 
-  --sc-medium-bg: rgba(59, 130, 246, 0.15);
-  --sc-medium-text: #60a5fa;
-  --sc-medium-border: rgba(59, 130, 246, 0.3);
+  --sc-medium-bg: rgba(34, 197, 94, 0.12);
+  --sc-medium-text: #16a34a;
+  --sc-medium-border: rgba(34, 197, 94, 0.3);
 
-  --sc-low-bg: rgba(16, 185, 129, 0.15);
-  --sc-low-text: #34d399;
+  --sc-low-bg: rgba(16, 185, 129, 0.12);
+  --sc-low-text: #059669;
   --sc-low-border: rgba(16, 185, 129, 0.3);
-
-  /* Fonts */
-  --font-heading: 'Syne', sans-serif;
-  --font-body: 'Plus Jakarta Sans', sans-serif;
 }
 
 body {
@@ -64,6 +115,112 @@ body {
   font-family: var(--font-body);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Authentication surface */
+.auth-shell {
+  min-height: calc(100vh - 140px);
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.auth-container {
+  width: min(100%, 29rem);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 5vw, 2.75rem);
+  border-top: 3px solid var(--sc-primary);
+}
+
+.auth-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  color: var(--sc-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.auth-title {
+  margin: 0 0 0.5rem;
+  color: var(--sc-text);
+  font-family: var(--font-heading);
+  font-size: clamp(1.7rem, 4vw, 2.15rem);
+  line-height: 1.1;
+}
+
+.auth-subtitle {
+  max-width: 25rem;
+  margin: 0 0 2rem;
+  color: var(--sc-muted);
+}
+
+.form-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field .form-control {
+  padding-right: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--sc-muted);
+  cursor: pointer;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  background: var(--sc-surface);
+  color: var(--sc-text);
+  outline: none;
+}
+
+.auth-submit {
+  width: 100%;
+  min-height: 2.9rem;
+  margin-top: 0.35rem;
+}
+
+.auth-submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.auth-footer {
+  margin-top: 1.5rem;
+  color: var(--sc-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.auth-footer a {
+  color: var(--sc-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-footer a:hover,
+.auth-footer a:focus-visible {
+  text-decoration: underline;
 }
 
 /* Container */
@@ -93,7 +250,7 @@ body {
   font-family: var(--font-heading);
   font-size: 1.35rem;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--sc-text);
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -119,10 +276,10 @@ body {
 }
 
 .nav-link:hover, .nav-link.active {
-  color: #ffffff;
+  color: var(--sc-text);
 }
 
-/* Toast Notifications (21st.dev style) */
+/* Toast Notifications */
 .toast-container {
   position: fixed;
   bottom: 1.5rem;
@@ -140,11 +297,11 @@ body {
   min-width: 280px;
   max-width: 420px;
   padding: 0.85rem 1.15rem;
-  background-color: #1f2937;
+  background-color: var(--sc-card);
   border: 1px solid var(--sc-card-border);
   border-radius: var(--radius);
-  color: #ffffff;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  color: var(--sc-text);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
   transform: translateY(20px);
   opacity: 0;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -165,21 +322,21 @@ body {
   font-size: 1.1rem;
 }
 
-.toast-success .toast-icon { color: #34d399; }
-.toast-warning .toast-icon { color: #fbbf24; }
-.toast-danger .toast-icon { color: #f87171; }
-.toast-info .toast-icon { color: #60a5fa; }
+.toast-success .toast-icon { color: var(--sc-low-text); }
+.toast-warning .toast-icon { color: var(--sc-high-text); }
+.toast-danger .toast-icon { color: var(--sc-critical-text); }
+.toast-info .toast-icon { color: var(--sc-medium-text); }
 
 .toast-close {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--sc-muted);
   font-size: 1.2rem;
   cursor: pointer;
   padding: 0 0 0 0.75rem;
 }
 
-/* Filter Bar Card (21st.dev style) */
+/* Filter Bar Card */
 .filter-bar-card {
   background-color: var(--sc-card);
   border: 1px solid var(--sc-card-border);
@@ -189,7 +346,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .filter-search-row {
@@ -218,20 +376,20 @@ body {
 .filter-search-input {
   width: 100%;
   padding: 0.55rem 0.85rem 0.55rem 2.3rem;
-  background-color: #1f2937;
+  background-color: var(--sc-input-bg);
   border: 1px solid var(--sc-card-border);
   border-radius: 0.5rem;
-  color: #ffffff;
+  color: var(--sc-input-text);
   font-family: inherit;
   font-size: 0.875rem;
   outline: none;
   box-sizing: border-box;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
 }
 
 .filter-search-input:focus {
   border-color: var(--sc-primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
 }
 
 .filter-actions-wrapper {
@@ -242,17 +400,17 @@ body {
 
 .active-filter-badge {
   font-size: 0.8rem;
-  color: #9ca3af;
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--sc-muted);
+  background: var(--sc-surface);
   padding: 0.25rem 0.65rem;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--sc-card-border);
 }
 
 .filter-clear-btn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #d1d5db;
+  border: 1px solid var(--sc-card-border);
+  color: var(--sc-muted);
   padding: 0.35rem 0.75rem;
   border-radius: 0.5rem;
   font-size: 0.8rem;
@@ -261,8 +419,8 @@ body {
 }
 
 .filter-clear-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background: var(--sc-surface);
+  color: var(--sc-text);
 }
 
 /* Horizontal Scrollable Chips */
@@ -286,21 +444,21 @@ body {
   overflow-x: auto;
   padding-bottom: 0.25rem;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-color: var(--sc-card-border) transparent;
 }
 
 .scrollable-chips::-webkit-scrollbar {
   height: 4px;
 }
 .scrollable-chips::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--sc-card-border);
   border-radius: 4px;
 }
 
 .chip {
-  background-color: #1f2937;
+  background-color: var(--sc-surface);
   border: 1px solid var(--sc-card-border);
-  color: #d1d5db;
+  color: var(--sc-muted);
   padding: 0.3rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.78rem;
@@ -312,7 +470,7 @@ body {
 }
 
 .chip:hover {
-  background-color: #374151;
+  background-color: var(--sc-primary);
   color: #ffffff;
 }
 
@@ -320,13 +478,13 @@ body {
   background-color: var(--sc-primary);
   border-color: var(--sc-primary);
   color: #ffffff;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
 }
 
 .chip-divider {
   width: 1px;
   height: 16px;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--sc-card-border);
   margin: 0 0.25rem;
 }
 
@@ -367,9 +525,9 @@ body {
 }
 
 .badge-status {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: #e5e7eb;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: var(--sc-surface);
+  color: var(--sc-text);
+  border: 1px solid var(--sc-card-border);
 }
 
 /* Buttons */
@@ -398,12 +556,13 @@ body {
 }
 
 .btn-secondary {
-  background-color: #374151;
-  color: #ffffff;
+  background-color: var(--sc-surface);
+  color: var(--sc-text);
+  border: 1px solid var(--sc-card-border);
 }
 
 .btn-secondary:hover {
-  background-color: #4b5563;
+  background-color: var(--sc-card-border);
 }
 
 /* Form Controls */
@@ -415,17 +574,17 @@ body {
   display: block;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #d1d5db;
+  color: var(--sc-muted);
   margin-bottom: 0.35rem;
 }
 
 .form-control {
   width: 100%;
   padding: 0.55rem 0.85rem;
-  background-color: #1f2937;
+  background-color: var(--sc-input-bg);
   border: 1px solid var(--sc-card-border);
   border-radius: 0.5rem;
-  color: #ffffff;
+  color: var(--sc-input-text);
   font-family: inherit;
   font-size: 0.875rem;
   box-sizing: border-box;
@@ -451,7 +610,7 @@ body {
 
 /* Skeleton Loader */
 .skeleton {
-  background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+  background: linear-gradient(90deg, var(--sc-surface) 25%, var(--sc-card-border) 50%, var(--sc-surface) 75%);
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite;
   border-radius: 0.375rem;

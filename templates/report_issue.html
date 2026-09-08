@@ -8,11 +8,17 @@
         padding: 2.25rem;
     }
     #map {
-        height: 280px;
+        width: 100%;
+        height: 320px;
+        min-height: 320px;
         border-radius: 8px;
         margin-top: 0.5rem;
         border: 1px solid var(--border-color);
         z-index: 10;
+        background: rgba(148, 163, 184, 0.08);
+    }
+    .leaflet-container {
+        background: rgba(148, 163, 184, 0.08);
     }
     .form-group {
         margin-bottom: 1.25rem;
@@ -103,13 +109,13 @@
         <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <label class="form-label" style="margin-bottom: 0;">Pin Location on Map</label>
-                <button type="button" onclick="useCurrentLocation(true)" class="btn btn-secondary" style="padding: 0.3rem 0.75rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.35rem;">
-                    <i class="fa-solid fa-location-crosshairs" style="color: var(--primary);"></i> Use My Location
+                <button type="button" class="btn btn-secondary" onclick="locateMe()" style="margin-bottom: 0.75rem;">
+                    <i class="fa-solid fa-location-crosshairs"></i> Use my current location
                 </button>
             </div>
             <div id="map"></div>
-            <input type="hidden" id="lat">
-            <input type="hidden" id="lng">
+            <input type="hidden" id="lat" name="lat">
+            <input type="hidden" id="lng" name="lng">
         </div>
         <div class="form-group">
             <label class="form-label">Location Address</label>

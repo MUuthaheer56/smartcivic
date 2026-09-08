@@ -2,6 +2,7 @@
 SmartCivic+ — Complaint Lifecycle Service
 Manages complaint creation, AI analysis extraction, duplicate clustering, and status transitions.
 """
+import uuid
 from datetime import datetime, timedelta
 from bson import ObjectId
 from app import db, socketio
@@ -14,15 +15,21 @@ from services.notification_service import send, COMPLAINT_CREATED, AI_ANALYSIS_C
 from services.audit_service import log_audit
 
 LEGAL_TRANSITIONS = {
-    "submitted":             ["ai_reviewed"],
-    "ai_reviewed":           ["officer_reviewed", "rejected"],
-    "officer_reviewed":      ["assigned", "rejected"],
-    "assigned":              ["work_started"],
-    "work_started":          ["work_completed"],
-    "work_completed":        ["officer_verified", "work_started"],
-    "officer_verified":      ["citizen_verification"],
+    "submitted":             ["under_review", "ai_reviewed", "officer_reviewed", "assigned", "rejected"],
+    "ai_reviewed":           ["under_review", "officer_reviewed", "verified", "assigned", "rejected"],
+    "under_review":          ["verified", "officer_reviewed", "assigned", "rejected"],
+    "officer_reviewed":      ["verified", "assigned", "rejected"],
+    "verified":              ["assigned", "rejected"],
+    "assigned":              ["en_route", "work_started", "in_progress"],
+    "en_route":              ["work_started", "in_progress", "work_completed", "resolved"],
+    "work_started":          ["in_progress", "work_completed", "resolved"],
+    "in_progress":           ["work_completed", "resolved"],
+    "work_completed":        ["resolved", "officer_verified", "work_started", "citizen_verification"],
+    "resolved":              ["officer_verified", "closed", "reopened"],
+    "officer_verified":      ["citizen_verification", "closed"],
     "citizen_verification":  ["closed", "reopened"],
     "reopened":              ["assigned"],
+    "duplicate":             ["under_review", "officer_reviewed", "rejected"],
 }
 
 def recalculate_cluster_centroid(cluster_id, db):
@@ -91,27 +98,35 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
     issue_id = ObjectId()
     issue_doc["_id"] = issue_id
     
-    # 3. AI Text Analysis
+    # 3. Analyze text and image independently before fusing the predictions.
     ai_text = ai_service.analyze_complaint_text(description)
-    category = ai_text.get("category", "other")
-    issue_type = ai_text.get("type", "other")
-    severity = ai_text.get("severity", "medium")
-    department = ai_text.get("department", "roads")
-    confidence = ai_text.get("confidence", 0.5)
-    
-    # 4. AI Image Analysis (if before image uploaded)
-    image_detections = []
+    ai_img = None
     if images:
         before_imgs = [img for img in images if img.get("type") == "before"]
         if before_imgs:
             # Use filepath (OS path) for Pillow; fall back to url string if filepath missing
             _img_path = before_imgs[0].get("filepath") or before_imgs[0].get("url", "")
             ai_img = ai_service.analyze_complaint_image(_img_path)
-            image_detections = ai_img.get("image_detections", [])
-            # Update severity if image detects higher critical tier
-            img_sev = ai_img.get("severity", "medium")
-            if img_sev in ["critical", "high"] and severity == "medium":
-                severity = img_sev
+
+    if ai_img is None:
+        ai_img = {
+            "available": False,
+            "status": "not_requested",
+            "provider": "gemini",
+            "model": getattr(ai_service, "VISION_MODEL", ""),
+            "reason": "No before image was uploaded.",
+            "detected_issues": [],
+            "detected_features": [],
+            "hazards": [],
+            "analyzed_at": datetime.utcnow()
+        }
+
+    final_prediction = ai_service.fuse_complaint_predictions(ai_text, ai_img)
+    category = final_prediction.get("category", "other")
+    issue_type = final_prediction.get("type", "other")
+    severity = final_prediction.get("severity", "medium")
+    department = final_prediction.get("department", "roads")
+    confidence = final_prediction.get("confidence", 0.0)
                 
     # 5. Duplicate check
     duplicates = ai_service.detect_duplicates(str(issue_id), description, location)
@@ -119,9 +134,9 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
     cluster_id = None
     is_suppressed = False
     
-    # Similarity threshold to mark duplicate
-    if duplicates and duplicates[0]["similarity"] > 0.85:
-        duplicate_of = ObjectId(duplicates[0]["issue_id"])
+    if duplicates and duplicates[0]["similarity"] >= 0.85:
+        matched_raw = duplicates[0]["issue_id"]
+        duplicate_of = ObjectId(matched_raw) if ObjectId.is_valid(matched_raw) else matched_raw
         is_suppressed = True
         
         # Add to parent's duplicate children
@@ -171,38 +186,96 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
             
     # Update issue doc with calculated AI findings and clustering refs
     ai_analysis = {
+        "image_analysis": ai_img,
+        "text_analysis": ai_text,
+        "final_prediction": final_prediction,
         "category": category,
         "type": issue_type,
         "severity": severity,
         "department": department,
         "confidence": confidence,
-        "provider": ai_text.get("provider", "rule_based"),
-        "image_detections": image_detections,
+        "confidence_type": final_prediction.get("confidence_type", "heuristic"),
+        "provider": ai_img.get("provider") if ai_img.get("available") else ai_text.get("provider", "rule_based"),
+        "model": ai_img.get("model") if ai_img.get("available") else None,
+        "image_analysis_available": bool(ai_img.get("available")),
+        "image_detections": ai_img.get("image_detections", []),
+        "explanation": final_prediction.get("reason", ""),
+        "category_source": "model_predicted" if ai_img.get("available") else "text_analysis",
+        "department_source": "category_mapping",
         "duplicate_candidates": duplicates,
         "analyzed_at": datetime.utcnow(),
         "officer_overridden": False,
-        "override_reason": None
+        "override_reason": None,
+        "ai_prediction": dict(final_prediction),
+        "officer_override": None,
+        "final_operational_value": dict(final_prediction)
     }
     
+    dup_info = {
+        "is_duplicate": is_suppressed,
+        "matched_issue_id": str(duplicate_of) if duplicate_of else None,
+        "similarity": duplicates[0]["similarity"] if duplicates else 0.0
+    }
+    
+    now = datetime.utcnow()
+    sla_dl = assign_sla(issue_doc)
+    sla_info = {
+        "deadline": sla_dl.isoformat() if hasattr(sla_dl, "isoformat") else str(sla_dl),
+        "breached": False
+    }
+    
+    formatted_issue_id = f"SC-2026-{str(uuid.uuid4().hex[:6]).upper()}"
+    
+    img_info = {}
+    if images:
+        img_info = {"url": images[0].get("url"), "filename": images[0].get("filename")}
+
     issue_doc.update({
+        "issue_id": formatted_issue_id,
         "category": category,
         "type": issue_type,
         "severity": severity,
         "department": department,
         "duplicate_of": duplicate_of,
+        "duplicate": dup_info,
         "cluster_id": cluster_id,
         "suppressed": is_suppressed,
         "original_language": orig_lang,
         "original_description": orig_desc,
         "translated_description": trans_desc,
-        "ai_analysis": ai_analysis
+        "ai_analysis": ai_analysis,
+        "ai_prediction": {
+            "issue_type": issue_type,
+            "category": category,
+            "severity": severity,
+            "department": department,
+            "confidence": confidence,
+            "confidence_type": final_prediction.get("confidence_type", "heuristic")
+        },
+        "priority": severity,
+        "sla": sla_info,
+        "image": img_info,
+        "location": {
+            "type": "Point",
+            "coordinates": [float(lng), float(lat)]
+        },
+        "latitude": float(lat),
+        "longitude": float(lng),
+        "address": address,
+        "ward": ward,
+        "status_history": [
+            {"status": "submitted", "timestamp": now.isoformat()}
+        ]
     })
     
-    # Calculate SLA & Priority
-    issue_doc["sla_deadline"] = assign_sla(issue_doc)
+    if is_suppressed:
+        issue_doc["status"] = "duplicate"
+    else:
+        issue_doc["status"] = "submitted"
+        
+    issue_doc["sla_deadline"] = sla_dl
     issue_doc["priority_score"] = calculate_priority(issue_doc, db)
-    issue_doc["status"] = "ai_reviewed"
-    issue_doc["updated_at"] = datetime.utcnow()
+    issue_doc["updated_at"] = now
     
     db.issues.insert_one(issue_doc)
     
@@ -241,7 +314,12 @@ def update_status(issue_id, new_status: str, actor_id, reason: str = None) -> di
     """
     Validates and performs issue status updates, logging audit paths and dispatching notifications.
     """
-    issue = db.issues.find_one({"_id": ObjectId(issue_id)})
+    try:
+        obj_id = ObjectId(issue_id) if ObjectId.is_valid(str(issue_id)) else None
+        issue = db.issues.find_one({"_id": obj_id}) if obj_id else db.issues.find_one({"issue_id": str(issue_id)})
+    except Exception:
+        issue = None
+        
     if not issue:
         raise ValueError("Issue not found")
         
@@ -259,17 +337,24 @@ def update_status(issue_id, new_status: str, actor_id, reason: str = None) -> di
             raise ValueError(f"Illegal status transition from {old_status} to {new_status}")
             
     now = datetime.utcnow()
+    status_entry = {
+        "status": new_status,
+        "timestamp": now.isoformat(),
+        "actor_id": str(actor_id) if actor_id else None
+    }
     db.issues.update_one(
-        {"_id": ObjectId(issue_id)},
+        {"_id": issue["_id"]},
         {"$set": {
             "status": new_status,
             "updated_at": now
+        }, "$push": {
+            "status_history": status_entry
         }}
     )
     
     log_audit(
         entity_type="issue",
-        entity_id=issue_id,
+        entity_id=str(issue["_id"]),
         actor_id=actor_id,
         action="STATUS_CHANGE",
         field_changed="status",
@@ -309,7 +394,9 @@ def update_status(issue_id, new_status: str, actor_id, reason: str = None) -> di
         
     if notif_event:
         # Notify citizen
-        send(notif_event, str(issue["citizen_id"]), str(issue_id))
+        citizen_id = issue.get("citizen_id")
+        if citizen_id:
+            send(notif_event, str(citizen_id), str(issue_id))
         
         # Notify worker if assigned
         worker_id = issue.get("worker_id")
@@ -320,7 +407,7 @@ def update_status(issue_id, new_status: str, actor_id, reason: str = None) -> di
     issue["status"] = new_status
     check_sla_status(issue)
     
-    return db.issues.find_one({"_id": ObjectId(issue_id)})
+    return db.issues.find_one({"_id": issue["_id"]})
 
 def declare_emergency(issue_id, declared_by_id, emergency_category: str) -> dict:
     """
@@ -558,3 +645,52 @@ def check_recurrence(issue: dict) -> dict:
             pass
             
     return db.issues.find_one({"_id": ObjectId(issue_id)})
+
+def get_complaint(issue_id: str) -> dict:
+    try:
+        obj_id = ObjectId(issue_id)
+        issue = db.issues.find_one({"_id": obj_id})
+    except Exception:
+        issue = None
+    if not issue:
+        issue = db.issues.find_one({"issue_id": issue_id})
+    if not issue:
+        raise ValueError(f"Complaint not found for ID '{issue_id}'")
+    issue["issue_id"] = str(issue["_id"])
+    return issue
+
+def list_complaints(filters: dict = None) -> list:
+    query = {}
+    if filters:
+        if "category" in filters and filters["category"]:
+            query["category"] = filters["category"]
+        if "status" in filters and filters["status"]:
+            query["status"] = filters["status"]
+        if "ward" in filters and filters["ward"]:
+            query["ward"] = filters["ward"]
+        if "citizen_id" in filters and filters["citizen_id"]:
+            try:
+                query["citizen_id"] = ObjectId(filters["citizen_id"])
+            except Exception:
+                query["citizen_id"] = filters["citizen_id"]
+        if "worker_id" in filters and filters["worker_id"]:
+            try:
+                query["worker_id"] = ObjectId(filters["worker_id"])
+            except Exception:
+                query["worker_id"] = filters["worker_id"]
+                
+    issues = list(db.issues.find(query).sort("created_at", -1))
+    for i in issues:
+        i["issue_id"] = str(i["_id"])
+    return issues
+
+def update_complaint(issue_id: str, updates: dict, actor: dict = None) -> dict:
+    get_complaint(issue_id) # validates complaint existence
+    try:
+        obj_id = ObjectId(issue_id)
+    except Exception:
+        raise ValueError("Invalid issue ID format.")
+        
+    updates["updated_at"] = datetime.utcnow()
+    db.issues.update_one({"_id": obj_id}, {"$set": updates})
+    return get_complaint(issue_id)

@@ -7,6 +7,7 @@ from functools import wraps
 from datetime import datetime, timedelta
 import jwt
 import bcrypt
+import hmac
 from bson import ObjectId
 from app import db, limiter
 from models.user import create_user_doc, UserRegisterSchema, UserLoginSchema
@@ -24,10 +25,10 @@ def check_password(plain_text: str, hashed: str) -> bool:
         return False
 
 def generate_tokens(user_id: str, role: str, ward: str):
-    secret = current_app.config["JWT_SECRET"]
+    secret = current_app.config["JWT_SECRET"] if current_app else os.getenv("JWT_SECRET", "default_jwt_secret_smartcivic")
     
-    access_expiry = datetime.utcnow() + current_app.config.get("JWT_ACCESS_EXPIRES", timedelta(minutes=30))
-    refresh_expiry = datetime.utcnow() + current_app.config.get("JWT_REFRESH_EXPIRES", timedelta(days=7))
+    access_expiry = datetime.utcnow() + (current_app.config.get("JWT_ACCESS_EXPIRES", timedelta(minutes=30)) if current_app else timedelta(minutes=30))
+    refresh_expiry = datetime.utcnow() + (current_app.config.get("JWT_REFRESH_EXPIRES", timedelta(days=7)) if current_app else timedelta(days=7))
     
     access_payload = {
         "user_id": str(user_id),
@@ -46,14 +47,31 @@ def generate_tokens(user_id: str, role: str, ward: str):
     
     return access_token, refresh_token
 
+def decode_token(token: str, secret: str = None) -> dict:
+    if not secret:
+        secret = current_app.config.get("JWT_SECRET") if current_app else os.getenv("JWT_SECRET", "default_jwt_secret_smartcivic")
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        payload["sub"] = payload.get("user_id") or payload.get("sub")
+        payload["type"] = "access"
+        return payload
+    except Exception:
+        return {}
+
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.cookies.get("access_token")
-        if not token:
-            return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Access token cookie missing."}}), 401
+        auth_header = request.headers.get("Authorization")
+        token = None
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split("Bearer ")[1].strip()
+        elif "Authorization" not in request.headers:
+            token = request.cookies.get("access_token")
             
-        secret = current_app.config["JWT_SECRET"]
+        if not token:
+            return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Access token missing."}}), 401
+            
+        secret = current_app.config.get("JWT_SECRET") or os.getenv("JWT_SECRET", "default_jwt_secret_smartcivic")
         try:
             payload = jwt.decode(token, secret, algorithms=["HS256"])
             user_id = payload.get("user_id")
@@ -77,7 +95,12 @@ def require_role(*roles):
             if not hasattr(g, "current_user") or not g.current_user:
                 return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Auth session context not found."}}), 401
                 
-            if g.current_user.get("role") not in roles:
+            user_role = g.current_user.get("role")
+            allowed = set(roles)
+            if "resident" in allowed: allowed.add("citizen")
+            if "citizen" in allowed: allowed.add("resident")
+            
+            if user_role not in allowed:
                 return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Access denied for this user role."}}), 403
                 
             return f(*args, **kwargs)
@@ -97,19 +120,21 @@ def register():
         error_message = f"{first_field.capitalize()}: {first_msg}"
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": error_message, "fields": errors}}), 422
         
-    role = data.get("role", "citizen").lower().strip()
+    role = data.get("role", "resident").lower().strip()
     if role in ["officer", "worker"]:
-        admin_code = current_app.config.get("ADMIN_INVITE_CODE") or os.getenv("ADMIN_INVITE_CODE", "SMARTCIVIC-ADMIN-2025")
+        admin_code = current_app.config.get("ADMIN_INVITE_CODE") or os.getenv("ADMIN_INVITE_CODE", "").strip()
         invite_code = data.get("invite_code", "").strip()
-        if not invite_code or invite_code != admin_code:
-            return jsonify({
-                "success": False,
-                "error": {"code": "FORBIDDEN", "message": "Officer/Worker registration requires a valid Admin Invite Code."}
-            }), 403
-    elif role != "citizen":
-        role = "citizen"
+        if admin_code:
+            if not invite_code or not hmac.compare_digest(invite_code, admin_code):
+                return jsonify({
+                    "success": False,
+                    "error": {"code": "FORBIDDEN", "message": "Officer/Worker registration requires a valid Admin Invite Code."}
+                }), 403
+    elif role not in ["resident", "citizen"]:
+        role = "resident"
         
     data["role"] = role
+    ward = data.get("ward") or "Ward 1"
         
     email = data["email"].lower().strip()
     if db.users.find_one({"email": email}):
@@ -121,7 +146,7 @@ def register():
         email=email,
         password_hash=pwd_hash,
         role=data["role"],
-        ward=data["ward"],
+        ward=ward,
         skills=data.get("skills")
     )
     
@@ -130,6 +155,8 @@ def register():
     return jsonify({
         "success": True,
         "message": "User registered successfully.",
+        "access_token": None,
+        "user_id": str(result.inserted_id),
         "data": {
             "user_id": str(result.inserted_id)
         }
@@ -138,7 +165,6 @@ def register():
 @auth_bp.route('/login', methods=['POST'])
 @limiter.limit("10 per minute")
 def login():
-    # Rate limit inside the controller if Flask-Limiter is configured, otherwise fallback
     data = request.get_json() or {}
     schema = UserLoginSchema()
     errors = schema.validate(data)
@@ -151,7 +177,6 @@ def login():
     now = datetime.utcnow()
     
     if user:
-        # Check lock status
         locked_until = user.get("locked_until")
         if locked_until and locked_until > now:
             return jsonify({"success": False, "error": {"code": "LOCKED", "message": "Account temporarily locked. Please try again in 15 minutes."}}), 403
@@ -163,7 +188,6 @@ def login():
             if failed_count >= 10:
                 lock_time = now + timedelta(minutes=15)
                 db.users.update_one({"_id": user["_id"]}, {"$set": {"failed_logins": 0, "locked_until": lock_time}})
-                # Write security audit log
                 from models.audit_log import create_audit_log_doc
                 db.audit_logs.insert_one(create_audit_log_doc(
                     entity_type="user",
@@ -180,21 +204,22 @@ def login():
             log_security_event("failed_login", None, request.remote_addr, {"email": email})
         return jsonify({"success": False, "error": {"code": "INVALID_CREDENTIALS", "message": "Invalid email or password."}}), 401
         
-    # Reset failed login count on successful login
     db.users.update_one({"_id": user["_id"]}, {"$set": {"failed_logins": 0, "locked_until": None}})
     from services.logger_service import log_security_event
     log_security_event("login", str(user["_id"]), request.remote_addr)
         
-    # Update last login
     db.users.update_one({"_id": user["_id"]}, {"$set": {"last_login": datetime.utcnow()}})
     
-    # Generate tokens
     access_token, refresh_token = generate_tokens(str(user["_id"]), user["role"], user.get("ward", ""))
     
     response = make_response(jsonify({
         "success": True,
         "message": "Login successful.",
+        "access_token": access_token,
+        "role": user["role"],
+        "user_id": str(user["_id"]),
         "data": {
+            "access_token": access_token,
             "user": {
                 "id": str(user["_id"]),
                 "name": user["name"],
@@ -204,7 +229,6 @@ def login():
         }
     }), 200)
     
-    # Set cookies
     cookie_secure = current_app.config.get("COOKIE_SECURE", False)
     response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=1800)
     response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=7*24*3600)
@@ -241,3 +265,18 @@ def logout():
     response.delete_cookie("access_token", path="/")
     response.delete_cookie("refresh_token", path="/")
     return response
+
+@auth_bp.route('/me', methods=['GET'])
+@require_auth
+def get_me():
+    user = g.current_user
+    return jsonify({
+        "success": True,
+        "data": {
+            "user_id": str(user["_id"]),
+            "name": user.get("name"),
+            "email": user.get("email"),
+            "role": user.get("role"),
+            "ward": user.get("ward")
+        }
+    }), 200

@@ -1,94 +1,55 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-    .auth-container {
-        max-width: 450px;
-        margin: 4rem auto;
-        padding: 2.5rem;
-    }
-    .auth-title {
-        font-family: var(--font-display);
-        font-weight: 800;
-        font-size: 1.8rem;
-        margin-bottom: 0.5rem;
-        text-align: center;
-    }
-    .auth-subtitle {
-        color: var(--text-muted);
-        text-align: center;
-        margin-bottom: 2rem;
-        font-size: 0.95rem;
-    }
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-    .form-label {
-        display: block;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: var(--text-muted);
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .form-control {
-        width: 100%;
-        padding: 0.8rem 1rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        color: white;
-        font-family: var(--font-body);
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-    }
-    .form-control:focus {
-        outline: none;
-        border-color: var(--primary);
-        background: rgba(255, 255, 255, 0.08);
-    }
-    .auth-footer {
-        margin-top: 1.5rem;
-        text-align: center;
-        font-size: 0.9rem;
-        color: var(--text-muted);
-    }
-    .auth-footer a {
-        color: var(--primary);
-        text-decoration: none;
-        font-weight: 600;
-    }
-</style>
-
+<section class="auth-shell">
 <div class="glass-panel auth-container">
-    <h2 class="auth-title">Welcome Back</h2>
-    <p class="auth-subtitle">Sign in to report or manage civic complaints</p>
+    <div class="auth-kicker"><i class="fa-solid fa-shield-halved"></i> Secure civic access</div>
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-subtitle">Sign in to report issues, follow progress, or manage your ward.</p>
     
     <form id="loginForm">
         <div class="form-group">
-            <label class="form-label">Email Address</label>
-            <input type="email" id="email" class="form-control" placeholder="name@smartcivic.com" required>
+            <label class="form-label" for="email">Email address</label>
+            <input type="email" id="email" class="form-control" placeholder="you@example.com" autocomplete="email" required>
         </div>
         <div class="form-group">
-            <label class="form-label">Password</label>
-            <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+            <div class="form-label-row">
+                <label class="form-label" for="password">Password</label>
+            </div>
+            <div class="password-field">
+                <input type="password" id="password" class="form-control" placeholder="Enter your password" autocomplete="current-password" required>
+                <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password" title="Show password"><i class="fa-solid fa-eye"></i></button>
+            </div>
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;"><i class="fa-solid fa-sign-in-alt"></i> Login</button>
+        <button type="submit" class="btn btn-primary auth-submit" id="loginSubmit"><i class="fa-solid fa-arrow-right-to-bracket"></i> Sign in</button>
     </form>
     
     <div class="auth-footer">
         Don't have an account? <a href="/register">Create one</a>
     </div>
 </div>
+</section>
 {% endblock %}
 
 {% block scripts %}
 <script>
+    const passwordInput = document.getElementById('password');
+    const passwordToggle = document.getElementById('passwordToggle');
+    passwordToggle.addEventListener('click', () => {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        passwordToggle.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+        passwordToggle.title = isPassword ? 'Hide password' : 'Show password';
+        passwordToggle.innerHTML = `<i class="fa-solid fa-eye${isPassword ? '-slash' : ''}"></i>`;
+    });
+
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+        const submitButton = document.getElementById('loginSubmit');
+        const email = document.getElementById('email').value.trim();
+        const password = passwordInput.value;
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing in';
         
         try {
             const res = await fetch('/auth/login', {
@@ -96,7 +57,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             
             if (data.success) {
                 showToast("Login successful!", "success");
@@ -111,6 +72,9 @@
             }
         } catch (err) {
             showToast("Server communication error.", "danger");
+        } finally {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign in';
         }
     });
 </script>

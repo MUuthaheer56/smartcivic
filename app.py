@@ -50,6 +50,7 @@ def create_app():
     from routes.worker import worker_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(auth_bp, url_prefix='/api/auth', name='api_auth')
     app.register_blueprint(citizen_bp)
     app.register_blueprint(officer_bp)
     app.register_blueprint(worker_bp)
@@ -84,6 +85,10 @@ def create_app():
     @app.route('/transparency')
     def transparency_page():
         return render_template('public/transparency.html')
+
+    @app.route('/map')
+    def live_map_page():
+        return render_template('public/live_map.html')
         
     @app.route('/')
     def index():
@@ -128,7 +133,12 @@ def create_app():
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         
-        trusted_cdns = "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com https://*.openstreetmap.org"
+        trusted_cdns = (
+            "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com "
+            "https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com "
+            "https://*.openstreetmap.org https://*.tile.openstreetmap.org https://tile.openstreetmap.org "
+            "http://router.project-osrm.org https://router.project-osrm.org https://nominatim.openstreetmap.org"
+        )
         response.headers['Content-Security-Policy'] = (
             f"default-src 'self'; "
             f"script-src 'self' 'unsafe-inline' 'unsafe-eval' {trusted_cdns}; "
@@ -174,12 +184,12 @@ def create_app():
             return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Endpoint not found"}}), 404
         return render_template('errors/404.html'), 404
 
-    # Self-healing index creation
+    # Index creation is safe to repeat; data seeding stays an explicit operator action.
     try:
         from scripts.create_indexes import setup_indexes
         setup_indexes()
     except Exception as e:
-        app.logger.warning(f"Index setup skipped: {e}")
+        app.logger.warning(f"Startup setup skipped: {e}")
 
     return app
 

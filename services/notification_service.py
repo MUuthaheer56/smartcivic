@@ -74,3 +74,37 @@ def send(event: str, recipient_id: str, issue_id: str = None, extra: dict = None
         pass
         
     return notif_doc
+
+def notify_resident_status_change(issue_id: str, new_status: str) -> None:
+    try:
+        issue = db.issues.find_one({"_id": ObjectId(issue_id)})
+        if issue and issue.get("citizen_id"):
+            send(COMPLAINT_CREATED if new_status == "submitted" else WORK_COMPLETED if new_status == "resolved" else COMPLAINT_CLOSED if new_status == "closed" else "status_update", str(issue["citizen_id"]), str(issue_id), {"new_status": new_status})
+    except Exception as e:
+        print(f"[Notification Service] notify_resident_status_change error: {e}")
+
+def notify_worker_new_assignment(worker_id: str, issue: dict) -> None:
+    try:
+        issue_id = str(issue.get("_id") or issue.get("issue_id"))
+        send(COMPLAINT_ASSIGNED, str(worker_id), issue_id, {"title": issue.get("title")})
+    except Exception as e:
+        print(f"[Notification Service] notify_worker_new_assignment error: {e}")
+
+def notify_officer_sla_breach(issue: dict) -> None:
+    try:
+        issue_id = str(issue.get("_id") or issue.get("issue_id"))
+        officer_id = str(issue.get("officer_id")) if issue.get("officer_id") else None
+        if officer_id:
+            send(SLA_BREACHED, officer_id, issue_id)
+        else:
+            try:
+                socketio.emit(
+                    "notification",
+                    {"event_type": SLA_BREACHED, "issue_id": issue_id, "message": f"SLA breach on issue {issue_id}"},
+                    room="role_officer",
+                    namespace="/civic"
+                )
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"[Notification Service] notify_officer_sla_breach error: {e}")

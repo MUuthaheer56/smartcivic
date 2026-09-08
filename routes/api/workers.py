@@ -88,3 +88,70 @@ def update_my_location():
     )
     return jsonify({"success": True, "message": "Location updated."}), 200
 
+
+@workers_api_bp.route('/api/workers/<worker_id>/tasks', methods=['GET'])
+@require_auth
+@require_role('worker', 'officer')
+def get_worker_tasks(worker_id):
+    if g.current_user["role"] == "worker" and str(g.current_user["_id"]) != str(worker_id):
+        return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Worker can only view own tasks."}}), 403
+        
+    try:
+        w_obj = ObjectId(worker_id) if ObjectId.is_valid(worker_id) else None
+        worker_doc = db.users.find_one({"_id": w_obj}) if w_obj else db.users.find_one({"_id": worker_id})
+        worker_prof = db.workers.find_one({"_id": w_obj}) if w_obj else db.workers.find_one({"user_id": worker_id})
+        
+        w_coords = None
+        if worker_prof and worker_prof.get("location", {}).get("latitude"):
+            w_coords = [worker_prof["location"].get("longitude", 77.5946), worker_prof["location"].get("latitude", 12.9716)]
+        elif worker_doc:
+            w_coords = worker_doc.get("current_location", {}).get("coordinates")
+        if not w_coords:
+            w_coords = [77.5946, 12.9716]
+            
+        w_lat, w_lng = w_coords[1], w_coords[0]
+        
+        query = {
+            "$or": [
+                {"worker_id": w_obj},
+                {"worker_id": str(worker_id)},
+                {"assignment.worker_id": str(worker_id)}
+            ]
+        }
+        
+        issues = list(db.issues.find(query).sort("created_at", -1))
+        tasks = []
+        from services.route_service import haversine
+        for iss in issues:
+            coords = iss.get("location", {}).get("coordinates", [77.5946, 12.9716])
+            i_lat = iss.get("location", {}).get("latitude", coords[1])
+            i_lng = iss.get("location", {}).get("longitude", coords[0])
+            
+            dist_m = int(haversine((w_lat, w_lng), (i_lat, i_lng)) * 1000)
+            
+            imgs = iss.get("images") or []
+            first_url = iss.get("image", {}).get("url") or (imgs[0].get("url") if imgs else "/static/uploads/issues/placeholder.jpg")
+            
+            sla_dl = iss.get("sla", {}).get("deadline") or (iss.get("sla_deadline").isoformat() if hasattr(iss.get("sla_deadline"), "isoformat") else str(iss.get("sla_deadline")))
+
+            tasks.append({
+                "issue_id": iss.get("issue_id") or str(iss["_id"]),
+                "_id": str(iss["_id"]),
+                "description": iss.get("description"),
+                "priority": iss.get("priority") or iss.get("severity", "medium"),
+                "image_url": first_url,
+                "location": {
+                    "latitude": i_lat,
+                    "longitude": i_lng,
+                    "address": iss.get("address") or iss.get("location", {}).get("address", "")
+                },
+                "distance_meters": dist_m,
+                "status": iss.get("status"),
+                "sla_deadline": sla_dl
+            })
+            
+        return jsonify({"success": True, "data": tasks}), 200
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
+

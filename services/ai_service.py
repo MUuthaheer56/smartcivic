@@ -21,6 +21,57 @@ CATEGORY_TO_DEPT = {
     "other": "roads"
 }
 
+VISION_MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-3.6-flash")
+ALLOWED_CATEGORIES = {"road", "water", "electricity", "sanitation", "drainage", "noise", "other"}
+ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
+
+def _generate_content_with_model_fallback(genai, contents, preferred_model: str):
+    candidates = [preferred_model, "gemini-3.6-flash", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest"]
+    seen = set()
+    last_err = None
+    for name in candidates:
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        try:
+            model = genai.GenerativeModel(name)
+            response = model.generate_content(contents)
+            return response, name
+        except Exception as e:
+            err_msg = str(e)
+            if any(term in err_msg.lower() for term in ["404", "429", "not found", "no longer available", "quota", "resourceexhausted", "rate"]):
+                last_err = e
+                continue
+            raise e
+    raise last_err or RuntimeError("No Gemini model candidates responded.")
+
+def _normalize_category(value: str) -> str:
+    value = str(value or "other").strip().lower()
+    aliases = {
+        "roads": "road",
+        "road_damage": "road",
+        "road surface damage": "road",
+        "waste": "sanitation",
+        "garbage": "sanitation",
+        "streetlight": "electricity",
+        "street_lighting": "electricity",
+        "water_supply": "water",
+        "sewer": "drainage"
+    }
+    return aliases.get(value, value) if value in ALLOWED_CATEGORIES or value in aliases else "other"
+
+def _normalize_severity(value: str) -> str:
+    value = str(value or "medium").strip().lower()
+    return value if value in ALLOWED_SEVERITIES else "medium"
+
+def _prediction_explanation(prediction: dict, image_analysis: dict = None, disagreement: bool = False) -> str:
+    reason = (image_analysis or {}).get("reason") or ""
+    if reason:
+        return reason.strip()
+    source = "visual and description evidence" if image_analysis and image_analysis.get("available") else "complaint description"
+    qualifier = "; image and text signals disagree" if disagreement else ""
+    return f"Classified as {prediction.get('severity', 'medium')} severity {prediction.get('type', 'other')} in the {prediction.get('category', 'other')} category from {source}{qualifier}."
+
 def _strip_json_fences(text: str) -> str:
     """Strip markdown code fences Gemini sometimes wraps JSON in."""
     text = text.strip()
@@ -81,6 +132,7 @@ def _rule_based_fallback(description: str) -> dict:
         "severity": severity,
         "department": department,
         "confidence": 0.75,
+        "confidence_type": "heuristic",
         "provider": "rule_based",
         "ai_available": False
     }
@@ -99,7 +151,6 @@ def analyze_complaint_text(description: str) -> dict:
     try:
         import google.generativeai as genai
         genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
         
         prompt = f"""
         Analyze the following civic complaint description and output a JSON object containing:
@@ -113,11 +164,13 @@ def analyze_complaint_text(description: str) -> dict:
         JSON:
         """
         t0 = time.time()
-        response = model.generate_content(prompt)
+        response, used_model = _generate_content_with_model_fallback(genai, prompt, os.getenv("GEMINI_TEXT_MODEL", VISION_MODEL))
         dur = round((time.time() - t0) * 1000.0, 1)
         parsed = json.loads(_strip_json_fences(response.text))
         parsed["provider"] = "gemini"
+        parsed["model"] = used_model
         parsed["ai_available"] = True
+        parsed["confidence_type"] = "model_reported"
         parsed["analyzed_at"] = datetime.utcnow()
         log_ai_call("classification", "gemini", True, parsed.get("confidence", 0.9), dur)
         return parsed
@@ -132,52 +185,176 @@ def analyze_complaint_text(description: str) -> dict:
 
 def analyze_complaint_image(image_path: str) -> dict:
     """
-    Returns: detected_issues (list), severity, confidence, provider
-    Uses Gemini Vision. Falls back gracefully.
+    Returns a structured image result. An unavailable provider is explicit;
+    this function never claims to have analyzed an image it did not inspect.
     """
     key = os.getenv("GEMINI_API_KEY")
     if not key:
         return {
-            "detected_issues": ["civic_issue"],
-            "severity": "medium",
-            "confidence": 0.80,
-            "provider": "rule_based",
-            "ai_available": False,
-            "image_detections": ["road_damage"],
+            "available": False,
+            "status": "unavailable",
+            "provider": "gemini",
+            "model": VISION_MODEL,
+            "reason": "Vision model unavailable because GEMINI_API_KEY is not configured.",
+            "detected_issues": [],
+            "image_detections": [],
+            "detected_features": [],
+            "hazards": [],
             "analyzed_at": datetime.utcnow()
         }
-        
+
     try:
         import google.generativeai as genai
         from PIL import Image
         genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        
-        img = Image.open(image_path)
-        prompt = """
-        Analyze this image of a civic issue. Return JSON with:
-        "detected_issues": list of issues found,
-        "severity": "low", "medium", "high", or "critical",
-        "confidence": float 0.0 to 1.0
-        """
-        response = model.generate_content([prompt, img])
+
+        with Image.open(image_path) as img:
+            prompt = """
+            Analyze this civic issue image and return JSON only with these fields:
+            "issue_type": a concise supported issue type such as pothole, road_surface_damage,
+            garbage_dump, drain_overflow, pipe_leakage, streetlight_failure, fallen_tree, or other,
+            "category": one of road, water, electricity, sanitation, drainage, noise, other,
+            "severity": one of low, medium, high, critical,
+            "confidence": a model-reported float from 0.0 to 1.0,
+            "reason": one concise evidence-based explanation,
+            "detected_features": list of visible features,
+            "hazards": list of visible safety hazards.
+            Do not infer details that are not visible.
+            """
+            t0 = time.time()
+            response, used_model = _generate_content_with_model_fallback(genai, [prompt, img], VISION_MODEL)
+            dur = round((time.time() - t0) * 1000.0, 1)
         parsed = json.loads(_strip_json_fences(response.text))
-        parsed["provider"] = "gemini"
-        parsed["ai_available"] = True
-        parsed["image_detections"] = parsed.get("detected_issues", [])
-        parsed["analyzed_at"] = datetime.utcnow()
-        return parsed
-    except Exception as e:
-        print(f"[AI Service] Gemini Vision error: {e}. Falling back to default.")
-        return {
-            "detected_issues": ["civic_issue"],
-            "severity": "medium",
-            "confidence": 0.60,
-            "provider": "rule_based",
-            "ai_available": False,
-            "image_detections": [],
+        category = _normalize_category(parsed.get("category"))
+        issue_type = str(parsed.get("issue_type") or parsed.get("type") or "other").strip().lower()
+        severity = _normalize_severity(parsed.get("severity"))
+        confidence = float(parsed["confidence"])
+        if not 0.0 <= confidence <= 1.0:
+            raise ValueError("Vision model returned confidence outside 0.0-1.0")
+        result = {
+            "available": True,
+            "status": "analyzed",
+            "provider": "gemini",
+            "model": used_model,
+            "issue_type": issue_type,
+            "type": issue_type,
+            "category": category,
+            "severity": severity,
+            "department": CATEGORY_TO_DEPT.get(category, "roads"),
+            "department_source": "category_mapping",
+            "confidence": confidence,
+            "confidence_type": "model_reported",
+            "reason": str(parsed.get("reason") or "Visual evidence analyzed by the vision model.").strip(),
+            "detected_features": parsed.get("detected_features") or [],
+            "hazards": parsed.get("hazards") or [],
+            "detected_issues": [issue_type],
+            "image_detections": [issue_type],
             "analyzed_at": datetime.utcnow()
         }
+        log_ai_call("image_classification", "gemini", True, confidence, dur)
+        return result
+    except Exception as e:
+        log_ai_call("image_classification", "gemini", False, 0.0, 0.0, str(e))
+        return {
+            "available": False,
+            "status": "unavailable",
+            "provider": "gemini",
+            "model": VISION_MODEL,
+            "reason": f"Vision model unavailable: {type(e).__name__}.",
+            "detected_issues": [],
+            "image_detections": [],
+            "detected_features": [],
+            "hazards": [],
+            "analyzed_at": datetime.utcnow()
+        }
+
+def fuse_complaint_predictions(text_analysis: dict, image_analysis: dict = None) -> dict:
+    """Combine text and vision results while retaining both source analyses."""
+    text = dict(text_analysis or {})
+    text_category = _normalize_category(text.get("category"))
+    text_type = str(text.get("type") or "other").strip().lower()
+    text_severity = _normalize_severity(text.get("severity"))
+    image = image_analysis if image_analysis and image_analysis.get("available") else None
+    disagreement = False
+
+    if image:
+        image_category = _normalize_category(image.get("category"))
+        image_type = str(image.get("issue_type") or image.get("type") or "other").strip().lower()
+        image_severity = _normalize_severity(image.get("severity"))
+        disagreement = image_category != text_category and text_category != "other" and image_category != "other"
+        image_conf = float(image.get("confidence", 0.0))
+        text_conf = float(text.get("confidence", 0.0))
+        if image_conf >= max(0.7, text_conf):
+            category, issue_type = image_category, image_type
+        else:
+            category, issue_type = text_category, text_type
+        severity_order = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+        severity = image_severity if severity_order[image_severity] >= severity_order[text_severity] else text_severity
+        confidence = round(min(1.0, (image_conf * 0.65) + (text_conf * 0.35)), 3)
+        confidence_type = "model_reported_fusion"
+        reason = _prediction_explanation({"type": issue_type, "category": category, "severity": severity}, image, disagreement)
+    else:
+        category, issue_type, severity = text_category, text_type, text_severity
+        confidence = text.get("confidence", 0.0)
+        confidence_type = text.get("confidence_type", "heuristic")
+        reason = _prediction_explanation({"type": issue_type, "category": category, "severity": severity})
+
+    return {
+        "type": issue_type,
+        "issue_type": issue_type,
+        "category": category,
+        "severity": severity,
+        "department": CATEGORY_TO_DEPT.get(category, "roads"),
+        "department_source": "category_mapping",
+        "confidence": confidence,
+        "confidence_type": confidence_type,
+        "reason": reason,
+        "prediction_disagreement": disagreement,
+        "image_analysis_available": bool(image)
+    }
+
+def analyze_text(description: str) -> dict:
+    return analyze_complaint_text(description)
+
+def analyze_image(image_path: str) -> dict:
+    from ml.yolo_runner import run_yolo_inference
+    yolo_res = run_yolo_inference(image_path)
+    if yolo_res.get("available"):
+        return yolo_res
+    # Fallback to vision model or return unavailable
+    vision_res = analyze_complaint_image(image_path)
+    if vision_res.get("available"):
+        return {
+            "available": True,
+            "issue_type": vision_res.get("issue_type"),
+            "category": vision_res.get("category"),
+            "severity": vision_res.get("severity"),
+            "confidence": vision_res.get("confidence"),
+            "confidence_type": vision_res.get("confidence_type"),
+            "explanation": vision_res.get("reason")
+        }
+    return {
+        "available": False,
+        "reason": vision_res.get("reason", "Image model unavailable.")
+    }
+
+def fuse_predictions(text_result: dict, image_result: dict) -> dict:
+    fused = fuse_complaint_predictions(text_result, image_result)
+    fused["fusion_method"] = "image_weighted" if image_result and image_result.get("available") else "text_only"
+    return fused
+
+def validate_prediction(prediction: dict) -> bool:
+    if not isinstance(prediction, dict):
+        return False
+    required = ["category", "severity"]
+    if not all(k in prediction for k in required):
+        return False
+    if prediction.get("severity") not in {"low", "medium", "high", "critical"}:
+        return False
+    conf = prediction.get("confidence")
+    if conf is not None and not (0.0 <= float(conf) <= 1.0):
+        return False
+    return True
 
 def detect_duplicates(issue_id: str, description: str, location: dict) -> list:
     """
@@ -191,17 +368,16 @@ def detect_duplicates(issue_id: str, description: str, location: dict) -> list:
     except Exception:
         return []
         
-    # Query unresolved issues within same area or ward
+    query_ne = {"$ne": ObjectId(issue_id)} if ObjectId.is_valid(issue_id) else {"$ne": issue_id}
     candidates = list(db.issues.find({
-        "_id": {"$ne": ObjectId(issue_id)},
+        "_id": query_ne,
         "status": {"$nin": ["closed", "rejected"]}
     }))
     
     duplicates = []
     
-    # Helper for Haversine distance
     def calculate_distance(lat1, lon1, lat2, lon2):
-        R = 6371.0 # Earth radius in km
+        R = 6371.0
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
         a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1))*math.cos(math.radians(lat2))*math.sin(dlon/2)**2
@@ -216,19 +392,19 @@ def detect_duplicates(issue_id: str, description: str, location: dict) -> list:
         
         distance = calculate_distance(lat, lng, c_lat, c_lng)
         if distance < 0.2: # within 200m
-            # Calculate simple Jaccard similarity on description keywords
             c_words = set(c.get("description", "").lower().split())
             intersection = desc_words.intersection(c_words)
             union = desc_words.union(c_words)
             text_sim = len(intersection) / max(len(union), 1)
             
-            # Combine geospatial and textual similarity
-            geo_sim = max(0.0, 1.0 - (distance / 0.2)) # 1.0 at 0m, 0.0 at 200m
-            combined_sim = (geo_sim * 0.6) + (text_sim * 0.4)
-            
-            if combined_sim > 0.6:
+            geo_sim = max(0.0, 1.0 - (distance / 0.2))
+            combined_sim = (geo_sim * 0.7) + (text_sim * 0.3)
+            if distance < 0.05: # within 50m
+                combined_sim = max(0.88, combined_sim)
+                
+            if combined_sim >= 0.6:
                 duplicates.append({
-                    "issue_id": str(c["_id"]),
+                    "issue_id": c.get("issue_id") or str(c["_id"]),
                     "similarity": round(combined_sim, 2),
                     "distance_km": round(distance, 3)
                 })
@@ -243,19 +419,19 @@ def verify_resolution(before_image_path: str, after_image_path: str, issue_type:
     """
     key = os.getenv("GEMINI_API_KEY")
     if not key:
-        # Fallback using file comparisons or default verified
         return {
-            "status": "verified",
-            "confidence": 0.95,
-            "reasoning": "Resolution confirmed by visual comparison check.",
-            "provider": "rule_based"
+            "status": "uncertain",
+            "available": False,
+            "confidence": 0.0,
+            "reasoning": "Vision model unavailable; resolution requires human verification.",
+            "provider": "gemini",
+            "model": VISION_MODEL
         }
         
     try:
         import google.generativeai as genai
         from PIL import Image
         genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
         
         img_before = Image.open(before_image_path)
         img_after = Image.open(after_image_path)
@@ -267,17 +443,21 @@ def verify_resolution(before_image_path: str, after_image_path: str, issue_type:
         "confidence": float 0.0 to 1.0,
         "reasoning": "explain your decision in one sentence"
         """
-        response = model.generate_content([prompt, img_before, img_after])
+        response, used_model = _generate_content_with_model_fallback(genai, [prompt, img_before, img_after], VISION_MODEL)
         parsed = json.loads(_strip_json_fences(response.text))
         parsed["provider"] = "gemini"
+        parsed["model"] = VISION_MODEL
+        parsed["available"] = True
         return parsed
     except Exception as e:
         print(f"[AI Service] Gemini resolution verification error: {e}")
         return {
-            "status": "verified",
-            "confidence": 0.80,
-            "reasoning": "Verification succeeded via automated comparison.",
-            "provider": "rule_based"
+            "status": "uncertain",
+            "available": False,
+            "confidence": 0.0,
+            "reasoning": "Vision model unavailable; resolution requires human verification.",
+            "provider": "gemini",
+            "model": VISION_MODEL
         }
 
 verify_repair_with_images = verify_resolution
@@ -310,7 +490,6 @@ def detect_and_translate(text: str) -> dict:
             import google.generativeai as genai
             import json
             genai.configure(api_key=key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f"""
             Analyze the following text from a civic complaint:
             "{text}"
@@ -322,7 +501,7 @@ def detect_and_translate(text: str) -> dict:
             "translated_text": "the translated text in English",
             "confidence": float 0.0 to 1.0
             """
-            response = model.generate_content(prompt)
+            response, used_model = _generate_content_with_model_fallback(genai, prompt, VISION_MODEL)
             parsed = json.loads(_strip_json_fences(response.text))
             return {
                 "original_text": text,
@@ -366,7 +545,6 @@ def generate_officer_briefing(stats: dict) -> str:
         try:
             import google.generativeai as genai
             genai.configure(api_key=key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f"""
             Synthesize a brief, professional daily briefing (maximum 150 words) for the on-duty civic officer based on these metrics:
             - Active emergencies: {stats.get('emergency_count', 0)}
@@ -378,7 +556,7 @@ def generate_officer_briefing(stats: dict) -> str:
             
             Focus on immediate priorities, resource coordination, and urgent recommendations.
             """
-            response = model.generate_content(prompt)
+            response, used_model = _generate_content_with_model_fallback(genai, prompt, VISION_MODEL)
             return response.text.strip()
         except Exception as e:
             print(f"[AI Service] Gemini generate_officer_briefing exception: {e}")
@@ -408,7 +586,6 @@ def parse_search_query(query: str) -> dict:
             import google.generativeai as genai
             import json
             genai.configure(api_key=key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f"""
             Analyze this natural language search query for civic issues:
             "{query}"
@@ -423,9 +600,14 @@ def parse_search_query(query: str) -> dict:
             "status": "submitted" | "ai_reviewed" | "officer_reviewed" | "assigned" | "work_started" | "work_completed" | "closed" | "reopened" | null,
             "department": "roads" | "water_supply" | "electrical" | "sanitation" | "drainage" | null
             """
-            response = model.generate_content(prompt)
+            response, used_model = _generate_content_with_model_fallback(genai, prompt, VISION_MODEL)
             parsed = json.loads(_strip_json_fences(response.text))
-            return {k: v for k, v in parsed.items() if v is not None}
+            res = {k: v for k, v in parsed.items() if v is not None}
+            if "ward" in res and res["ward"]:
+                ward_val = str(res["ward"]).strip()
+                if not ward_val.lower().startswith("ward"):
+                    res["ward"] = f"Ward {ward_val.capitalize()}"
+            return res
         except Exception as e:
             print(f"[AI Service] Gemini parse_search_query exception: {e}")
             
@@ -496,8 +678,7 @@ def answer_analytics_question(question: str, context_stats: dict) -> str:
         try:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(prompt)
+            response, used_model = _generate_content_with_model_fallback(genai, prompt, VISION_MODEL)
             if response and response.text:
                 return response.text.strip()
         except Exception as e:

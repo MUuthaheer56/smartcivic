@@ -184,17 +184,58 @@ def get_map_hotspots():
         "total_closed_complaints": db.issues.count_documents({"status": "closed"})
     }), 200
 
-@map_api_bp.route('/api/map/infrastructure', methods=['GET'])
+@map_api_bp.route('/api/route', methods=['POST'])
 @require_auth
-@require_role('officer')
-def get_map_infrastructure():
-    segments = list(db.infrastructure.find({}, {
-        "segment_id": 1,
-        "segment_type": 1,
-        "name": 1,
-        "location": 1,
-        "health_score": 1,
-        "complaint_count": 1,
-        "repair_count": 1
-    }))
-    return jsonify({"success": True, "data": serialize(segments)}), 200
+def calculate_route():
+    data = request.get_json() or {}
+    origin = data.get("origin", {})
+    destination = data.get("destination", {})
+    
+    orig_lat = origin.get("lat") if origin.get("lat") is not None else origin.get("latitude")
+    orig_lng = origin.get("lng") if origin.get("lng") is not None else origin.get("longitude")
+    dest_lat = destination.get("lat") if destination.get("lat") is not None else destination.get("latitude")
+    dest_lng = destination.get("lng") if destination.get("lng") is not None else destination.get("longitude")
+    
+    if orig_lat is None or orig_lng is None or dest_lat is None or dest_lng is None:
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "origin and destination coordinates required."}}), 400
+        
+    try:
+        orig_lat = float(orig_lat)
+        orig_lng = float(orig_lng)
+        dest_lat = float(dest_lat)
+        dest_lng = float(dest_lng)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Coordinates must be numeric."}}), 400
+        
+    if not (-90 <= orig_lat <= 90) or not (-180 <= orig_lng <= 180) or not (-90 <= dest_lat <= 90) or not (-180 <= dest_lng <= 180):
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Coordinates out of valid geographical range."}}), 400
+        
+    import requests
+    osrm_base = current_app.config.get("OSRM_BASE", "http://router.project-osrm.org")
+    url = f"{osrm_base}/route/v1/driving/{orig_lng},{orig_lat};{dest_lng},{dest_lat}?geometries=geojson&overview=full"
+    
+    try:
+        r = requests.get(url, timeout=4)
+        if r.status_code == 200:
+            res_json = r.json()
+            if res_json.get("code") == "Ok" and res_json.get("routes"):
+                route = res_json["routes"][0]
+                dist_m = int(route.get("distance", 0))
+                dur_s = int(route.get("duration", 0))
+                geom = route.get("geometry", {})
+                waypoints = [[coords[1], coords[0]] for coords in geom.get("coordinates", [])]
+                
+                if len(waypoints) > 2:
+                    return jsonify({
+                        "available": True,
+                        "distance_meters": dist_m,
+                        "duration_seconds": dur_s,
+                        "geometry": waypoints
+                    }), 200
+    except Exception as e:
+        print(f"[Route API] OSRM reachability exception: {e}")
+        
+    return jsonify({
+        "available": False,
+        "reason": "routing_service_unavailable"
+    }), 200

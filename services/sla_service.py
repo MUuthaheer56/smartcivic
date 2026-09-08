@@ -112,3 +112,27 @@ def get_sla_health(ward=None, department=None) -> dict:
         "breached_pct": round(breached / total * 100.0, 1),
         "total": total
     }
+
+def calculate_sla_deadline(priority: str) -> datetime:
+    from config import Config
+    hours = Config.SLA_HOURS.get(str(priority).lower(), 72)
+    return datetime.utcnow() + timedelta(hours=hours)
+
+def is_sla_breached(issue: dict) -> bool:
+    status = issue.get("status", "submitted")
+    if status in ["resolved", "closed", "rejected", "work_completed"]:
+        return False
+    deadline = issue.get("sla_deadline") or issue.get("sla", {}).get("deadline")
+    if not deadline:
+        return False
+    if isinstance(deadline, str):
+        deadline = datetime.fromisoformat(deadline.replace("Z", "+00:00")).replace(tzinfo=None)
+    return datetime.utcnow() > deadline
+
+def get_remaining_time(issue: dict) -> timedelta:
+    deadline = issue.get("sla_deadline") or issue.get("sla", {}).get("deadline")
+    if not deadline:
+        return timedelta(0)
+    if isinstance(deadline, str):
+        deadline = datetime.fromisoformat(deadline.replace("Z", "+00:00")).replace(tzinfo=None)
+    return deadline - datetime.utcnow()
