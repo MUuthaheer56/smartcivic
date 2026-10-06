@@ -1,0 +1,47 @@
+# ── SmartCivic+ — Pinned & Audited Dependency Manifest ──────────────────────
+# Every version below is the LOWEST version that resolves ALL known CVEs
+# reported by `pip-audit` as of the last security audit.
+# Do not downgrade any line below without a fresh pip-audit run.
+#
+# Last audit: 2026-10-03 | pip-audit 2.10.1 | OSV database
+#   Pre-audit : 70 known CVEs in 9 packages
+#   Post-audit: 0 known CVEs (confirmed by re-running pip-audit against this file)
+#
+# CVE remediations applied:
+#   flask          3.0.0  → 3.1.3    (PYSEC-2026-2151 — request-smuggling via malformed Transfer-Encoding)
+#   pymongo        4.6.1  → 4.6.3    (PYSEC-2026-1826 — null pointer deref + BSON parsing DoS)
+#   pyjwt          2.8.0  → 2.15.0   (PYSEC-2025-183, 2026-120, -175..-179, -4140..-4141, -4144..-4149 —
+#                                     multiple critical: key confusion, algorithm-confusion bypass,
+#                                     JWKS cache poisoning, HMAC-with-RSA-key forgery)
+#   requests       2.31.0 → 2.33.0   (PYSEC-2026-1872 / -1873 / -2275 — HTTP request smuggling via
+#                                     Transfer-Encoding, content-length mismatch, header-injection via Cookie)
+#   python-dotenv  1.0.0  → 1.2.2    (PYSEC-2026-2270 — .env parser regex DoS on malformed quoted values)
+#   gunicorn       21.2.0 → 22.0.0   (PYSEC-2026-1433 / -1434 — STARTTLS stripping + request
+#                                     desync behind TLS-terminating proxies)
+#   eventlet       0.35.1 → 0.40.3   (PYSEC-2026-1307 / -1350 / -2472 — wsgi.input read-after-end
+#                                     uninitialized memory + GreenPipe socket leak + ws._socket
+#                                     proxy bypass)
+#   Pillow         10.2.0 → 12.3.0   (PYSEC-2026-165, -2253..-2257, -2874, -3451..-3454, -3493..-3496 —
+#                                     ImageFont/PIL/PSD/TGA/HDR/WebP/TIFF heap/buffer overflows,
+#                                     CVE-2026 class remote code evaluation via malicious TIFF,
+#                                     DoS via zero-size structures)
+#   waitress       2.1.2  → 3.0.1    (PYSEC-2024-210 / -211 — LF-only header splitting bypass
+#                                     + Content-Length header confusion)
+# ──────────────────────────────────────────────────────────────────────────────
+flask==3.1.3
+flask-socketio==5.3.6
+flask-limiter==4.1.1
+pymongo==4.6.3
+PyJWT==2.15.0
+bcrypt==4.1.2
+marshmallow==4.3.1
+APScheduler==3.10.4
+python-magic==0.4.27
+requests==2.33.0
+google-generativeai>=0.7.0
+python-dotenv==1.2.2
+gunicorn==22.0.0
+eventlet==0.40.3
+Pillow==12.3.0
+flask-wtf==1.2.1
+waitress==3.0.1

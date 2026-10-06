@@ -1,0 +1,22 @@
+﻿python : Traceback (most recent call last):
+At line:1 char:59
++ ... t\code 1" ; python scripts/harden_mongo.py bootstrap --bind-ips 127.0 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last) 
+   ::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\Muthaheer\Desktop\main project\code 
+1\scripts\harden_mongo.py", line 525, in <module>
+    main()
+  File "C:\Users\Muthaheer\Desktop\main project\code 
+1\scripts\harden_mongo.py", line 510, in main
+    run_bootstrap(
+  File "C:\Users\Muthaheer\Desktop\main project\code 
+1\scripts\harden_mongo.py", line 256, in run_bootstrap
+    print(f"[1/4] mongod.conf snippet written \u2192 {out_conf}")
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\encoding
+s\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in 
+position 34: character maps to <undefined>

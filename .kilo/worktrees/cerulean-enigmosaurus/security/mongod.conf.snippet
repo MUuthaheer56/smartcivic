@@ -1,0 +1,56 @@
+# =======================================================================
+# SmartCivic+ -- hardened MongoDB configuration snippet
+# Merge this into /etc/mongod.conf (YAML format) then restart mongod.
+# =======================================================================
+
+net:
+  port: 27017
+  bindIp: 127.0.0.1,10.0.1.12
+  # Maximum simultaneous connections — tune below the Linux ulimit.
+  maxIncomingConnections: 2000
+  # Disable the legacy HTTP status endpoint (port 28017).
+  http:
+    enabled: false
+    JSONPEnabled: false
+    RESTInterfaceEnabled: false
+
+# TLS — REQUIRE certificates for ALL client connections in production.
+tls:
+  mode: requireTLS
+  certificateKeyFile: /etc/mongodb/tls/mongodb.pem
+  CAFile: /etc/mongodb/tls/ca.pem
+  # Reject clients that can't present a valid client certificate.
+  allowConnectionsWithoutCertificates: false
+  # Match the certificate SAN against the connecting hostname.
+  allowInvalidHostnames: false
+  allowInvalidCertificates: false
+
+security:
+  authorization: enabled
+  # Cluster-wide symmetric key (REQUIRED for encrypted client/server
+  # communication even without TLS — prefer TLS above).
+  # keyFile: /etc/mongodb/mongodb-keyfile   # generated with:
+  #   openssl rand -base64 756 > /etc/mongodb/mongodb-keyfile
+  #   chmod 600 /etc/mongodb/mongodb-keyfile
+
+  # Disable Javascript execution on mongod (MapReduce, $where, etc.) —
+  # SmartCivic+ never uses server-side JS, disabling it eliminates a
+  # whole class of injection bugs.
+  javascriptEnabled: false
+
+operationProfiling:
+  # Log SLOW queries (>100ms) for the municipal SLA team to review.
+  mode: slowOp
+  slowOpThresholdMs: 100
+  slowOpSampleRate: 1.0
+
+setParameter:
+  # FailPoint: reject any query that would do a full collection scan on
+  # hot collections (issues, users) — requires that create_indexes.py
+  # has already populated all supporting indexes.  Comment out during
+  # the very first seed, then turn it on.
+  # notablescan: true
+
+  # Maximum document size is 16MB already; keep an explicit lower
+  # guardrail so a maliciously-crafted report with base64 can't OOM us.
+  maxBSONDepth: 100

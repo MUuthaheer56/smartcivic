@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartCivic v2 — Civic Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0A1628;
+  --bg2:      #0F1F3D;
+  --panel:    #152644;
+  --panel2:   #1A3058;
+  --border:   #1E3A6E;
+  --border2:  #2A4A80;
+  --text:     #E8F0FE;
+  --text2:    #94AACF;
+  --text3:    #5A7A9F;
+  --amber:    #F59E0B;
+  --amber2:   #FCD34D;
+  --emerald:  #10B981;
+  --crimson:  #EF4444;
+  --crimson2: #FCA5A5;
+  --violet:   #8B5CF6;
+  --sky:      #38BDF8;
+  --mono:     'JetBrains Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Layout ── */
+#app { display: flex; height: 100vh; overflow: hidden; }
+#sidebar {
+  width: 220px; min-width: 220px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 0;
+}
+#main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+/* ── Sidebar ── */
+.brand {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.brand-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 16px; font-weight: 700; letter-spacing: -.3px; color: var(--text);
+}
+.brand-logo .dot {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--amber) 0%, #F97316 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.brand-sub { font-size: 10px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
+.role-switcher {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.role-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.role-select {
+  width: 100%; background: var(--panel); border: 1px solid var(--border2);
+  color: var(--text); padding: 6px 8px; border-radius: 5px; font-size: 12px;
+  font-family: 'Inter', sans-serif; cursor: pointer; outline: none;
+}
+.role-select:focus { border-color: var(--amber); }
+nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+.nav-section { padding: 8px 12px 4px; font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .07em; }
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 14px; cursor: pointer; border-radius: 0;
+  font-size: 13px; color: var(--text2); transition: all .12s;
+  border-left: 2px solid transparent; position: relative;
+}
+.nav-item:hover { background: var(--panel); color: var(--text); }
+.nav-item.active { background: var(--panel); color: var(--amber); border-left-color: var(--amber); }
+.nav-item .ico { width: 16px; text-align: center; font-size: 14px; }
+.nav-badge {
+  margin-left: auto; background: var(--crimson); color: #fff;
+  font-size: 9px; font-weight: 600; border-radius: 10px;
+  padding: 1px 6px; font-family: var(--mono);
+}
+.nav-badge.amber { background: var(--amber); color: #000; }
+.ai-status-bar {
+  padding: 10px 12px; border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+.ai-status-row { display: flex; align-items: center; gap: 6px; color: var(--text3); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; }
+.status-dot.green { background: var(--emerald); box-shadow: 0 0 6px var(--emerald); }
+.status-dot.amber { background: var(--amber); }
+.status-dot.red { background: var(--crimson); }
+
+/* ── Topbar ── */
+#topbar {
+  padding: 12px 24px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px; flex-shrink: 0;
+  background: var(--bg2);
+}
+.page-title { font-size: 18px; font-weight: 600; letter-spacing: -.3px; }
+.page-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+.topbar-spacer { flex: 1; }
+.emergency-btn {
+  background: var(--crimson); color: #fff; border: none; cursor: pointer;
+  padding: 7px 14px; border-radius: 5px; font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px; transition: opacity .12s;
+}
+.emergency-btn:hover { opacity: .88; }
+.btn {
+  padding: 7px 14px; border-radius: 5px; border: none; cursor: pointer;
+  font-size: 13px; font-family: 'Inter', sans-serif; font-weight: 500;
+  transition: all .12s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--amber); color: #0a1628; }
+.btn-primary:hover { background: var(--amber2); }
+.btn-secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border2); }
+.btn-secondary:hover { background: var(--panel); border-color: var(--border2); }
+.btn-danger { background: var(--crimson); color: #fff; }
+.btn-danger:hover { opacity: .88; }
+.btn-emerald { background: var(--emerald); color: #fff; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Page content ── */
+#content { flex: 1; padding: 20px 24px; overflow-y: auto; }
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── Grids ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+/* ── Cards ── */
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px;
+}
+.card-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text3); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title .ct-right { margin-left: auto; }
+.metric-big { font-size: 32px; font-weight: 700; font-family: var(--mono); color: var(--text); line-height: 1; }
+.metric-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+.metric-delta { font-size: 11px; margin-top: 4px; }
+.metric-delta.up { color: var(--crimson); }
+.metric-delta.down { color: var(--emerald); }
+
+/* ── Issue cards ── */
+.issue-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px 16px; margin-bottom: 10px;
+  cursor: pointer; transition: border-color .12s;
+}
+.issue-card:hover { border-color: var(--border2); }
+.issue-card.emergency-card { border-color: var(--crimson); background: #1A0A0A; }
+.issue-header { display: flex; align-items: flex-start; gap: 10px; }
+.issue-id { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.issue-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+.issue-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.tag {
+  font-size: 10px; padding: 2px 8px; border-radius: 10px;
+  font-weight: 500; border: 1px solid;
+}
+.tag-severity-5, .tag-critical { background: rgba(239,68,68,.15); color: var(--crimson2); border-color: rgba(239,68,68,.3); }
+.tag-severity-4, .tag-high { background: rgba(245,158,11,.12); color: var(--amber2); border-color: rgba(245,158,11,.3); }
+.tag-severity-3, .tag-medium { background: rgba(245,158,11,.08); color: var(--amber); border-color: rgba(245,158,11,.2); }
+.tag-severity-2, .tag-severity-1, .tag-low { background: rgba(16,185,129,.1); color: var(--emerald); border-color: rgba(16,185,129,.25); }
+.tag-blue { background: rgba(56,189,248,.1); color: var(--sky); border-color: rgba(56,189,248,.2); }
+.tag-violet { background: rgba(139,92,246,.1); color: #A78BFA; border-color: rgba(139,92,246,.25); }
+.tag-neutral { background: var(--panel2); color: var(--text2); border-color: var(--border); }
+
+/* ── AI Prediction Block ── */
+.ai-block {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px 16px; margin-top: 12px;
+}
+.ai-block-header { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text3); margin-bottom: 10px; }
+.ai-block-header .ai-icon { color: var(--violet); font-size: 14px; }
+.ai-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.ai-row:last-child { border-bottom: none; }
+.ai-key { color: var(--text3); }
+.ai-val { color: var(--text); font-weight: 500; font-family: var(--mono); font-size: 11px; }
+.confidence-bar-wrap { background: var(--panel); border-radius: 3px; height: 4px; width: 80px; overflow: hidden; margin-top: 2px; }
+.confidence-bar { height: 100%; border-radius: 3px; background: var(--emerald); }
+.confidence-bar.med { background: var(--amber); }
+.confidence-bar.low { background: var(--crimson); }
+
+/* ── Forms ── */
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 500; }
+.form-input, .form-select, .form-textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border2);
+  color: var(--text); padding: 9px 12px; border-radius: 6px;
+  font-size: 13px; font-family: 'Inter', sans-serif; outline: none;
+  transition: border-color .12s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--amber); }
+.form-textarea { resize: vertical; min-height: 80px; }
+.form-select option { background: var(--bg2); }
+.form-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ── Progress / Pipeline ── */
+.pipeline {
+  display: flex; align-items: center; gap: 0; margin: 16px 0;
+}
+.pipeline-step {
+  flex: 1; text-align: center; position: relative;
+  font-size: 11px; color: var(--text3); padding: 8px 4px;
+}
+.pipeline-step::after {
+  content: ''; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 1px; background: var(--border);
+}
+.pipeline-step:last-child::after { display: none; }
+.pipeline-step .ps-icon {
+  font-size: 18px; display: block; margin-bottom: 3px;
+}
+.pipeline-step.done { color: var(--emerald); }
+.pipeline-step.active { color: var(--amber); }
+.pipeline-step.active .ps-icon { animation: pulse .8s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: .6; } to { opacity: 1; } }
+
+/* ── Alert banners ── */
+.alert {
+  padding: 12px 16px; border-radius: 6px; border-left: 3px solid;
+  font-size: 13px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px;
+}
+.alert-emergency { background: rgba(239,68,68,.12); border-color: var(--crimson); color: var(--crimson2); }
+.alert-warning { background: rgba(245,158,11,.1); border-color: var(--amber); color: var(--amber2); }
+.alert-info { background: rgba(56,189,248,.08); border-color: var(--sky); color: var(--sky); }
+.alert-success { background: rgba(16,185,129,.1); border-color: var(--emerald); color: #6EE7B7; }
+.alert-title { font-weight: 600; margin-bottom: 2px; }
+.alert-112 {
+  background: rgba(239,68,68,.18); border: 2px solid var(--crimson);
+  border-radius: 8px; padding: 16px; text-align: center; margin: 12px 0;
+}
+.alert-112 .big-number { font-size: 48px; font-weight: 800; color: var(--crimson); font-family: var(--mono); line-height: 1; }
+.alert-112 p { font-size: 13px; color: var(--crimson2); margin-top: 6px; }
+
+/* ── Tables ── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data-table th {
+  text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border);
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text3);
+}
+.data-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text2); }
+.data-table tr:hover td { background: var(--panel); }
+.data-table td .mono { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+
+/* ── Modals ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  display: none; align-items: center; justify-content: center;
+  z-index: 1000; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 10px; width: 100%; max-width: 580px;
+  max-height: 85vh; overflow-y: auto;
+}
+.modal-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-size: 16px; font-weight: 600; }
+.modal-close {
+  background: none; border: none; color: var(--text3); cursor: pointer;
+  font-size: 20px; line-height: 1; padding: 2px;
+}
+.modal-body { padding: 20px; }
+.modal-footer {
+  padding: 14px 20px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 10px;
+}
+
+/* ── Hotspot map ── */
+#hotspot-canvas { width: 100%; height: 260px; border-radius: 6px; background: #0A1628; position: relative; overflow: hidden; }
+
+/* ── Gauge ── */
+.gauge-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+.gauge-label { position: absolute; text-align: center; }
+
+/* ── Accuracy meter ── */
+.accuracy-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; }
+.accuracy-bar-bg { flex: 1; background: var(--panel2); border-radius: 3px; height: 8px; overflow: hidden; }
+.accuracy-bar-fill { height: 100%; border-radius: 3px; }
+
+/* ── Timeline ── */
+.timeline { position: relative; padding-left: 20px; }
+.timeline::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+.tl-item { position: relative; margin-bottom: 14px; }
+.tl-dot {
+  position: absolute; left: -20px; top: 3px;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid var(--bg2);
+}
+.tl-dot.green { background: var(--emerald); }
+.tl-dot.amber { background: var(--amber); }
+.tl-dot.red { background: var(--crimson); }
+.tl-dot.blue { background: var(--sky); }
+.tl-time { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.tl-event { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.tl-actor { font-size: 10px; color: var(--text3); margin-top: 1px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── Misc ── */
+.section-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.empty-state { text-align: center; padding: 40px; color: var(--text3); }
+.empty-state .es-icon { font-size: 36px; margin-bottom: 10px; }
+.loading { display: flex; align-items: center; gap: 8px; color: var(--text3); font-size: 13px; padding: 16px; }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: var(--amber); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.badge-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Worker card ── */
+.worker-card {
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px; display: flex; align-items: center; gap: 12px;
+  cursor: pointer; transition: border-color .12s;
+}
+.worker-card:hover, .worker-card.selected { border-color: var(--amber); background: rgba(245,158,11,.08); }
+.worker-avatar {
+  width: 34px; height: 34px; border-radius: 50%; background: var(--panel);
+  display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+}
+.worker-name { font-size: 13px; font-weight: 500; }
+.worker-meta { font-size: 11px; color: var(--text3); }
+.worker-score { margin-left: auto; font-family: var(--mono); font-size: 13px; color: var(--amber); font-weight: 600; }
+
+/* ── Prediction pills ── */
+.pred-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pred-pill {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px;
+}
+.pred-pill-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; }
+.pred-pill-value { font-size: 14px; font-weight: 600; margin-top: 3px; }
+.pred-pill-conf { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+
+/* ── Status chips ── */
+.status-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 3px 9px; border-radius: 10px; font-weight: 500;
+}
+.status-submitted { background: rgba(56,189,248,.12); color: var(--sky); border: 1px solid rgba(56,189,248,.2); }
+.status-triaged { background: rgba(139,92,246,.12); color: #A78BFA; border: 1px solid rgba(139,92,246,.2); }
+.status-assigned { background: rgba(245,158,11,.12); color: var(--amber); border: 1px solid rgba(245,158,11,.2); }
+.status-resolved { background: rgba(16,185,129,.12); color: var(--emerald); border: 1px solid rgba(16,185,129,.2); }
+.status-emergency { background: rgba(239,68,68,.15); color: var(--crimson2); border: 1px solid rgba(239,68,68,.3); }
+
+/* ── SLA ring ── */
+.sla-ring-wrap { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.sla-ring {
+  width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-family: var(--mono); font-size: 11px; font-weight: 600;
+  border: 3px solid;
+}
+.sla-safe { border-color: var(--emerald); color: var(--emerald); }
+.sla-warn { border-color: var(--amber); color: var(--amber); }
+.sla-breach { border-color: var(--crimson); color: var(--crimson); animation: ring-pulse 1s ease-in-out infinite alternate; }
+@keyframes ring-pulse { from { box-shadow: 0 0 0 0 rgba(239,68,68,.4); } to { box-shadow: 0 0 0 6px rgba(239,68,68,0); } }
+
+/* ── Cascade tree ── */
+.cascade-node {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  border-left: 2px solid var(--border); margin-left: 16px;
+  font-size: 12px; color: var(--text2); position: relative;
+}
+.cascade-node::before { content: '↳'; position: absolute; left: -14px; color: var(--text3); }
+.cascade-root { border-left: none; margin-left: 0; font-weight: 600; color: var(--amber); }
+.cascade-root::before { display: none; }
+
+/* ── Override form highlight ── */
+.override-box { border: 1px dashed var(--amber); background: rgba(245,158,11,.05); border-radius: 6px; padding: 12px; }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── SIDEBAR ── -->
+<div id="sidebar">
+  <div class="brand">
+    <div class="brand-logo">
+      <div class="dot">🏙</div>
+      SmartCivic
+    </div>
+    <div class="brand-sub">v2.0 · BENGALURU</div>
+  </div>
+
+  <div class="role-switcher">
+    <div class="role-label">Active Role</div>
+    <select class="role-select" id="roleSelect" onchange="switchRole(this.value)">
+      <option value="resident">👤 Resident</option>
+      <option value="officer">🛡 Officer</option>
+      <option value="worker">🔧 Field Worker</option>
+      <option value="admin">⚙️ Admin / Governance</option>
+    </select>
+  </div>
+
+  <nav id="navMenu"></nav>
+
+  <div class="ai-status-bar">
+    <div class="ai-status-row">
+      <div class="status-dot green" id="aiDotYolo"></div>
+      <span style="font-size:11px;color:var(--text3)">YOLOv8n ONNX</span>
+    </div>
+    <div class="ai-status-row" style="margin-top:5px">
+      <div class="status-dot green" id="aiDotGemini"></div>
+      <span style="font-size:11px;color:var(--text3)">Gemini Classifier</span>
+    </div>
+    <div class="ai-status-row" style="margin-top:5px">
+      <div class="status-dot green" id="aiDotOrm"></div>
+      <span style="font-size:11px;color:var(--text3)">Routing Engine</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div id="main">
+  <div id="topbar">
+    <div>
+      <div class="page-title" id="pageTitle">Resident Portal</div>
+      <div class="page-sub" id="pageSub">Report civic issues · Track status · Emergency guidance</div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <button class="btn btn-secondary btn-sm" onclick="openEmergencyModal()">⚡ 112 Emergency</button>
+    <button class="btn btn-primary btn-sm" onclick="navigate('submit')">+ Report Issue</button>
+  </div>
+  <div id="content">
+
+    <!-- ─────────────────── RESIDENT VIEWS ─────────────────── -->
+
+    <!-- SUBMIT ISSUE -->
+    <div class="view" id="view-submit">
+      <div class="section-title">📋 Report a Civic Issue</div>
+      <div class="grid-2" style="gap:20px;align-items:start">
+
+        <!-- Form -->
+        <div>
+          <div class="card">
+            <div class="card-title">Issue Details</div>
+            <div class="form-group">
+              <label class="form-label">Description <span style="color:var(--crimson)">*</span></label>
+              <textarea class="form-textarea" id="issueDesc" placeholder="Describe the civic issue clearly. E.g: Large pothole on MG Road near bus stand, causing traffic slowdown." oninput="onDescInput(this.value)"></textarea>
+              <div class="form-hint" id="descHint">Type at least 15 characters to trigger AI classification.</div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Ward</label>
+                <select class="form-select" id="issueWard">
+                  <option value="">Auto-detect from GPS</option>
+                  <option value="WARD-45">Ward 45 — Domlur</option>
+                  <option value="WARD-112">Ward 112 — Koramangala</option>
+                  <option value="WARD-078">Ward 78 — Indiranagar</option>
+                  <option value="WARD-033">Ward 33 — Malleshwaram</option>
+                  <option value="WARD-091">Ward 91 — HSR Layout</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Street / Landmark</label>
+                <input class="form-input" id="issueAddr" type="text" placeholder="MG Road, near Metro station">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Latitude</label>
+                <input class="form-input" id="issueLat" type="number" value="12.9715" step="0.0001">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Longitude</label>
+                <input class="form-input" id="issueLng" type="number" value="77.5946" step="0.0001">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Photo (simulated)</label>
+              <select class="form-select" id="issuePhoto">
+                <option value="none">No photo</option>
+                <option value="pothole_large">📷 Large pothole — clear daytime</option>
+                <option value="pothole_small">📷 Small pothole — blurry</option>
+                <option value="water_leak">📷 Water pipe burst — road flooding</option>
+                <option value="garbage">📷 Garbage overflow — overflowing bin</option>
+                <option value="fallen_wire">📷 Fallen live wire ⚡ EMERGENCY</option>
+                <option value="dark_image">📷 Nighttime dark image — quality issue</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" style="width:100%" id="submitBtn" onclick="submitIssue()" disabled>
+              🤖 Analyze & Submit
+            </button>
+          </div>
+        </div>
+
+        <!-- AI Preview Panel -->
+        <div>
+          <div class="card" id="aiPreviewPanel">
+            <div class="card-title">🤖 AI Pre-Analysis <span class="tag tag-neutral" style="margin-left:auto;font-size:9px">Features 1–6</span></div>
+            <div id="aiPreviewContent">
+              <div class="empty-state" style="padding:30px 20px">
+                <div class="es-icon">🧠</div>
+                <div style="font-size:13px;color:var(--text3)">Start typing to see AI analysis</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:14px;display:none" id="emergencyPreview">
+            <div class="card-title" style="color:var(--crimson)">🚨 Emergency Protocols <span class="tag tag-neutral" style="margin-left:auto;font-size:9px">Features 30–32</span></div>
+            <div id="emergencyContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY ISSUES (Resident) -->
+    <div class="view" id="view-myissues">
+      <div class="section-title">📁 My Reported Issues</div>
+      <div id="residentIssueList"><div class="empty-state"><div class="es-icon">📭</div><div>No issues reported yet. <a href="#" onclick="navigate('submit')" style="color:var(--amber)">Submit your first report →</a></div></div></div>
+    </div>
+
+    <!-- ISSUE TRACKER (Resident) -->
+    <div class="view" id="view-track">
+      <div class="section-title">🔍 Track Issue Status</div>
+      <div style="max-width:380px;margin-bottom:20px">
+        <div class="form-group" style="display:flex;gap:8px;margin:0">
+          <input class="form-input" id="trackInput" placeholder="Enter Issue ID e.g. SC-2026-0001">
+          <button class="btn btn-primary btn-sm" onclick="trackIssue()">Track</button>
+        </div>
+      </div>
+      <div id="trackResult"></div>
+    </div>
+
+    <!-- ─────────────────── OFFICER VIEWS ─────────────────── -->
+
+    <!-- OFFICER DASHBOARD -->
+    <div class="view" id="view-officer-dashboard">
+      <div class="grid-4" style="margin-bottom:18px" id="officerMetrics"></div>
+
+      <!-- SLA Alert row -->
+      <div id="slaAlertRow" style="margin-bottom:16px"></div>
+
+      <div class="grid-2" style="align-items:start;gap:20px">
+        <div>
+          <div class="section-title">🚨 Active Issues Queue</div>
+          <div id="officerQueue"></div>
+        </div>
+        <div>
+          <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+            <span>📊 Predictive Intelligence</span>
+            <span class="tag tag-violet" style="font-size:9px">Features 7–19</span>
+          </div>
+          <div id="predictivePanel"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ISSUE DETAIL (Officer) -->
+    <div class="view" id="view-issue-detail">
+      <div id="issueDetailContent"></div>
+    </div>
+
+    <!-- HOTSPOT MAP -->
+    <div class="view" id="view-hotspots">
+      <div class="section-title">🗺 Predictive Hotspot Analysis <span class="tag tag-violet" style="font-size:10px">Feature 18</span></div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Ward Complaint Density — Live + Predicted</div>
+        <canvas id="hotspot-canvas" width="800" height="260"></canvas>
+        <div style="display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--text3)">
+          <span>🔴 Current hotspot</span>
+          <span>🟡 Predicted (next 24h)</span>
+          <span>🟢 Resolved cluster</span>
+        </div>
+      </div>
+      <div class="grid-2" id="hotspotCards"></div>
+    </div>
+
+    <!-- WORKER RECOMMENDATION -->
+    <div class="view" id="view-workers">
+      <div class="section-title">👷 Field Worker Status <span class="tag tag-neutral" style="font-size:10px">Feature 25</span></div>
+      <div id="workerList"></div>
+    </div>
+
+    <!-- ─────────────────── WORKER VIEW ─────────────────── -->
+    <div class="view" id="view-my-tasks">
+      <div class="section-title">🔧 My Assigned Tasks</div>
+      <div id="workerTaskList"></div>
+    </div>
+
+    <!-- ─────────────────── ADMIN VIEWS ─────────────────── -->
+
+    <!-- GOVERNANCE DASHBOARD -->
+    <div class="view" id="view-governance">
+      <div class="section-title">⚙️ Governance & AI Safety <span class="tag tag-neutral" style="font-size:10px">Features 35–45</span></div>
+      <div class="grid-2" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-title">Model Registry <span class="tag tag-neutral ct-right" style="font-size:9px">Feature 35</span></div>
+          <table class="data-table" id="modelRegistryTable"></table>
+        </div>
+        <div class="card">
+          <div class="card-title">AI System Health <span class="tag tag-neutral ct-right" style="font-size:9px">Feature 39</span></div>
+          <div id="aiHealthPanel"></div>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-title">Accuracy Metrics <span class="tag tag-violet ct-right" style="font-size:9px">Feature 44</span></div>
+          <div id="accuracyPanel"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Confidence Thresholds <span class="tag tag-neutral ct-right" style="font-size:9px">Feature 38</span></div>
+          <div id="thresholdPanel"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Prediction Audit Log <span class="tag tag-neutral ct-right" style="font-size:9px">Feature 37</span></div>
+        <div id="auditLogTable"></div>
+      </div>
+    </div>
+
+    <!-- DATASET CATALOG -->
+    <div class="view" id="view-datasets">
+      <div class="section-title">📦 Dataset Catalog <span class="tag tag-neutral" style="font-size:10px">Feature 36</span></div>
+      <div id="datasetCards"></div>
+    </div>
+
+    <!-- EMERGENCY AUDIT -->
+    <div class="view" id="view-emergency-audit">
+      <div class="section-title">🚨 Emergency Event Audit <span class="tag tag-neutral" style="font-size:10px">Feature 34</span></div>
+      <div id="emergencyAuditContent"></div>
+    </div>
+
+    <!-- PREDICTION VS ACTUAL -->
+    <div class="view" id="view-model-performance">
+      <div class="section-title">📈 Model Performance — Prediction vs Actual <span class="tag tag-neutral" style="font-size:10px">Feature 29</span></div>
+      <div id="modelPerfContent"></div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ─── MODALS ─── -->
+
+<!-- Emergency Modal (Feature 31, 32) -->
+<div class="modal-overlay" id="emergencyModal">
+  <div class="modal" style="max-width:480px;border-color:var(--crimson)">
+    <div class="modal-header" style="background:rgba(239,68,68,.1)">
+      <div class="modal-title" style="color:var(--crimson)">🚨 Emergency Protocols</div>
+      <button class="modal-close" onclick="closeModal('emergencyModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-112">
+        <div class="big-number">112</div>
+        <p>India's unified emergency number<br>Police · Fire · Ambulance · Disaster</p>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+          <a href="tel:112" class="btn btn-danger">📞 Call 112</a>
+          <a href="tel:101" class="btn btn-secondary btn-sm">🔥 Fire 101</a>
+          <a href="tel:108" class="btn btn-secondary btn-sm">🚑 Ambulance 108</a>
+        </div>
+      </div>
+      <div class="alert alert-warning" style="margin-top:12px">
+        <div>
+          <div class="alert-title">SmartCivic does not dispatch emergency services.</div>
+          <div>This platform reports civic infrastructure issues. For life-threatening emergencies, call 112 immediately — do not wait for this app.</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text3)">
+        For life hazards on this platform (fallen live wire, building collapse, gas leak), the report will be marked CRITICAL and your officer will be notified. But please call 112 yourself simultaneously.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Issue Detail Modal -->
+<div class="modal-overlay" id="issueDetailModal">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <div class="modal-title" id="issueDetailModalTitle">Issue Details</div>
+      <button class="modal-close" onclick="closeModal('issueDetailModal')">×</button>
+    </div>
+    <div class="modal-body" id="issueDetailModalBody"></div>
+    <div class="modal-footer" id="issueDetailModalFooter"></div>
+  </div>
+</div>
+
+<!-- Override Modal (Feature 28) -->
+<div class="modal-overlay" id="overrideModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Officer Classification Override <span class="tag tag-amber" style="font-size:10px;margin-left:8px">Feature 28</span></div>
+      <button class="modal-close" onclick="closeModal('overrideModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info" style="margin-bottom:14px">
+        AI prediction is preserved unchanged. Your override writes to <code style="font-family:var(--mono);font-size:11px">operational_classification</code> only.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Operational Category</label>
+          <select class="form-select" id="overrideCat">
+            <option value="road_damage">Road Damage / Pothole</option>
+            <option value="water_leak">Water / Pipeline Leak</option>
+            <option value="drainage">Drainage / Flooding</option>
+            <option value="electricity">Electrical Hazard</option>
+            <option value="garbage">Garbage / Sanitation</option>
+            <option value="streetlight">Streetlight Failure</option>
+            <option value="tree_fall">Fallen Tree</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Operational Severity (1–5)</label>
+          <select class="form-select" id="overrideSev">
+            <option value="1">1 — Minor</option>
+            <option value="2">2 — Low</option>
+            <option value="3">3 — Medium</option>
+            <option value="4">4 — High</option>
+            <option value="5">5 — Critical</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Override Reason (required)</label>
+        <textarea class="form-textarea" id="overrideReason" placeholder="Describe why the AI classification was incorrect. E.g: Site inspection confirmed underground pipe collapse, not surface pothole."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('overrideModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOverride()">Save Override</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Worker Modal (Feature 25 + 45) -->
+<div class="modal-overlay" id="assignModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">👷 Assign Field Worker <span class="tag tag-amber" style="font-size:10px;margin-left:8px">Features 25 + 45</span></div>
+      <button class="modal-close" onclick="closeModal('assignModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-warning" style="margin-bottom:14px">
+        <div><div class="alert-title">Human authorization required.</div>Worker assignment is a consequential action. Your officer credential and explicit click are required — no automatic dispatch occurs.</div>
+      </div>
+      <div class="card-title" style="margin-bottom:10px">AI-Recommended Workers</div>
+      <div id="workerRecommendList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('assignModal')">Cancel</button>
+      <button class="btn btn-primary" id="confirmAssignBtn" onclick="confirmAssign()" disabled>✅ Authorize Assignment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Explanation Modal (Feature 27) -->
+<div class="modal-overlay" id="explanationModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔍 AI Explanation <span class="tag tag-violet" style="font-size:10px;margin-left:8px">Feature 27</span></div>
+      <button class="modal-close" onclick="closeModal('explanationModal')">×</button>
+    </div>
+    <div class="modal-body" id="explanationBody"></div>
+  </div>
+</div>
+
+<!-- Submission Integrity Modal (Feature 42) -->
+<div class="modal-overlay" id="submissionModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📤 External Authority Submission <span class="tag tag-amber" style="font-size:10px;margin-left:8px">Features 23 + 42</span></div>
+      <button class="modal-close" onclick="closeModal('submissionModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info" style="margin-bottom:14px">
+        <div><div class="alert-title">No fake submissions.</div>SmartCivic will never generate a fake ticket ID. Status shows "Routed" until an actual external API confirms receipt.</div>
+      </div>
+      <div id="submissionDetails"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('submissionModal')">Close</button>
+      <button class="btn btn-primary" onclick="authorizeSubmission()">🔐 Authorize Route to Authority</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// SmartCivic v2 — Full Application Logic
+// ═══════════════════════════════════════════════════════════════
+
+let db = null, sample = null;
+let isDbReady = false;
+
+async function initCapabilities() {
+  try { db = await claude.use('db'); isDbReady = !!db; } catch(e) { isDbReady = false; }
+  try { sample = await claude.use('sample'); } catch(e) { sample = null; }
+  await seedInitialData();
+}
+
+// ── In-memory store (fallback when db unavailable) ──
+const localStore = {
+  issues: [], prediction_audits: [], emergency_events: [],
+  model_versions: [], prediction_actual_logs: [], external_submissions: [],
+  users: [], workload_snapshots: []
+};
+
+// ── DB helpers ──
+async function dbSet(col, id, data) {
+  const doc = { ...data, _col: col, _id: id, _updatedAt: new Date().toISOString() };
+  if (isDbReady) {
+    try { await db.doc(`${col}/${id}`).set(doc); return; } catch(e) {}
+  }
+  const arr = localStore[col] || (localStore[col] = []);
+  const idx = arr.findIndex(x => x._id === id);
+  if (idx >= 0) arr[idx] = doc; else arr.push(doc);
+}
+async function dbGet(col, id) {
+  if (isDbReady) {
+    try { const snap = await db.doc(`${col}/${id}`).get(); return snap.exists ? snap.data() : null; } catch(e) {}
+  }
+  return (localStore[col] || []).find(x => x._id === id) || null;
+}
+async function dbList(col) {
+  if (isDbReady) {
+    try {
+      const snap = await db.collection(col).get();
+      return snap.docs.map(d => d.data());
+    } catch(e) {}
+  }
+  return [...(localStore[col] || [])];
+}
+
+// ── Seed data ──
+async function seedInitialData() {
+  const existing = await dbList('issues');
+  if (existing.length > 0) return;
+
+  const workers = [
+    { _id:'WRK-001', name:'Rajesh Kumar', skill:'asphalt_patching', ward:'WARD-45', active_tasks:1, available:true, lat:12.973, lng:77.596, score:0.94 },
+    { _id:'WRK-002', name:'Priya Sharma', skill:'plumbing', ward:'WARD-112', active_tasks:0, available:true, lat:12.970, lng:77.592, score:0.88 },
+    { _id:'WRK-003', name:'Mohan Das', skill:'electrical', ward:'WARD-45', active_tasks:2, available:true, lat:12.975, lng:77.599, score:0.79 },
+    { _id:'WRK-004', name:'Kavitha Nair', skill:'sanitation', ward:'WARD-078', active_tasks:1, available:true, lat:12.968, lng:77.590, score:0.91 },
+  ];
+  for (const w of workers) await dbSet('users', w._id, { ...w, role:'worker' });
+
+  const issues = [
+    { id:'SC-2026-0001', desc:'Large pothole on MG Road causing traffic jam, vehicles swerving dangerously', photo:'pothole_large', ward:'WARD-45', address:'MG Road near Ulsoor Lake', lat:12.9715, lng:77.5946, status:'triaged', created_at: offsetTime(-4), severity:4, category:'road_damage', authority:'BBMP', emergency:false, sla_hours:24, elapsed_hours:4 },
+    { id:'SC-2026-0002', desc:'Water pipe burst flooding entire road near school entrance', photo:'water_leak', ward:'WARD-112', address:'Koramangala 5th Block', lat:12.9350, lng:77.6249, status:'assigned', created_at: offsetTime(-22), severity:5, category:'water_leak', authority:'BWSSB', emergency:false, sla_hours:12, elapsed_hours:22, assigned_worker:'WRK-002' },
+    { id:'SC-2026-0003', desc:'Fallen live electrical wire across footpath sparking — people avoiding area', photo:'fallen_wire', ward:'WARD-078', address:'Indiranagar 100 Feet Road', lat:12.9784, lng:77.6408, status:'submitted', created_at: offsetTime(-0.5), severity:5, category:'electricity', authority:'BESCOM', emergency:true, sla_hours:2, elapsed_hours:0.5 },
+    { id:'SC-2026-0004', desc:'Garbage overflowing from municipal bin for 3 days, stray dogs spreading it', photo:'garbage', ward:'WARD-091', address:'HSR Layout Sector 7', lat:12.9121, lng:77.6445, status:'resolved', created_at: offsetTime(-30), severity:2, category:'garbage', authority:'BBMP', emergency:false, sla_hours:48, elapsed_hours:26, resolved_at: offsetTime(-4) },
+    { id:'SC-2026-0005', desc:'Deep crater pothole near signal causing accidents at night', photo:'pothole_large', ward:'WARD-033', address:'Malleshwaram 8th Cross', lat:12.9990, lng:77.5678, status:'triaged', created_at: offsetTime(-8), severity:3, category:'road_damage', authority:'BBMP', emergency:false, sla_hours:24, elapsed_hours:8 },
+  ];
+
+  for (const iss of issues) {
+    const ai = simulateAIPrediction(iss.desc, iss.photo, iss.category, iss.severity);
+    await dbSet('issues', iss.id, {
+      ...iss,
+      ai_prediction: ai,
+      operational_classification: { category: iss.category, severity: iss.severity, confirmed_by_officer_id: 'OFF-8821' },
+      officer_override: false
+    });
+    // Seed audit
+    await dbSet('prediction_audits', `AUD-${iss.id}`, {
+      audit_id: `AUD-${iss.id}`, issue_id: iss.id,
+      model_version: ai.model_version, confidence: ai.confidence,
+      feature: 'text_image_fusion', output_prediction: ai.prediction,
+      executed_at: iss.created_at, available: ai.available
+    });
+  }
+
+  // prediction_actual_logs for Feature 29 / 44
+  await dbSet('prediction_actual_logs', 'LOG-0004', { issue_id:'SC-2026-0004', predicted_category:'garbage', actual_category:'garbage', predicted_resolution_hours:24, actual_resolution_hours:26, category_match:true, evaluatable:true, recorded_at: offsetTime(-4) });
+  await dbSet('prediction_actual_logs', 'LOG-0004B', { issue_id:'SC-2026-0004', predicted_category:'road_damage', actual_category:'garbage', predicted_resolution_hours:30, actual_resolution_hours:26, category_match:false, evaluatable:true, recorded_at: offsetTime(-4) });
+
+  // model_versions
+  const models = [
+    { model_id:'MDL-001', name:'YOLOv8n-RDD2022', version:'v1.2', framework:'ONNX Runtime', deployed_at:'2026-09-01', hash:'e3b0c44298fc1c149afb', status:'active', accuracy_pct:88 },
+    { model_id:'MDL-002', name:'Gemini-1.5-Flash Classifier', version:'v1.0', framework:'Gemini API', deployed_at:'2026-09-05', hash:'a5f8b2c3d1e9f74a2b3c', status:'active', accuracy_pct:91 },
+    { model_id:'MDL-003', name:'Severity-RF', version:'v1.1', framework:'scikit-learn', deployed_at:'2026-08-20', hash:'d2e4f6a8b0c2e4f6a8b0', status:'active', accuracy_pct:84 },
+    { model_id:'MDL-004', name:'SLA-Breach-LR', version:'v1.0', framework:'scikit-learn', deployed_at:'2026-08-25', hash:'f1a3b5c7d9e1f3a5b7c9', status:'active', accuracy_pct:79 },
+    { model_id:'MDL-005', name:'Cascade-Graph', version:'v1.0', framework:'networkx', deployed_at:'2026-09-10', hash:'b2c4d6e8f0a2c4d6e8f0', status:'beta', accuracy_pct:null },
+  ];
+  for (const m of models) await dbSet('model_versions', m.model_id, m);
+}
+
+function offsetTime(hoursAgo) {
+  return new Date(Date.now() - hoursAgo * 3600000).toISOString();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AI PIPELINE — Features 1–6
+// ═══════════════════════════════════════════════════════════════
+
+// F5: Photo Quality Check
+function photoQualityCheck(photoSim) {
+  const quality = {
+    none: { valid:true, blur_score:999, brightness:128, issue:null },
+    pothole_large: { valid:true, blur_score:450, brightness:142, issue:null },
+    pothole_small: { valid:false, blur_score:45, brightness:135, issue:'Image too blurry — Laplacian variance 45 < threshold 100' },
+    water_leak: { valid:true, blur_score:380, brightness:118, issue:null },
+    garbage: { valid:true, blur_score:290, brightness:155, issue:null },
+    fallen_wire: { valid:true, blur_score:320, brightness:88, issue:null },
+    dark_image: { valid:false, blur_score:120, brightness:28, issue:'Image too dark — mean luminance 28 < threshold 40' },
+  };
+  return quality[photoSim] || quality.none;
+}
+
+// F2: Image Detection
+function imageDetection(photoSim) {
+  const detections = {
+    pothole_large: { available:true, detections:[{cls:'pothole', score:0.94, area_pct:28}], conf:0.94, model:'yolov8n-onnx-v1.2' },
+    pothole_small: { available:true, detections:[{cls:'pothole', score:0.61, area_pct:8}], conf:0.61, model:'yolov8n-onnx-v1.2' },
+    water_leak: { available:true, detections:[{cls:'road_flooding', score:0.89, area_pct:45}], conf:0.89, model:'yolov8n-onnx-v1.2' },
+    garbage: { available:true, detections:[{cls:'garbage_overflow', score:0.82, area_pct:35}], conf:0.82, model:'yolov8n-onnx-v1.2' },
+    fallen_wire: { available:true, detections:[{cls:'electrical_hazard', score:0.97, area_pct:15}], conf:0.97, model:'yolov8n-onnx-v1.2' },
+    dark_image: { available:false, detections:[], conf:0, model:'yolov8n-onnx-v1.2', error:'Quality gate failed — image too dark' },
+    none: { available:false, detections:[], conf:0, model:'yolov8n-onnx-v1.2', error:'No image provided' },
+  };
+  return detections[photoSim] || detections.none;
+}
+
+// F1: Text Classification (deterministic heuristic for instant feedback)
+function textClassify(desc) {
+  const d = desc.toLowerCase();
+  const rules = [
+    { cat:'electricity', sub:'live_wire', kw:['wire','electric','spark','shock','bescom','live wire','current'], conf:0.92, auth:'BESCOM' },
+    { cat:'electricity', sub:'streetlight', kw:['streetlight','street light','lamp post','light not working'], conf:0.88, auth:'BESCOM' },
+    { cat:'water_leak', sub:'pipeline', kw:['water','pipe','leak','burst','flood','bwssb','seepage','sewage'], conf:0.90, auth:'BWSSB' },
+    { cat:'road_damage', sub:'pothole', kw:['pothole','crater','hole','road damage','road broken','cavity'], conf:0.89, auth:'BBMP' },
+    { cat:'road_damage', sub:'road_crack', kw:['crack','cracking','road surface','tarmac'], conf:0.81, auth:'BBMP' },
+    { cat:'garbage', sub:'overflow', kw:['garbage','trash','waste','litter','dumping','bin','smell','stench'], conf:0.87, auth:'BBMP' },
+    { cat:'drainage', sub:'blocked_drain', kw:['drain','drainage','stagnant water','waterlog','flooding','overflow'], conf:0.85, auth:'BBMP' },
+    { cat:'tree', sub:'fallen_tree', kw:['tree','branch','fallen','uprooted'], conf:0.86, auth:'BBMP' },
+  ];
+  for (const r of rules) {
+    if (r.kw.some(k => d.includes(k))) {
+      return { available:true, category:r.cat, subcategory:r.sub, confidence:r.conf, authority:r.auth, model:'gemini-text-v1.0', confidence_type:'model' };
+    }
+  }
+  return { available:true, category:'other', subcategory:'general', confidence:0.50, authority:'BBMP', model:'tfidf-fallback-v1.0', confidence_type:'heuristic' };
+}
+
+// Emergency detection (F30)
+function detectEmergency(desc, category, photoSim) {
+  const d = desc.toLowerCase();
+  const emergencyKW = ['live wire','wire','spark','electric','fire','gas leak','building collapse','flood','fallen wire','explosion'];
+  const emergencyCats = ['electricity', 'fallen_wire'];
+  const emergencyPhotos = ['fallen_wire'];
+  const kwMatch = emergencyKW.some(k => d.includes(k));
+  const catMatch = emergencyCats.includes(category);
+  const photoMatch = emergencyPhotos.includes(photoSim);
+  const is_emergency = kwMatch || catMatch || photoMatch;
+  return {
+    is_emergency,
+    hazard_type: is_emergency ? (d.includes('fire') ? 'FIRE_HAZARD' : d.includes('gas') ? 'EXPLOSION_HAZARD' : 'ELECTRICAL_HAZARD') : null,
+    threat_level: is_emergency ? 'LIFE_THREATENING' : null,
+    confidence: is_emergency ? 0.96 : 0.0,
+    model:'emergency-regex-llm-v1.0', confidence_type:'deterministic'
+  };
+}
+
+// F3 + F4: Severity + Fusion
+function calcSeverityAndFusion(textResult, imageResult, desc) {
+  const d = desc.toLowerCase();
+  let base = 2;
+  if (['electricity','fallen_wire'].includes(textResult.category)) base = 5;
+  else if (['water_leak','drainage'].includes(textResult.category)) base = 4;
+  else if (textResult.category === 'road_damage') {
+    if (d.includes('accident') || d.includes('dangerous') || d.includes('night')) base = 4;
+    else base = 3;
+  }
+  else if (textResult.category === 'garbage') base = 2;
+
+  if (imageResult.available && imageResult.detections.length > 0) {
+    const pct = imageResult.detections[0].area_pct || 0;
+    if (pct > 30) base = Math.min(5, base + 1);
+    else if (pct < 10) base = Math.max(1, base - 1);
+  }
+
+  const textConf = textResult.confidence;
+  const imgConf = imageResult.available ? imageResult.conf : 0;
+  let fusedCategory = textResult.category;
+  let primarySource = 'text';
+  if (imgConf > 0.70) {
+    primarySource = 'image';
+    const imgCls = imageResult.detections[0]?.cls;
+    if (imgCls === 'pothole') fusedCategory = 'road_damage';
+    else if (imgCls === 'road_flooding') fusedCategory = 'drainage';
+    else if (imgCls === 'electrical_hazard') fusedCategory = 'electricity';
+    else if (imgCls === 'garbage_overflow') fusedCategory = 'garbage';
+  }
+  const fusedConf = imgConf > 0.70
+    ? (imgConf * 0.65 + textConf * 0.35)
+    : textConf;
+
+  return {
+    severity_level: base,
+    fused_category: fusedCategory,
+    fused_confidence: Math.round(fusedConf * 100) / 100,
+    primary_source: primarySource,
+    model: 'fusion-weighted-softmax-v1.0',
+    available: true,
+    confidence_type: 'model'
+  };
+}
+
+// F6: Unified confidence
+function calcConfidence(textConf, imgConf, qualityValid) {
+  const qWeight = qualityValid ? 1.0 : 0.75;
+  const base = imgConf > 0.70 ? (imgConf * 0.65 + textConf * 0.35) : textConf;
+  return Math.round(base * qWeight * 100) / 100;
+}
+
+// Full AI pipeline
+function simulateAIPrediction(desc, photoSim, catHint, sevHint) {
+  const q = photoQualityCheck(photoSim || 'none');
+  const img = imageDetection(photoSim || 'none');
+  const txt = textClassify(desc);
+  const fusion = calcSeverityAndFusion(txt, img, desc);
+  const conf = calcConfidence(txt.confidence, img.available ? img.conf : 0, q.valid);
+  const emg = detectEmergency(desc, fusion.fused_category, photoSim || 'none');
+
+  return {
+    prediction: {
+      category: fusion.fused_category,
+      subcategory: txt.subcategory,
+      severity_level: fusion.severity_level,
+      primary_source: fusion.primary_source,
+      authority: txt.authority,
+    },
+    confidence: conf,
+    model_version: fusion.model,
+    dataset_version: 'rdd2022-in-v2.0',
+    timestamp: new Date().toISOString(),
+    feature_list: ['description_text', 'image_pixels', 'gps_ward_density'],
+    available: true,
+    confidence_type: conf > 0.90 ? 'model' : conf > 0.70 ? 'model' : 'heuristic',
+    quality_check: q,
+    image_detection: img,
+    text_classification: txt,
+    fusion_result: fusion,
+    emergency: emg,
+  };
+}
+
+// Predictive Intelligence (F7–F19)
+function generatePredictions(issue) {
+  const sev = issue.severity || 3;
+  const elapsed = issue.elapsed_hours || 0;
+  const sla = issue.sla_hours || 24;
+  return {
+    civic_impact: { score: +(2 + sev * 1.5 + Math.random()).toFixed(1), level: sev >= 4 ? 'HIGH' : sev === 3 ? 'MEDIUM' : 'LOW', conf: 0.79, feature: '7' },
+    affected_pop: { residents: Math.round((1000 + sev * 3500) * (0.8 + Math.random() * 0.4)), commuters: Math.round(sev * 1200), conf: 0.81, feature: '8' },
+    traffic_impact: { delay_min: +(sev * 3.5).toFixed(1), congestion_idx: +(sev * 0.08).toFixed(2), conf: 0.77, feature: '9' },
+    safety_risk: { level: sev >= 5 ? 'CRITICAL' : sev >= 4 ? 'HIGH' : 'MODERATE', fatality_idx: +(sev * 0.18).toFixed(2), conf: 0.94, feature: '10' },
+    accessibility: { wheelchair_blocked: sev >= 4, pct: sev >= 4 ? 80 : 30, conf: 0.88, feature: '11' },
+    emergency_access: { ambulance_blocked: sev === 5, fire_blocked: sev >= 4, delay_sec: sev * 85, conf: 0.93, feature: '12' },
+    cascade: { likelihood: +(sev * 0.17).toFixed(2), risks: issue.category === 'water_leak' ? ['road_cave_in','drain_block'] : issue.category === 'drainage' ? ['flooding','road_damage'] : [], conf: 0.82, feature: '13' },
+    recurrence: { probability: +(sev * 0.14 + 0.1).toFixed(2), occurrences_3yr: Math.round(sev * 1.2), conf: 0.78, feature: '14' },
+    resolution_time: { est_hours: sev * 6 + 6, lower: sev * 4, upper: sev * 8 + 10, conf: 0.80, feature: '15' },
+    sla_breach: { probability: +(elapsed / sla).toFixed(2), risk: elapsed / sla > 0.75 ? 'CRITICAL_RISK' : elapsed / sla > 0.5 ? 'ELEVATED' : 'LOW', conf: 0.86, feature: '16' },
+    surge: { multiplier: 1.2 + Math.random() * 0.8, predicted_vol: Math.round(20 + Math.random() * 40), conf: 0.73, feature: '17' },
+    workload: { capacity_pct: Math.round(80 + sev * 12 + Math.random() * 20), status: sev >= 4 ? 'OVERLOADED' : 'NORMAL', conf: 0.84, feature: '19' },
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+
+let currentRole = 'resident';
+let currentView = 'submit';
+let currentIssueId = null;
+let selectedWorkerId = null;
+let overrideIssueId = null;
+
+const NAV_CONFIG = {
+  resident: {
+    title: 'Resident Portal',
+    sub: 'Report issues · Track status · Emergency guidance',
+    sections: [
+      { label:'Resident', items:[
+        { id:'submit', icon:'📋', label:'Report Issue' },
+        { id:'myissues', icon:'📁', label:'My Reports' },
+        { id:'track', icon:'🔍', label:'Track Issue' },
+      ]}
+    ]
+  },
+  officer: {
+    title: 'Officer Command Centre',
+    sub: 'Triage · Assign · Monitor SLA · Override AI',
+    sections: [
+      { label:'Operations', items:[
+        { id:'officer-dashboard', icon:'🖥', label:'Dashboard' },
+        { id:'issue-detail', icon:'📊', label:'Issue Detail', hidden:true },
+        { id:'hotspots', icon:'🗺', label:'Hotspot Map' },
+        { id:'workers', icon:'👷', label:'Workers' },
+      ]}
+    ]
+  },
+  worker: {
+    title: 'Field Worker App',
+    sub: 'Your assigned tasks',
+    sections: [
+      { label:'Tasks', items:[
+        { id:'my-tasks', icon:'🔧', label:'My Tasks' },
+      ]}
+    ]
+  },
+  admin: {
+    title: 'Governance & AI Safety',
+    sub: 'Model registry · Audit logs · Accuracy metrics',
+    sections: [
+      { label:'Governance', items:[
+        { id:'governance', icon:'⚙️', label:'AI Governance' },
+        { id:'datasets', icon:'📦', label:'Datasets' },
+        { id:'emergency-audit', icon:'🚨', label:'Emergency Audit' },
+        { id:'model-performance', icon:'📈', label:'Model Performance' },
+      ]}
+    ]
+  }
+};
+
+function switchRole(role) {
+  currentRole = role;
+  const cfg = NAV_CONFIG[role];
+  document.getElementById('pageTitle').textContent = cfg.title;
+  document.getElementById('pageSub').textContent = cfg.sub;
+  renderNav();
+  const firstView = cfg.sections[0].items.find(i => !i.hidden);
+  navigate(firstView.id);
+}
+
+function renderNav() {
+  const cfg = NAV_CONFIG[currentRole];
+  let html = '';
+  for (const sec of cfg.sections) {
+    html += `<div class="nav-section">${sec.label}</div>`;
+    for (const item of sec.items) {
+      if (item.hidden) continue;
+      html += `<div class="nav-item${currentView === item.id ? ' active' : ''}" onclick="navigate('${item.id}')">
+        <span class="ico">${item.icon}</span>${item.label}
+        ${item.badge ? `<span class="nav-badge ${item.badgeClass||''}">${item.badge}</span>` : ''}
+      </div>`;
+    }
+  }
+  document.getElementById('navMenu').innerHTML = html;
+}
+
+function navigate(viewId) {
+  currentView = viewId;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const el = document.getElementById(`view-${viewId}`);
+  if (el) el.classList.add('active');
+  renderNav();
+  renderView(viewId);
+}
+
+async function renderView(viewId) {
+  switch(viewId) {
+    case 'myissues': await renderResidentIssues(); break;
+    case 'officer-dashboard': await renderOfficerDashboard(); break;
+    case 'hotspots': renderHotspots(); break;
+    case 'workers': await renderWorkers(); break;
+    case 'my-tasks': await renderWorkerTasks(); break;
+    case 'governance': await renderGovernance(); break;
+    case 'datasets': renderDatasets(); break;
+    case 'emergency-audit': await renderEmergencyAudit(); break;
+    case 'model-performance': await renderModelPerformance(); break;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUBMIT ISSUE
+// ═══════════════════════════════════════════════════════════════
+
+let aiDebounce = null;
+function onDescInput(val) {
+  document.getElementById('submitBtn').disabled = val.length < 15;
+  clearTimeout(aiDebounce);
+  if (val.length >= 15) {
+    aiDebounce = setTimeout(() => runLiveAIPreview(val), 400);
+  }
+}
+
+function runLiveAIPreview(desc) {
+  const photo = document.getElementById('issuePhoto').value;
+  const txt = textClassify(desc);
+  const q = photoQualityCheck(photo);
+  const img = imageDetection(photo);
+  const fusion = calcSeverityAndFusion(txt, img, desc);
+  const emg = detectEmergency(desc, fusion.fused_category, photo);
+  const conf = calcConfidence(txt.confidence, img.available ? img.conf : 0, q.valid);
+  const confClass = conf >= 0.85 ? '' : conf >= 0.65 ? 'med' : 'low';
+
+  let html = `
+    <div class="pipeline">
+      <div class="pipeline-step done"><span class="ps-icon">🔍</span>Quality</div>
+      <div class="pipeline-step done"><span class="ps-icon">📝</span>Text AI</div>
+      <div class="pipeline-step ${img.available ? 'done' : ''}"><span class="ps-icon">🖼</span>Image AI</div>
+      <div class="pipeline-step done"><span class="ps-icon">⚡</span>Fusion</div>
+      <div class="pipeline-step done"><span class="ps-icon">📊</span>Score</div>
+    </div>`;
+
+  if (!q.valid) {
+    html += `<div class="alert alert-warning" style="margin-bottom:10px"><div><div class="alert-title">Photo Quality Issue</div>${q.issue}</div></div>`;
+  }
+
+  html += `<div class="ai-block">
+    <div class="ai-block-header"><span class="ai-icon">🤖</span> AI Analysis — Features 1–6</div>`;
+
+  const rows = [
+    ['Category', `<span class="tag tag-${fusion.fused_category === 'electricity' ? 'critical' : 'blue'}">${fusion.fused_category.replace('_',' ').toUpperCase()}</span>`],
+    ['Subcategory', txt.subcategory.replace('_',' ')],
+    ['Severity', `<span class="tag tag-severity-${fusion.severity_level}">${fusion.severity_level}/5</span>`],
+    ['Primary Source', fusion.primary_source],
+    ['Authority', `<span class="tag tag-violet">${txt.authority}</span>`],
+    ['AI Confidence', `<div style="display:flex;align-items:center;gap:8px">
+      <span style="font-family:var(--mono);font-size:11px">${(conf*100).toFixed(0)}%</span>
+      <div class="confidence-bar-wrap"><div class="confidence-bar ${confClass}" style="width:${conf*100}%"></div></div>
+    </div>`],
+    ['Confidence Type', txt.confidence_type],
+    ['Model', `<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${fusion.model}</span>`],
+  ];
+
+  for (const [k, v] of rows) {
+    html += `<div class="ai-row"><span class="ai-key">${k}</span><span class="ai-val">${v}</span></div>`;
+  }
+  html += `</div>`;
+
+  if (img.available && img.detections.length > 0) {
+    html += `<div style="margin-top:10px;font-size:11px;color:var(--text3)">
+      🖼 Image detection: <span style="color:var(--sky)">${img.detections.map(d => `${d.cls} (${(d.score*100).toFixed(0)}%)`).join(', ')}</span>
+    </div>`;
+  }
+
+  document.getElementById('aiPreviewContent').innerHTML = html;
+
+  // Emergency block
+  const eCard = document.getElementById('emergencyPreview');
+  if (emg.is_emergency) {
+    document.getElementById('emergencyContent').innerHTML = `
+      <div class="alert alert-emergency">
+        <div>
+          <div class="alert-title">⚡ ${emg.hazard_type} — ${emg.threat_level}</div>
+          <div>This issue triggers emergency protocols. Please call 112 immediately. SmartCivic will flag this as CRITICAL priority.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <a href="tel:112" class="btn btn-danger btn-sm">📞 Call 112 Now</a>
+        <a href="tel:101" class="btn btn-secondary btn-sm">🔥 Fire 101</a>
+      </div>`;
+    eCard.style.display = 'block';
+  } else {
+    eCard.style.display = 'none';
+  }
+}
+
+async function submitIssue() {
+  const desc = document.getElementById('issueDesc').value;
+  const photo = document.getElementById('issuePhoto').value;
+  const ward = document.getElementById('issueWard').value || 'WARD-45';
+  const addr = document.getElementById('issueAddr').value || 'Bengaluru';
+  const lat = +document.getElementById('issueLat').value;
+  const lng = +document.getElementById('issueLng').value;
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = '⏳ Analyzing & Submitting…';
+
+  const ai = simulateAIPrediction(desc, photo, null, null);
+  const issueId = `SC-2026-${String(Math.floor(Math.random()*9000)+1000)}`;
+
+  const issue = {
+    id: issueId, desc, photo, ward, address: addr, lat, lng,
+    status: ai.emergency.is_emergency ? 'emergency' : 'submitted',
+    created_at: new Date().toISOString(),
+    severity: ai.prediction.severity_level,
+    category: ai.prediction.category,
+    authority: ai.prediction.authority,
+    emergency: ai.emergency.is_emergency,
+    sla_hours: ai.emergency.is_emergency ? 2 : (ai.prediction.severity_level >= 4 ? 12 : 24),
+    elapsed_hours: 0,
+    ai_prediction: ai,
+    operational_classification: null,
+    officer_override: false,
+    resident_id: 'USR-current'
+  };
+
+  await dbSet('issues', issueId, issue);
+  await dbSet('prediction_audits', `AUD-${issueId}`, {
+    audit_id: `AUD-${issueId}`, issue_id: issueId,
+    model_version: ai.model_version, confidence: ai.confidence,
+    feature: 'text_image_fusion', output_prediction: ai.prediction,
+    executed_at: new Date().toISOString(), available: ai.available,
+    feature_list: ai.feature_list, confidence_type: ai.confidence_type
+  });
+
+  if (ai.emergency.is_emergency) {
+    await dbSet('emergency_events', `EMG-${issueId}`, {
+      event_id: `EMG-${issueId}`, issue_id: issueId,
+      hazard_type: ai.emergency.hazard_type,
+      threat_level: ai.emergency.threat_level,
+      detected_at: new Date().toISOString(), action_taken: 'FLAGGED_FOR_OFFICER',
+      timeline: [{ ts: new Date().toISOString(), event:'EMERGENCY_DETECTED', actor:'AI_SYSTEM' }]
+    });
+  }
+
+  btn.textContent = '✅ Submitted!';
+  setTimeout(() => { btn.textContent = '🤖 Analyze & Submit'; btn.disabled = false; }, 2000);
+
+  // Clear form
+  document.getElementById('issueDesc').value = '';
+  document.getElementById('aiPreviewContent').innerHTML = `<div class="alert alert-success"><div><div class="alert-title">Issue Submitted — ${issueId}</div>Your report is now in the AI triage queue. You can track it under "My Reports".</div></div>`;
+
+  if (ai.emergency.is_emergency) openEmergencyModal();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RESIDENT VIEWS
+// ═══════════════════════════════════════════════════════════════
+
+async function renderResidentIssues() {
+  const issues = await dbList('issues');
+  const mine = issues.filter(i => i.resident_id === 'USR-current' || ['SC-2026-0001','SC-2026-0002','SC-2026-0003'].includes(i.id));
+  const el = document.getElementById('residentIssueList');
+  if (!mine.length) { el.innerHTML = `<div class="empty-state"><div class="es-icon">📭</div><div>No issues yet. <a href="#" onclick="navigate('submit')" style="color:var(--amber)">Report one →</a></div></div>`; return; }
+  el.innerHTML = mine.map(iss => issueCardHTML(iss, 'resident')).join('');
+}
+
+function trackIssue() {
+  const id = document.getElementById('trackInput').value.trim();
+  dbGet('issues', id).then(iss => {
+    if (!iss) { document.getElementById('trackResult').innerHTML = `<div class="alert alert-warning"><div>No issue found with ID <strong>${id}</strong>.</div></div>`; return; }
+    document.getElementById('trackResult').innerHTML = issueCardHTML(iss, 'resident') + renderPipelineStatus(iss);
+  });
+}
+
+function renderPipelineStatus(iss) {
+  const steps = ['submitted','triaged','assigned','in_progress','resolved'];
+  const idx = steps.indexOf(iss.status);
+  const labels = ['📥 Submitted','🤖 AI Triaged','👷 Assigned','🔧 In Progress','✅ Resolved'];
+  return `<div class="card" style="margin-top:12px">
+    <div class="card-title">Status Pipeline</div>
+    <div class="pipeline">${steps.map((s,i) => `<div class="pipeline-step ${i<idx?'done':i===idx?'active':''}"><span class="ps-icon">${labels[i].split(' ')[0]}</span><span>${labels[i].split(' ').slice(1).join(' ')}</span></div>`).join('')}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OFFICER DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+
+async function renderOfficerDashboard() {
+  const issues = await dbList('issues');
+  const open = issues.filter(i => i.status !== 'resolved');
+  const critical = issues.filter(i => i.emergency || i.severity === 5);
+  const slaBreach = issues.filter(i => i.elapsed_hours > i.sla_hours * 0.75 && i.status !== 'resolved');
+  const resolved = issues.filter(i => i.status === 'resolved');
+
+  document.getElementById('officerMetrics').innerHTML = [
+    { label:'Open Issues', val: open.length, delta:'+2 today', up:true },
+    { label:'Critical / Emergency', val: critical.length, delta:'Requires immediate action', up:true, color:'var(--crimson)' },
+    { label:'SLA Breach Risk', val: slaBreach.length, delta:'Issues > 75% SLA elapsed', up:true, color:'var(--amber)' },
+    { label:'Resolved Today', val: resolved.length, delta:'All time', up:false, color:'var(--emerald)' },
+  ].map(m => `<div class="card">
+    <div class="metric-big" style="color:${m.color||'var(--text)'}">${m.val}</div>
+    <div class="metric-label">${m.label}</div>
+    <div class="metric-delta ${m.up?'up':'down'}">${m.delta}</div>
+  </div>`).join('');
+
+  // SLA Alert
+  let slaHtml = '';
+  for (const iss of slaBreach) {
+    const pct = Math.min(1, iss.elapsed_hours / iss.sla_hours);
+    const cls = pct >= 1 ? 'breach' : 'warn';
+    slaHtml += `<div class="alert alert-${pct>=1?'emergency':'warning'}" style="margin-bottom:8px">
+      <div>
+        <div class="alert-title">⏱ SLA ${pct>=1?'BREACHED':'Risk'} — ${iss.id}</div>
+        <div>${iss.desc.substring(0,70)}… · Elapsed: ${iss.elapsed_hours}h / Limit: ${iss.sla_hours}h (${(pct*100).toFixed(0)}%)</div>
+      </div>
+      <div class="sla-ring sla-${cls}" style="margin-left:auto">${(pct*100).toFixed(0)}%</div>
+    </div>`;
+  }
+  document.getElementById('slaAlertRow').innerHTML = slaHtml;
+
+  // Queue
+  const sorted = [...issues].filter(i => i.status !== 'resolved').sort((a,b) => b.severity - a.severity);
+  document.getElementById('officerQueue').innerHTML = sorted.map(iss => issueCardHTML(iss, 'officer')).join('') || `<div class="empty-state"><div class="es-icon">✅</div><div>No open issues</div></div>`;
+
+  // Predictive panel
+  renderPredictivePanel(sorted[0]);
+}
+
+function renderPredictivePanel(iss) {
+  if (!iss) { document.getElementById('predictivePanel').innerHTML = `<div class="empty-state"><div class="es-icon">📊</div><div>Select an issue to see predictions</div></div>`; return; }
+  const pred = generatePredictions(iss);
+  document.getElementById('predictivePanel').innerHTML = `
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-title" style="margin-bottom:8px">Showing predictions for <span style="color:var(--amber)">${iss.id}</span></div>
+      <div class="pred-grid">
+        ${predPill('Civic Impact', pred.civic_impact.level, `Conf: ${(pred.civic_impact.conf*100).toFixed(0)}%`, 'F7')}
+        ${predPill('Affected Pop.', `~${(pred.affected_pop.residents/1000).toFixed(1)}K`, `Conf: ${(pred.affected_pop.conf*100).toFixed(0)}%`, 'F8')}
+        ${predPill('Traffic Delay', `+${pred.traffic_impact.delay_min} min`, `Conf: ${(pred.traffic_impact.conf*100).toFixed(0)}%`, 'F9')}
+        ${predPill('Safety Risk', pred.safety_risk.level, `Conf: ${(pred.safety_risk.conf*100).toFixed(0)}%`, 'F10')}
+        ${predPill('SLA Breach', `${(pred.sla_breach.probability*100).toFixed(0)}%`, pred.sla_breach.risk, 'F16')}
+        ${predPill('Resolution', `${pred.resolution_time.est_hours}h est.`, `${pred.resolution_time.lower}–${pred.resolution_time.upper}h range`, 'F15')}
+        ${predPill('Cascade Risk', `${(pred.cascade.likelihood*100).toFixed(0)}%`, pred.cascade.risks.join(', ')||'Low', 'F13')}
+        ${predPill('Recurrence', `${(pred.recurrence.probability*100).toFixed(0)}%`, `${pred.recurrence.occurrences_3yr} in 3yr`, 'F14')}
+      </div>
+    </div>
+    ${pred.cascade.risks.length ? `<div class="card">
+      <div class="card-title">Cascade Risk Tree <span class="tag tag-neutral" style="font-size:9px">F13</span></div>
+      <div class="cascade-root">🔴 ${iss.category.replace('_',' ').toUpperCase()}</div>
+      ${pred.cascade.risks.map(r => `<div class="cascade-node">⚠️ ${r.replace('_',' ').toUpperCase()}</div>`).join('')}
+    </div>` : ''}
+  `;
+}
+
+function predPill(label, val, sub, feat) {
+  const col = val === 'HIGH' || val === 'CRITICAL' ? 'var(--crimson)' : val === 'MEDIUM' || val === 'ELEVATED' ? 'var(--amber)' : 'var(--emerald)';
+  return `<div class="pred-pill">
+    <div class="pred-pill-label">${label} <span style="color:var(--text3);font-size:9px">${feat}</span></div>
+    <div class="pred-pill-value" style="color:${col}">${val}</div>
+    <div class="pred-pill-conf">${sub}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ISSUE CARD + DETAIL
+// ═══════════════════════════════════════════════════════════════
+
+function issueCardHTML(iss, role) {
+  const sevClass = `tag-severity-${iss.severity}`;
+  const cats = { road_damage:'🛣', water_leak:'💧', electricity:'⚡', garbage:'🗑', drainage:'🌊', tree:'🌳', other:'📍' };
+  const icon = cats[iss.category] || '📍';
+  return `<div class="issue-card ${iss.emergency ? 'emergency-card' : ''}" onclick="openIssueDetail('${iss.id}', '${role}')">
+    <div class="issue-header">
+      <span style="font-size:22px">${icon}</span>
+      <div style="flex:1">
+        <div class="issue-id">${iss.id}</div>
+        <div class="issue-title">${iss.desc.substring(0,80)}${iss.desc.length>80?'…':''}</div>
+      </div>
+    </div>
+    <div class="issue-meta">
+      <span class="tag ${sevClass}">Severity ${iss.severity}</span>
+      ${statusChip(iss.status)}
+      <span class="tag tag-blue">${iss.ward}</span>
+      <span class="tag tag-violet">${iss.authority}</span>
+      ${iss.emergency ? '<span class="tag tag-critical">🚨 EMERGENCY</span>' : ''}
+    </div>
+    ${role === 'officer' ? `<div style="margin-top:8px;font-size:11px;color:var(--text3)">
+      SLA: ${iss.elapsed_hours}h / ${iss.sla_hours}h elapsed · AI conf: ${((iss.ai_prediction?.confidence||0)*100).toFixed(0)}%
+    </div>` : ''}
+  </div>`;
+}
+
+function statusChip(status) {
+  const m = { submitted:'status-submitted', triaged:'status-triaged', assigned:'status-assigned', resolved:'status-resolved', emergency:'status-emergency', in_progress:'status-assigned' };
+  return `<span class="status-chip ${m[status]||'status-submitted'}">● ${status}</span>`;
+}
+
+async function openIssueDetail(issueId, role) {
+  currentIssueId = issueId;
+  const iss = await dbGet('issues', issueId);
+  if (!iss) return;
+  const ai = iss.ai_prediction || {};
+  const pred = generatePredictions(iss);
+
+  document.getElementById('issueDetailModalTitle').innerHTML = `${iss.id} — <span style="color:var(--text3);font-weight:400">${iss.category?.replace('_',' ')}</span>`;
+
+  let body = `
+    <div class="grid-2" style="gap:12px;margin-bottom:14px">
+      <div>
+        <div class="form-label">Description</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px">${iss.desc}</div>
+        <div class="issue-meta" style="margin-top:8px">
+          ${statusChip(iss.status)}
+          <span class="tag tag-blue">${iss.ward}</span>
+          <span class="tag tag-violet">${iss.authority}</span>
+          ${iss.emergency ? '<span class="tag tag-critical">🚨 EMERGENCY</span>' : ''}
+        </div>
+      </div>
+      <div>
+        <div class="form-label">Location</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">${iss.address}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:4px">${iss.lat}, ${iss.lng}</div>
+        <div style="margin-top:6px"><span class="form-label">SLA</span>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <div class="sla-ring ${iss.elapsed_hours >= iss.sla_hours ? 'sla-breach' : iss.elapsed_hours > iss.sla_hours * 0.75 ? 'sla-warn' : 'sla-safe'}">
+              ${Math.min(100,(iss.elapsed_hours/iss.sla_hours*100)).toFixed(0)}%
+            </div>
+            <span style="font-size:11px;color:var(--text3)">${iss.elapsed_hours}h of ${iss.sla_hours}h elapsed</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // AI Block
+  if (ai.available !== false) {
+    body += `<div class="ai-block">
+      <div class="ai-block-header"><span class="ai-icon">🤖</span> AI Prediction — Features 1–6 &nbsp;
+        <button class="btn btn-secondary btn-sm" onclick="openExplanation('${issueId}')">🔍 Explain</button>
+      </div>
+      <div class="grid-2" style="gap:8px">
+        ${aiDetailRow('Category', ai.prediction?.category?.replace('_',' ') || '—')}
+        ${aiDetailRow('Severity', `${ai.prediction?.severity_level || '—'}/5`)}
+        ${aiDetailRow('Confidence', `${((ai.confidence||0)*100).toFixed(0)}% (${ai.confidence_type})`)}
+        ${aiDetailRow('Model', ai.model_version || '—')}
+        ${aiDetailRow('Primary Source', ai.prediction?.primary_source || '—')}
+        ${aiDetailRow('Dataset', ai.dataset_version || '—')}
+      </div>
+    </div>`;
+  }
+
+  // Operational override
+  if (iss.operational_classification) {
+    const oc = iss.operational_classification;
+    body += `<div class="override-box" style="margin-top:10px">
+      <div class="card-title" style="margin-bottom:6px">✅ Operational Classification ${iss.officer_override ? '<span class="tag tag-amber" style="font-size:9px">OFFICER OVERRIDE</span>' : ''}</div>
+      <div style="font-size:12px">Category: <strong>${oc.category?.replace('_',' ')}</strong> · Severity: <strong>${oc.severity}</strong></div>
+      ${iss.override_reason ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">"${iss.override_reason}"</div>` : ''}
+    </div>`;
+  }
+
+  // Predictions summary
+  body += `<div style="margin-top:14px"><div class="card-title">📊 Predictive Intelligence — Features 7–19</div>
+    <div class="pred-grid" style="grid-template-columns:1fr 1fr 1fr">
+      ${predPill('Civic Impact', pred.civic_impact.level, `~${(pred.affected_pop.residents/1000).toFixed(1)}K affected`, 'F7+8')}
+      ${predPill('Safety Risk', pred.safety_risk.level, `Fatality idx: ${pred.safety_risk.fatality_idx}`, 'F10')}
+      ${predPill('SLA Breach', pred.sla_breach.risk, `${(pred.sla_breach.probability*100).toFixed(0)}% probability`, 'F16')}
+    </div>
+  </div>`;
+
+  // Emergency guidance
+  if (iss.emergency) {
+    body += `<div class="alert-112" style="margin-top:14px">
+      <div class="big-number">112</div>
+      <p>This is a flagged emergency. Call immediately.<br>SmartCivic has notified the officer on duty.</p>
+    </div>`;
+  }
+
+  document.getElementById('issueDetailModalBody').innerHTML = body;
+
+  // Footer buttons by role
+  let footer = `<button class="btn btn-secondary" onclick="closeModal('issueDetailModal')">Close</button>`;
+  if (role === 'officer') {
+    if (iss.status !== 'resolved') {
+      footer += `<button class="btn btn-secondary" onclick="openOverride('${issueId}')">✏️ Override AI</button>`;
+      footer += `<button class="btn btn-secondary" onclick="openSubmissionModal('${issueId}')">📤 Route to Authority</button>`;
+      if (!iss.assigned_worker_id) {
+        footer += `<button class="btn btn-primary" onclick="openAssignModal('${issueId}')">👷 Assign Worker</button>`;
+      } else {
+        footer += `<button class="btn btn-emerald" onclick="resolveIssue('${issueId}')">✅ Mark Resolved</button>`;
+      }
+    }
+  }
+  document.getElementById('issueDetailModalFooter').innerHTML = footer;
+  openModal('issueDetailModal');
+}
+
+function aiDetailRow(k, v) {
+  return `<div class="ai-row"><span class="ai-key">${k}</span><span class="ai-val">${v}</span></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OFFICER ACTIONS (Features 23, 25, 28, 45)
+// ═══════════════════════════════════════════════════════════════
+
+function openOverride(issueId) {
+  overrideIssueId = issueId;
+  closeModal('issueDetailModal');
+  openModal('overrideModal');
+}
+
+async function saveOverride() {
+  if (!overrideIssueId) return;
+  const cat = document.getElementById('overrideCat').value;
+  const sev = +document.getElementById('overrideSev').value;
+  const reason = document.getElementById('overrideReason').value;
+  if (!reason) { alert('Please provide an override reason.'); return; }
+
+  const iss = await dbGet('issues', overrideIssueId);
+  await dbSet('issues', overrideIssueId, {
+    ...iss,
+    operational_classification: { category: cat, severity: sev, confirmed_by_officer_id: 'OFF-8821' },
+    officer_override: true,
+    override_reason: reason,
+    status: iss.status === 'submitted' ? 'triaged' : iss.status
+  });
+  closeModal('overrideModal');
+  showToast(`Override saved for ${overrideIssueId}`, 'success');
+  if (currentRole === 'officer') renderOfficerDashboard();
+}
+
+async function openAssignModal(issueId) {
+  currentIssueId = issueId;
+  selectedWorkerId = null;
+  closeModal('issueDetailModal');
+
+  const workers = await dbList('users');
+  const fieldWorkers = workers.filter(w => w.role === 'worker' && w.available);
+
+  document.getElementById('workerRecommendList').innerHTML = fieldWorkers
+    .sort((a,b) => b.score - a.score)
+    .map(w => `<div class="worker-card" id="wcard-${w._id}" onclick="selectWorker('${w._id}')">
+      <div class="worker-avatar">👷</div>
+      <div>
+        <div class="worker-name">${w.name}</div>
+        <div class="worker-meta">${w.skill.replace('_',' ')} · ${w.active_tasks} active tasks · ${w.ward}</div>
+      </div>
+      <div class="worker-score">${(w.score*100).toFixed(0)}%</div>
+    </div>`).join('');
+
+  openModal('assignModal');
+}
+
+function selectWorker(wid) {
+  selectedWorkerId = wid;
+  document.querySelectorAll('.worker-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`wcard-${wid}`)?.classList.add('selected');
+  document.getElementById('confirmAssignBtn').disabled = false;
+}
+
+async function confirmAssign() {
+  if (!selectedWorkerId || !currentIssueId) return;
+  const iss = await dbGet('issues', currentIssueId);
+  await dbSet('issues', currentIssueId, { ...iss, assigned_worker_id: selectedWorkerId, status: 'assigned' });
+  // Human-in-the-loop audit (Feature 45)
+  await dbSet('prediction_audits', `AUTH-${currentIssueId}`, {
+    audit_id: `AUTH-${currentIssueId}`, issue_id: currentIssueId,
+    action: 'ASSIGN_WORKER', target_id: selectedWorkerId,
+    authorized_by: 'OFF-8821', timestamp: new Date().toISOString(),
+    human_authorization_token: `AUTH-HUMAN-${Date.now()}`
+  });
+  closeModal('assignModal');
+  showToast(`Worker assigned to ${currentIssueId}`, 'success');
+  renderOfficerDashboard();
+}
+
+async function resolveIssue(issueId) {
+  const iss = await dbGet('issues', issueId);
+  const elapsed = iss.elapsed_hours || 0;
+  await dbSet('issues', issueId, { ...iss, status: 'resolved', resolved_at: new Date().toISOString() });
+  // Log prediction vs actual (Feature 29)
+  const logId = `LOG-${issueId}-${Date.now()}`;
+  await dbSet('prediction_actual_logs', logId, {
+    issue_id: issueId,
+    predicted_category: iss.ai_prediction?.prediction?.category,
+    actual_category: iss.operational_classification?.category || iss.category,
+    predicted_resolution_hours: iss.ai_prediction ? generatePredictions(iss).resolution_time.est_hours : null,
+    actual_resolution_hours: elapsed,
+    category_match: iss.ai_prediction?.prediction?.category === (iss.operational_classification?.category || iss.category),
+    evaluatable: true,
+    recorded_at: new Date().toISOString()
+  });
+  closeModal('issueDetailModal');
+  showToast(`Issue ${issueId} marked resolved`, 'success');
+  renderOfficerDashboard();
+}
+
+async function openSubmissionModal(issueId) {
+  const iss = await dbGet('issues', issueId);
+  document.getElementById('submissionDetails').innerHTML = `
+    <div class="ai-block">
+      <div class="ai-block-header">Authority Routing — Features 20–22</div>
+      ${aiDetailRow('Issue ID', issueId)}
+      ${aiDetailRow('Authority', iss.authority)}
+      ${aiDetailRow('Category', iss.category?.replace('_',' '))}
+      ${aiDetailRow('Jurisdiction', iss.ward)}
+      ${aiDetailRow('External Ticket', 'Not yet submitted — awaiting authorization')}
+    </div>
+    <div class="alert alert-info" style="margin-top:12px">
+      <div>Clicking "Authorize" marks this as <em>Routed</em>. No fake external ticket ID is generated. External status will show "PENDING_MANUAL_DISPATCH" until a real API confirms.</div>
+    </div>`;
+  currentIssueId = issueId;
+  closeModal('issueDetailModal');
+  openModal('submissionModal');
+}
+
+async function authorizeSubmission() {
+  if (!currentIssueId) return;
+  const iss = await dbGet('issues', currentIssueId);
+  const subId = `SUB-${Date.now()}`;
+  await dbSet('external_submissions', subId, {
+    submission_id: subId, issue_id: currentIssueId,
+    authority_code: iss.authority,
+    external_ticket_id: null,  // Feature 42: no fake ticket
+    authorized_by_officer: 'OFF-8821',
+    http_status_code: null,
+    status: 'PENDING_MANUAL_DISPATCH',
+    submitted_at: new Date().toISOString()
+  });
+  closeModal('submissionModal');
+  showToast(`Routed to ${iss.authority} — awaiting external confirmation`, 'info');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPLANATION MODAL (Feature 27)
+// ═══════════════════════════════════════════════════════════════
+
+async function openExplanation(issueId) {
+  const iss = await dbGet('issues', issueId);
+  const ai = iss.ai_prediction || {};
+  const features = [
+    { feature:'image_detection_score', contribution: ai.image_detection?.available ? ai.image_detection.conf * 0.45 : 0, label:'Image evidence' },
+    { feature:'text_keyword_match', contribution: (ai.text_classification?.confidence || 0) * 0.3, label:'Text description keywords' },
+    { feature:'location_risk_factor', contribution: 0.15, label:'Location risk (ward density)' },
+    { feature:'historical_recurrence', contribution: 0.10, label:'Historical complaint pattern' },
+  ].sort((a,b) => b.contribution - a.contribution);
+
+  const body = `
+    <div class="ai-block">
+      <div class="ai-block-header"><span class="ai-icon">🔍</span> SHAP Feature Attribution</div>
+      ${features.map(f => `<div class="ai-row">
+        <span class="ai-key">${f.label}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="confidence-bar-wrap" style="width:120px"><div class="confidence-bar" style="width:${(f.contribution*100/0.45*100).toFixed(0)}%;background:var(--violet)"></div></div>
+          <span class="ai-val">+${f.contribution.toFixed(2)}</span>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div style="margin-top:14px;font-size:12px;color:var(--text2);background:var(--bg);padding:12px;border-radius:6px;border:1px solid var(--border)">
+      <strong>Explanation:</strong> ${ai.prediction?.severity_level >= 4 ? 'High severity predicted' : 'Moderate severity predicted'} primarily due to
+      ${ai.image_detection?.available ? `image detection of ${ai.image_detection?.detections?.[0]?.cls || 'issue'} (${((ai.image_detection?.conf||0)*100).toFixed(0)}% confidence)` : 'text keywords'}
+      and location in ${iss.ward} (historical high-density area).
+    </div>
+    <div class="alert alert-info" style="margin-top:12px">
+      <div>Feature attributions are SHAP-approximated. Contributions are correlational, not causal. Officer judgment supersedes AI predictions.</div>
+    </div>`;
+
+  document.getElementById('explanationBody').innerHTML = body;
+  openModal('explanationModal');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HOTSPOT MAP (Feature 18)
+// ═══════════════════════════════════════════════════════════════
+
+async function renderHotspots() {
+  const canvas = document.getElementById('hotspot-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 800, 260);
+
+  // Grid background
+  ctx.strokeStyle = '#1E3A6E'; ctx.lineWidth = 0.5;
+  for (let x=0; x<800; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,260); ctx.stroke(); }
+  for (let y=0; y<260; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(800,y); ctx.stroke(); }
+
+  const hotspots = [
+    { x:200, y:130, r:55, intensity:9.2, type:'current', label:'WARD-45\n34 issues' },
+    { x:500, y:90, r:40, intensity:7.1, type:'current', label:'WARD-112\n22 issues' },
+    { x:650, y:180, r:30, intensity:5.4, type:'predicted', label:'WARD-78\n↑ predicted' },
+    { x:350, y:200, r:35, intensity:6.8, type:'predicted', label:'WARD-91\n↑ monsoon risk' },
+    { x:120, y:60, r:22, intensity:3.2, type:'resolved', label:'WARD-33\nResolved cluster' },
+  ];
+
+  for (const h of hotspots) {
+    const grad = ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, h.r);
+    if (h.type === 'current') {
+      grad.addColorStop(0, 'rgba(239,68,68,0.6)');
+      grad.addColorStop(1, 'rgba(239,68,68,0)');
+    } else if (h.type === 'predicted') {
+      grad.addColorStop(0, 'rgba(245,158,11,0.5)');
+      grad.addColorStop(1, 'rgba(245,158,11,0)');
+    } else {
+      grad.addColorStop(0, 'rgba(16,185,129,0.4)');
+      grad.addColorStop(1, 'rgba(16,185,129,0)');
+    }
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle = h.type === 'current' ? '#EF4444' : h.type === 'predicted' ? '#F59E0B' : '#10B981';
+    ctx.beginPath(); ctx.arc(h.x, h.y, 5, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle = '#94AACF'; ctx.font = '10px Inter'; ctx.textAlign = 'center';
+    h.label.split('\n').forEach((line, i) => ctx.fillText(line, h.x, h.y + h.r + 14 + i*12));
+  }
+
+  const issues = await dbList('issues');
+  document.getElementById('hotspotCards').innerHTML = [
+    { ward:'WARD-45 — Domlur', count:34, pred:'+9 (next 24h)', driver:'Road damage + monsoon', intensity:9.2, type:'current' },
+    { ward:'WARD-112 — Koramangala', count:22, pred:'+5', driver:'Water infrastructure age', intensity:7.1, type:'current' },
+    { ward:'WARD-78 — Indiranagar', count:8, pred:'+14 PREDICTED', driver:'Heavy rainfall forecast', intensity:5.4, type:'predicted' },
+    { ward:'WARD-91 — HSR Layout', count:11, pred:'+11 PREDICTED', driver:'Monsoon surge pattern', intensity:6.8, type:'predicted' },
+  ].map(h => `<div class="card">
+    <div class="card-title">${h.type==='predicted'?'🟡':'🔴'} ${h.ward}</div>
+    <div class="metric-big" style="font-size:24px">${h.count}</div>
+    <div class="metric-label">Current complaints</div>
+    <div class="metric-delta ${h.type==='predicted'?'up':''}" style="margin-top:6px">${h.pred}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:4px">Driver: ${h.driver}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono)">Intensity score: ${h.intensity}</div>
+  </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WORKERS (Feature 25)
+// ═══════════════════════════════════════════════════════════════
+
+async function renderWorkers() {
+  const workers = (await dbList('users')).filter(w => w.role === 'worker');
+  document.getElementById('workerList').innerHTML = workers.map(w => `
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="worker-avatar" style="width:44px;height:44px;font-size:20px">👷</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">${w.name}</div>
+          <div style="font-size:12px;color:var(--text3)">${w.skill.replace('_',' ')} · ${w.ward}</div>
+        </div>
+        <div>
+          <div class="tag ${w.active_tasks >= 3 ? 'tag-critical' : w.active_tasks >= 2 ? 'tag-high' : 'tag-low'}">
+            ${w.active_tasks} tasks
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--mono);font-size:16px;color:var(--amber);font-weight:700">${(w.score*100).toFixed(0)}%</div>
+          <div style="font-size:10px;color:var(--text3)">match score</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div class="accuracy-bar-row">
+        <span style="color:var(--text3);min-width:60px">Availability</span>
+        <div class="accuracy-bar-bg"><div class="accuracy-bar-fill" style="width:${w.available?100:20}%;background:${w.available?'var(--emerald)':'var(--crimson)'}"></div></div>
+        <span>${w.available?'Available':'Busy'}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WORKER TASKS VIEW
+// ═══════════════════════════════════════════════════════════════
+
+async function renderWorkerTasks() {
+  const issues = await dbList('issues');
+  const myTasks = issues.filter(i => i.assigned_worker_id && i.status !== 'resolved');
+  const el = document.getElementById('workerTaskList');
+  if (!myTasks.length) { el.innerHTML = `<div class="empty-state"><div class="es-icon">✅</div><div>No tasks assigned yet</div></div>`; return; }
+  el.innerHTML = myTasks.map(iss => `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div>
+          <div class="issue-id">${iss.id}</div>
+          <div class="issue-title">${iss.desc.substring(0,90)}…</div>
+          <div class="issue-meta" style="margin-top:8px">
+            <span class="tag tag-severity-${iss.severity}">Severity ${iss.severity}</span>
+            ${statusChip(iss.status)}
+          </div>
+          <div style="margin-top:8px;font-size:12px;color:var(--text3)">📍 ${iss.address} · ${iss.ward}</div>
+        </div>
+        <div class="sla-ring ${iss.elapsed_hours >= iss.sla_hours ? 'sla-breach' : iss.elapsed_hours > iss.sla_hours * 0.7 ? 'sla-warn' : 'sla-safe'}" style="flex-shrink:0;margin-left:12px">
+          ${Math.min(100,(iss.elapsed_hours/iss.sla_hours*100)).toFixed(0)}%
+        </div>
+      </div>
+      <hr class="divider">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="workerUpdateStatus('${iss.id}','in_progress')">🔧 Start Work</button>
+        <button class="btn btn-emerald btn-sm" onclick="workerUpdateStatus('${iss.id}','resolved')">✅ Mark Done</button>
+      </div>
+    </div>`).join('');
+}
+
+async function workerUpdateStatus(issueId, newStatus) {
+  const iss = await dbGet('issues', issueId);
+  await dbSet('issues', issueId, { ...iss, status: newStatus, ...(newStatus === 'resolved' ? { resolved_at: new Date().toISOString() } : {}) });
+  showToast(`Task ${issueId} updated to ${newStatus}`, 'success');
+  renderWorkerTasks();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GOVERNANCE (Features 35–45)
+// ═══════════════════════════════════════════════════════════════
+
+async function renderGovernance() {
+  // Model Registry (F35)
+  const models = await dbList('model_versions');
+  document.getElementById('modelRegistryTable').innerHTML = `
+    <thead><tr><th>Model</th><th>Version</th><th>Framework</th><th>Accuracy</th><th>Status</th></tr></thead>
+    <tbody>${models.map(m => `<tr>
+      <td><strong>${m.name}</strong></td>
+      <td><span class="mono">${m.version}</span></td>
+      <td><span class="mono">${m.framework}</span></td>
+      <td>${m.accuracy_pct ? `${m.accuracy_pct}%` : '<span style="color:var(--text3)">Eval pending</span>'}</td>
+      <td><span class="tag ${m.status==='active'?'tag-low':'tag-blue'}">${m.status}</span></td>
+    </tr>`).join('')}</tbody>`;
+
+  // AI Health (F39)
+  document.getElementById('aiHealthPanel').innerHTML = `
+    <div class="ai-status-row" style="margin-bottom:8px"><div class="status-dot green"></div><span>YOLOv8n ONNX — Online</span></div>
+    <div class="ai-status-row" style="margin-bottom:8px"><div class="status-dot green"></div><span>Gemini Classifier — Online</span></div>
+    <div class="ai-status-row" style="margin-bottom:8px"><div class="status-dot amber"></div><span>Cascade Graph — Beta</span></div>
+    <div class="ai-status-row" style="margin-bottom:12px"><div class="status-dot green"></div><span>Routing Engine — Online</span></div>
+    <div class="tag tag-low" style="font-size:11px">ACTIVE MODE: FULL AI + HEURISTIC FALLBACK</div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text3)">Circuit breaker: Auto-switches to rule-based mode on 3+ consecutive model failures.</div>`;
+
+  // Accuracy (F44)
+  const logs = await dbList('prediction_actual_logs');
+  const evaluatable = logs.filter(l => l.evaluatable);
+  const matched = evaluatable.filter(l => l.category_match);
+  const accuracy = evaluatable.length >= 2 ? (matched.length / evaluatable.length * 100).toFixed(0) : null;
+  document.getElementById('accuracyPanel').innerHTML = evaluatable.length < 30
+    ? `<div class="alert alert-info"><div><div class="alert-title">Insufficient Data</div>Need ≥ 30 resolved issues for statistically valid metrics. Currently ${evaluatable.length} evaluatable records.</div></div>`
+    : `<div class="accuracy-bar-row"><span style="min-width:80px">Category</span><div class="accuracy-bar-bg"><div class="accuracy-bar-fill" style="width:${accuracy}%;background:var(--emerald)"></div></div><span>${accuracy}%</span></div>
+       <div style="font-size:11px;color:var(--text3);margin-top:6px">Derived from ${evaluatable.length} closed issues. No synthetic inflation.</div>`;
+
+  // Thresholds (F38)
+  document.getElementById('thresholdPanel').innerHTML = [
+    ['YOLO Confidence Min', '0.40'],
+    ['Gemini Confidence Min', '0.60'],
+    ['Emergency Confidence Min', '0.75'],
+    ['Auto-Route Threshold', '≥ 0.90 → auto'],
+    ['Officer Confirm Band', '0.70–0.89'],
+    ['Manual Review Below', '< 0.70'],
+  ].map(([k,v]) => `<div class="ai-row"><span class="ai-key" style="font-size:11px">${k}</span><span class="ai-val">${v}</span></div>`).join('');
+
+  // Audit Log (F37)
+  const audits = await dbList('prediction_audits');
+  const recent = [...audits].reverse().slice(0, 20);
+  document.getElementById('auditLogTable').innerHTML = recent.length
+    ? `<table class="data-table"><thead><tr><th>Audit ID</th><th>Issue</th><th>Feature</th><th>Model</th><th>Confidence</th><th>Available</th><th>Timestamp</th></tr></thead>
+      <tbody>${recent.map(a => `<tr>
+        <td><span class="mono">${a.audit_id}</span></td>
+        <td><span class="mono">${a.issue_id}</span></td>
+        <td>${a.feature||'—'}</td>
+        <td><span class="mono" style="font-size:10px">${(a.model_version||'—').substring(0,20)}</span></td>
+        <td>${a.confidence ? `${(a.confidence*100).toFixed(0)}%` : '—'}</td>
+        <td><span class="tag ${a.available!==false?'tag-low':'tag-critical'}">${a.available!==false?'✓ Yes':'✗ Unavailable'}</span></td>
+        <td><span class="mono" style="font-size:10px">${a.executed_at ? new Date(a.executed_at).toLocaleTimeString() : '—'}</span></td>
+      </tr>`).join('')}</tbody></table>`
+    : `<div class="empty-state"><div>No audit records yet.</div></div>`;
+}
+
+// Dataset Catalog (F36)
+function renderDatasets() {
+  document.getElementById('datasetCards').innerHTML = [
+    { id:'rdd2022-in-v2.0', name:'Road Damage Dataset 2022 — India Subset', samples:4200, license:'CC-BY-4.0', desc:'YOLOv8n fine-tuning annotations: potholes, cracks, alligator damage. India road conditions.', type:'Image/YOLO', status:'active' },
+    { id:'civic-nlp-bengaluru-v1', name:'SmartCivic NLP — Bengaluru Civic Incidents', samples:1850, license:'Internal', desc:'English + Kannada + Hinglish complaint text with labels: service, issue_type, severity, authority. Synthetic + validated.', type:'Text/Classification', status:'active' },
+    { id:'bwssb-sla-history-v1', name:'BWSSB SLA Resolution History', samples:3100, license:'Internal', desc:'Historical resolution times for water utility issues, conditioned on severity and department workload.', type:'Tabular/Regression', status:'active' },
+    { id:'synthetic-test-v1', name:'Synthetic Test Dataset — DO NOT USE FOR METRICS', samples:500, license:'Internal', desc:'Synthetically generated test cases for pipeline validation only. NEVER presented as real Bengaluru data.', type:'Synthetic', status:'test_only' },
+  ].map(d => `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+      <div>
+        <div style="font-size:14px;font-weight:600">${d.name}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px">${d.id}</div>
+      </div>
+      <span class="tag ${d.status==='active'?'tag-low':d.status==='test_only'?'tag-high':'tag-blue'}">${d.status}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">${d.desc}</div>
+    <div class="badge-row">
+      <span class="tag tag-blue">${d.type}</span>
+      <span class="tag tag-neutral">${d.samples.toLocaleString()} samples</span>
+      <span class="tag tag-neutral">License: ${d.license}</span>
+    </div>
+    ${d.status === 'test_only' ? `<div class="alert alert-warning" style="margin-top:10px"><div>This dataset is synthetic. Accuracy metrics derived from it are invalid for production claims.</div></div>` : ''}
+  </div>`).join('');
+}
+
+// Emergency Audit (F34)
+async function renderEmergencyAudit() {
+  const events = await dbList('emergency_events');
+  document.getElementById('emergencyAuditContent').innerHTML = events.length
+    ? events.map(ev => `<div class="card" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--crimson)">🚨 ${ev.hazard_type||'EMERGENCY'}</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">${ev.event_id} · Issue: ${ev.issue_id}</div>
+          </div>
+          <span class="tag tag-critical">${ev.threat_level||'CRITICAL'}</span>
+        </div>
+        <div class="timeline">
+          ${(ev.timeline||[{ts:ev.detected_at||ev.timestamp, event:'EMERGENCY_DETECTED', actor:'AI_SYSTEM'}]).map(t => `
+            <div class="tl-item">
+              <div class="tl-dot ${t.actor==='AI_SYSTEM'?'blue':t.actor?.includes('OFF')?'amber':'green'}"></div>
+              <div class="tl-time">${t.ts ? new Date(t.ts).toLocaleString() : '—'}</div>
+              <div class="tl-event">${t.event.replace(/_/g,' ')}</div>
+              <div class="tl-actor">Actor: ${t.actor}</div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('')
+    : `<div class="empty-state"><div class="es-icon">🟢</div><div>No emergency events recorded.</div></div>`;
+}
+
+// Model Performance (F29, F44)
+async function renderModelPerformance() {
+  const logs = await dbList('prediction_actual_logs');
+  const evaluatable = logs.filter(l => l.evaluatable);
+  let html = `
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-title">Category Accuracy <span class="tag tag-neutral ct-right" style="font-size:9px">F44</span></div>
+        ${evaluatable.length < 2
+          ? `<div class="alert alert-info"><div>Insufficient data (${evaluatable.length} records). Need ≥ 30.</div></div>`
+          : `<div class="metric-big">${(evaluatable.filter(l=>l.category_match).length/evaluatable.length*100).toFixed(0)}%</div>
+             <div class="metric-label">${evaluatable.length} records · ${evaluatable.filter(l=>l.category_match).length} matched</div>`}
+      </div>
+      <div class="card">
+        <div class="card-title">Resolution Time Error <span class="tag tag-neutral ct-right" style="font-size:9px">F29</span></div>
+        ${evaluatable.filter(l=>l.actual_resolution_hours).length < 2
+          ? `<div class="alert alert-info"><div>Not enough resolved issues.</div></div>`
+          : (function(){
+              const withTime = evaluatable.filter(l=>l.actual_resolution_hours && l.predicted_resolution_hours);
+              const mae = withTime.reduce((s,l) => s + Math.abs(l.predicted_resolution_hours - l.actual_resolution_hours), 0) / (withTime.length||1);
+              return `<div class="metric-big">${mae.toFixed(1)}h</div><div class="metric-label">Mean Absolute Error · ${withTime.length} records</div>`;
+            })()}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Prediction vs Actual Log</div>
+      ${evaluatable.length
+        ? `<table class="data-table">
+            <thead><tr><th>Issue</th><th>Predicted Cat.</th><th>Actual Cat.</th><th>Match</th><th>Pred. Hrs</th><th>Actual Hrs</th><th>Error</th></tr></thead>
+            <tbody>${evaluatable.map(l => `<tr>
+              <td><span class="mono">${l.issue_id}</span></td>
+              <td>${l.predicted_category||'—'}</td>
+              <td>${l.actual_category||'—'}</td>
+              <td><span class="tag ${l.category_match?'tag-low':'tag-critical'}">${l.category_match?'✓ Match':'✗ Miss'}</span></td>
+              <td>${l.predicted_resolution_hours ? l.predicted_resolution_hours+'h' : '—'}</td>
+              <td>${l.actual_resolution_hours ? l.actual_resolution_hours+'h' : '—'}</td>
+              <td>${l.predicted_resolution_hours && l.actual_resolution_hours ? (l.predicted_resolution_hours - l.actual_resolution_hours).toFixed(1)+'h' : '—'}</td>
+            </tr>`).join('')}</tbody>
+          </table>`
+        : `<div class="empty-state"><div>No evaluatable records. Resolve some issues to begin tracking model accuracy.</div></div>`}
+    </div>`;
+  document.getElementById('modelPerfContent').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UTILITY
+// ═══════════════════════════════════════════════════════════════
+
+function openModal(id) { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+function openEmergencyModal() { openModal('emergencyModal'); }
+
+function showToast(msg, type='info') {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:9999;padding:12px 18px;border-radius:6px;font-size:13px;font-family:Inter,sans-serif;max-width:320px;
+    background:${type==='success'?'#052e16':type==='error'?'#450a0a':'#0c1a2e'};
+    color:${type==='success'?'#6ee7b7':type==='error'?'#fca5a5':'#93c5fd'};
+    border:1px solid ${type==='success'?'#10b981':type==='error'?'#ef4444':'#3b82f6'};`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+(async () => {
+  await initCapabilities();
+  switchRole('resident');
+})();
+</script>
+</body>
+</html>

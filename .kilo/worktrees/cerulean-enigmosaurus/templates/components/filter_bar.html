@@ -1,0 +1,46 @@
+<!-- SmartCivic 21st.dev Style Filter Bar Component -->
+<div id="filterBar" class="filter-bar-card">
+    <div class="filter-search-row">
+        <div class="filter-search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass filter-search-icon"></i>
+            <input type="text" id="filterSearchInput" class="filter-search-input" placeholder="Search by title, description, ward, address, or ID...">
+        </div>
+        <div class="filter-actions-wrapper">
+            <span id="activeFilterBadge" class="active-filter-badge" style="display: none;">Showing all items</span>
+            <button id="filterClearBtn" class="filter-clear-btn" type="button">
+                <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- Status & Severity Horizontal Scrollable Chips -->
+    <div class="filter-chips-section">
+        <span class="filter-chips-label"><i class="fa-solid fa-sliders"></i> Status & Priority:</span>
+        <div class="filter-chips-container scrollable-chips">
+            <button type="button" class="chip status-chip active" data-status="all">All Statuses</button>
+            <button type="button" class="chip status-chip" data-status="open">Open</button>
+            <button type="button" class="chip status-chip" data-status="in_progress">In Progress</button>
+            <button type="button" class="chip status-chip" data-status="closed">Closed</button>
+            <span class="chip-divider"></span>
+            <button type="button" class="chip status-chip chip-critical" data-status="critical">Critical</button>
+            <button type="button" class="chip status-chip chip-high" data-status="high">High</button>
+            <button type="button" class="chip status-chip chip-medium" data-status="medium">Medium</button>
+            <button type="button" class="chip status-chip chip-low" data-status="low">Low</button>
+        </div>
+    </div>
+
+    <!-- Category Chips -->
+    <div class="filter-chips-section" style="margin-top: 0.5rem;">
+        <span class="filter-chips-label"><i class="fa-solid fa-layer-group"></i> Category:</span>
+        <div class="filter-chips-container scrollable-chips">
+            <button type="button" class="chip category-chip active" data-category="all">All Categories</button>
+            <button type="button" class="chip category-chip" data-category="road">Road</button>
+            <button type="button" class="chip category-chip" data-category="water">Water</button>
+            <button type="button" class="chip category-chip" data-category="electricity">Electricity</button>
+            <button type="button" class="chip category-chip" data-category="sanitation">Sanitation</button>
+            <button type="button" class="chip category-chip" data-category="drainage">Drainage</button>
+            <button type="button" class="chip category-chip" data-category="noise">Noise</button>
+            <button type="button" class="chip category-chip" data-category="other">Other</button>
+        </div>
+    </div>
+</div>

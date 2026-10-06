@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "SmartCivic Mobile",
+    "slug": "smartcivic-mobile",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.muthaheer.smartcivicmobile",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "SmartCivic requires camera permission to capture civic grievance resolution photos.",
+        "NSLocationWhenInUseUsageDescription": "SmartCivic requires location permission to verify GPS coordinates of reported issues."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F172A"
+      },
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "package": "com.muthaheer.smartcivicmobile"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "fc63f8ec-fb35-4f12-9fa2-484235ac14b7"
+      }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

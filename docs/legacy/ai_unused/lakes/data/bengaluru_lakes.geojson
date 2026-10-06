@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Koramangala Lake"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.6240, 12.9350],
+            [77.6250, 12.9350],
+            [77.6250, 12.9360],
+            [77.6240, 12.9360],
+            [77.6240, 12.9350]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Ulsoor Lake"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.6170, 12.9780],
+            [77.6220, 12.9780],
+            [77.6220, 12.9830],
+            [77.6170, 12.9830],
+            [77.6170, 12.9780]
+          ]
+        ]
+      }
+    }
+  ]
+}

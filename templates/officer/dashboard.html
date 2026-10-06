@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+    .dashboard-layout {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+        min-height: 80vh;
+    }
+    
+    /* Left Sidebar */
+    .sidebar {
+        width: 250px;
+        flex-shrink: 0;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .sidebar-btn {
+        width: 100%;
+        padding: 0.8rem 1.2rem;
+        border-radius: 8px;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.2s ease;
+    }
+    .sidebar-btn:hover, .sidebar-btn.active {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--primary);
+    }
+    
+    /* Main Panel Content */
+    .panel-container {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    /* Stats Row */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+    @media (max-width: 1000px) {
+        .stats-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    .stat-card {
+        padding: 1.5rem;
+        text-align: center;
+    }
+    .stat-val {
+        font-family: var(--font-display);
+        font-weight: 800;
+        font-size: 2rem;
+        color: var(--text-main);
+        margin-top: 0.5rem;
+    }
+    .stat-lbl {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Health Bar */
+    .health-container {
+        padding: 1.5rem;
+    }
+    .health-bar-wrapper {
+        display: flex;
+        height: 16px;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+    }
+    .health-segment {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    
+    /* Priority Grid Layout */
+    .queue-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+    .queue-card {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        position: relative;
+    }
+    .queue-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    /* Leaflet Map Panel */
+    .map-container {
+        position: relative;
+    }
+    #officerMap {
+        height: 500px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        z-index: 10;
+    }
+    .map-sidebar-overlay {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 320px;
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--border-color);
+        padding: 1.5rem;
+        border-radius: 12px;
+        z-index: 1000;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        display: none;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    /* Overlay Assign Worker Panel */
+    .assign-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 450px;
+        background: rgba(15, 23, 42, 0.98);
+        border: 1px solid var(--border-color);
+        padding: 2rem;
+        border-radius: 16px;
+        z-index: 2000;
+        display: none;
+        flex-direction: column;
+        gap: 1.5rem;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    }
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.7);
+        z-index: 1999;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-family: var(--font-display); font-weight: 800; font-size: 2.2rem; margin-bottom: 0.25rem;">Officer command</h1>
+        <p style="color: var(--text-muted)">Command console — Ward: <span id="officerWardVal">{{ g.current_user.ward.upper() }}</span></p>
+    </div>
+</div>
+
+<div class="dashboard-layout">
+    <!-- Sidebar Navigation -->
+    <div class="glass-panel sidebar">
+        <button class="sidebar-btn active" onclick="switchTab('overview')"><i class="fa-solid fa-chart-line"></i> Overview</button>
+        <button class="sidebar-btn" onclick="switchTab('new-complaints')"><i class="fa-solid fa-envelope-open-text"></i> New Issues</button>
+        <button class="sidebar-btn" onclick="switchTab('priority-queue')"><i class="fa-solid fa-fire"></i> Priority Queue</button>
+        <button class="sidebar-btn" onclick="switchTab('in-progress')"><i class="fa-solid fa-gears"></i> In Progress</button>
+        <button class="sidebar-btn" onclick="switchTab('account-approvals')"><i class="fa-solid fa-user-check"></i> Account Approvals</button>
+        <button class="sidebar-btn" onclick="switchTab('verification')"><i class="fa-solid fa-square-check"></i> Verification</button>
+        <button class="sidebar-btn" onclick="switchTab('sla-alerts')"><i class="fa-solid fa-triangle-exclamation"></i> SLA Alerts</button>
+        <button class="sidebar-btn" onclick="switchTab('map-view')"><i class="fa-solid fa-map-location-dot"></i> Live Map</button>
+        <button class="sidebar-btn" onclick="switchTab('workers-view')"><i class="fa-solid fa-users-gear"></i> Workers</button>
+        <button class="sidebar-btn" onclick="switchTab('ward-health')"><i class="fa-solid fa-heart-pulse"></i> Ward Health</button>
+        <button class="sidebar-btn" onclick="switchTab('recurring')"><i class="fa-solid fa-arrows-spin"></i> Recurring hotspots</button>
+        <button class="sidebar-btn" onclick="switchTab('simulation')"><i class="fa-solid fa-flask-vial"></i> What-If Simulator</button>
+    </div>
+
+    <!-- Main Dynamic Content container -->
+    <div class="panel-container" id="panelContainer">
+        
+        <!-- Tab Content: Overview -->
+        <div class="tab-panel" id="tab-overview">
+            <!-- AI Daily Briefing Panel -->
+            <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2);">
+                <h4 style="font-family: var(--font-display); font-weight: 700; margin-bottom: 0.50rem; color: var(--accent-primary); display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fa-solid fa-clipboard-list"></i> TODAY'S AI BRIEFING</span>
+                    <button onclick="loadBriefing(true)" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: var(--text-muted); cursor: pointer; padding: 0.3rem 0.8rem; font-size: 0.8rem;"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+                </h4>
+                <div id="briefingText" style="font-size: 0.95rem; line-height: 1.5; color: var(--text-main); margin-bottom: 1rem;">
+                    Loading daily officer briefing...
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+                    <strong>Recommended Actions:</strong>
+                    <ul id="recommendedActions" style="margin-top: 0.25rem; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <li>Loading recommendation queue...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="glass-panel stat-card">
+                    <div class="stat-lbl">Total complaints</div>
+                    <div class="stat-val" id="statTotal">0</div>
+                </div>
+                <div class="glass-panel stat-card">
+                    <div class="stat-lbl">Resolved Today</div>
+                    <div class="stat-val" id="statResolved" style="color: var(--success)">0</div>
+                </div>
+                <div class="glass-panel stat-card">
+                    <div class="stat-lbl">Pending Issues</div>
+                    <div class="stat-val" id="statPending" style="color: var(--warning)">0</div>
+                </div>
+                <div class="glass-panel stat-card">
+                    <div class="stat-lbl">Critical Active</div>
+                    <div class="stat-val" id="statCritical" style="color: var(--danger)">0</div>
+                </div>
+            </div>
+            
+            <div class="glass-panel health-container" style="margin-top: 1.5rem;">
+                <h4 style="font-family: var(--font-display); font-weight: 700;">Service Level Agreement (SLA) Health Rate</h4>
+                <div class="health-bar-wrapper">
+                    <div class="health-segment" id="seg-ontrack" style="background: var(--success); width: 0%"></div>
+                    <div class="health-segment" id="seg-warning" style="background: var(--warning); width: 0%"></div>
+                    <div class="health-segment" id="seg-urgent" style="background: var(--danger); width: 0%"></div>
+                    <div class="health-segment" id="seg-breached" style="background: var(--critical); width: 0%"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">
+                    <div><i class="fa-solid fa-circle" style="color: var(--success)"></i> On Track: <span id="lbl-ontrack">0%</span></div>
+                    <div><i class="fa-solid fa-circle" style="color: var(--warning)"></i> Warning: <span id="lbl-warning">0%</span></div>
+                    <div><i class="fa-solid fa-circle" style="color: var(--danger)"></i> Urgent: <span id="lbl-urgent">0%</span></div>
+                    <div><i class="fa-solid fa-circle" style="color: var(--critical)"></i> Breached: <span id="lbl-breached">0%</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Issues Grid (Used for New Complaints, Priority Queue, In Progress, Verification, SLA Alerts) -->
+        <div class="tab-panel" id="tab-issues-list" style="display: none;">
+            <!-- Emergency Alert Bar -->
+            <div id="emergencyBar" class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); display: none;">
+                <h4 style="font-family: var(--font-display); font-weight: 700; color: #ef4444; margin-bottom: 0.5rem;"><i class="fa-solid fa-triangle-exclamation"></i> 🚨 ACTIVE EMERGENCIES REPORTED</h4>
+                <div id="emergencyList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <!-- Emergencies here -->
+                </div>
+            </div>
+
+            <!-- Search & 21st.dev Filter Bar -->
+            {% include "components/filter_bar.html" %}
+
+            <h3 class="panel-header" id="listTitle">Issues Queue</h3>
+            <div class="queue-grid" id="issuesGrid">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Tab Content: Account Approvals -->
+        <div class="tab-panel" id="tab-account-approvals" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="panel-header" style="margin: 0;"><i class="fa-solid fa-user-check" style="color: var(--primary)"></i> Account Approvals</h3>
+                <div style="display: flex; gap: 0.5rem; background: rgba(15, 23, 42, 0.6); padding: 0.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <button class="approval-subtab-btn active" id="btn-approvals-residents" onclick="switchApprovalTab('citizen')" style="padding: 0.4rem 1rem; border: none; border-radius: 6px; background: var(--primary); color: #fff; font-weight: 600; cursor: pointer; font-size: 0.85rem;"><i class="fa-solid fa-users"></i> Residents</button>
+                    <button class="approval-subtab-btn" id="btn-approvals-workers" onclick="switchApprovalTab('worker')" style="padding: 0.4rem 1rem; border: none; border-radius: 6px; background: transparent; color: var(--text-muted); font-weight: 600; cursor: pointer; font-size: 0.85rem;"><i class="fa-solid fa-user-gear"></i> Workers</button>
+                </div>
+            </div>
+            <div class="queue-grid" id="approvalsGrid">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Tab Content: Map View -->
+        <div class="tab-panel" id="tab-map-view" style="display: none;">
+            <div class="map-container">
+                <div id="officerMap"></div>
+                
+                <!-- Map Sidebar Detail Panel -->
+                <div class="map-sidebar-overlay" id="mapSidebar">
+                    <!-- Filled dynamically when marker/cluster is clicked -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Workers View -->
+        <div class="tab-panel" id="tab-workers-view" style="display: none;">
+            <h3 class="panel-header"><i class="fa-solid fa-users-gear" style="color: var(--primary)"></i> Field Crew Status</h3>
+            <div class="queue-grid" id="workersGrid">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Tab Content: Ward Health -->
+        <div class="tab-panel" id="tab-ward-health" style="display: none;">
+            <h3 class="panel-header"><i class="fa-solid fa-heart-pulse" style="color: var(--danger)"></i> Ward Health Scores</h3>
+            <div class="queue-grid" id="wardHealthGrid">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Tab Content: Recurring Hotspots -->
+        <div class="tab-panel" id="tab-recurring" style="display: none;">
+            <h3 class="panel-header"><i class="fa-solid fa-arrows-spin" style="color: var(--warning)"></i> Recurring Hotspots</h3>
+            <div class="queue-grid" id="recurringGrid">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- What-If Simulation Panel -->
+        <div class="tab-panel" id="tab-simulation" style="display: none;">
+            <h3 class="panel-header"><i class="fa-solid fa-flask-vial" style="color: var(--primary)"></i> What-If Simulator</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Model the hypothetical impact of resource changes before committing.</p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+
+                <!-- Worker Addition Simulator -->
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem; color: var(--primary);"><i class="fa-solid fa-user-plus"></i> Add Workers</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-muted);">Ward (leave blank for all)</label>
+                            <input id="simWard" type="text" placeholder="e.g. Ward 5"
+                                style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-primary); margin-top: 0.25rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-muted);">Department</label>
+                            <select id="simDept"
+                                style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,1); color: var(--text-primary); margin-top: 0.25rem;">
+                                <option value="roads">Roads</option>
+                                <option value="water_supply">Water Supply</option>
+                                <option value="electrical">Electrical</option>
+                                <option value="sanitation">Sanitation</option>
+                                <option value="drainage">Drainage</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-muted);">Additional Workers</label>
+                            <input id="simWorkerCount" type="number" value="2" min="1" max="50"
+                                style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-primary); margin-top: 0.25rem;">
+                        </div>
+                        <button onclick="runWorkerSim()" class="btn-primary" style="margin-top: 0.5rem; padding: 0.6rem 1.2rem; border: none; border-radius: 6px; background: var(--primary); color: #fff; font-weight: 600; cursor: pointer;">
+                            <i class="fa-solid fa-play"></i> Run Simulation
+                        </button>
+                    </div>
+                    <div id="workerSimResult" style="margin-top: 1.25rem; display: none;"></div>
+                </div>
+
+                <!-- Category Priority Simulator -->
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem; color: var(--warning);"><i class="fa-solid fa-arrow-up-wide-short"></i> Prioritise Category</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-muted);">Category to Prioritise</label>
+                            <select id="simCategory"
+                                style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,1); color: var(--text-primary); margin-top: 0.25rem;">
+                                <option value="road">Road</option>
+                                <option value="water">Water</option>
+                                <option value="electricity">Electricity</option>
+                                <option value="sanitation">Sanitation</option>
+                                <option value="drainage">Drainage</option>
+                            </select>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+                            Simulates redirecting crew focus to the selected category.
+                            Other categories will see a ~30% slowdown in resolution time.
+                        </p>
+                        <button onclick="runPrioritySim()" class="btn-primary" style="margin-top: 0.5rem; padding: 0.6rem 1.2rem; border: none; border-radius: 6px; background: var(--warning); color: #fff; font-weight: 600; cursor: pointer;">
+                            <i class="fa-solid fa-play"></i> Run Simulation
+                        </button>
+                    </div>
+                    <div id="prioritySimResult" style="margin-top: 1.25rem; display: none;"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CEFAP Evidence Breakdown Card -->
+<div id="cefap-card" class="card border-0 shadow-sm mb-3" style="display:none; color: #212529; background: #ffffff; border-radius: 10px; margin-top: 1rem;">
+  <div class="card-body p-3">
+
+    <div class="d-flex justify-content-between align-items-center mb-3" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h6 class="mb-0 fw-semibold" style="font-size:13px; color: #212529; margin:0; font-weight:600;">
+        CEFAP Evidence Analysis
+      </h6>
+      <span id="cefap-priority-badge" class="badge fs-6 px-3 py-2"></span>
+    </div>
+
+    <!-- CIPS gauge -->
+    <div class="mb-3" style="margin-bottom:12px;">
+      <div class="d-flex justify-content-between mb-1" style="display:flex; justify-content:space-between; margin-bottom:4px;">
+        <span style="font-size:12px; color:#6c757d;">
+          Civic Impact Priority Score (CIPS)
+        </span>
+        <span id="cefap-cips-value" style="font-size:12px; font-weight:600; color: #212529;"></span>
+      </div>
+      <div style="height:10px; background:#e9ecef; border-radius:99px; overflow:hidden;">
+        <div id="cefap-cips-bar" style="height:100%; border-radius:99px;
+             transition:width .6s ease; width:0%;"></div>
+      </div>
+    </div>
+
+    <!-- 6 signals -->
+    <div class="mb-3" style="margin-bottom:12px;">
+      <p style="font-size:11px; color:#6c757d; margin-bottom:8px;
+           text-transform:uppercase; letter-spacing:.04em;">
+        Signal breakdown
+      </p>
+
+      <div id="cefap-signals-container">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- Evidence reliability row -->
+    <div style="background:#f8f9fa; border-radius:8px; padding:10px 12px;
+         display:flex; gap:16px; flex-wrap:wrap;">
+
+      <div>
+        <p style="font-size:11px; color:#6c757d; margin:0 0 2px;">
+          Evidence reliability (E)
+        </p>
+        <p id="cefap-e-value" style="font-size:14px; font-weight:600; margin:0; color: #212529;"></p>
+      </div>
+
+      <div>
+        <p style="font-size:11px; color:#6c757d; margin:0 0 2px;">
+          Text vs image agreement
+        </p>
+        <p id="cefap-agreement-value" style="font-size:14px; font-weight:600; margin:0; color: #212529;"></p>
+      </div>
+
+      <div id="cefap-ctve-flag" style="display:none;">
+        <p style="font-size:11px; color:#6c757d; margin:0 0 2px;">
+          CTVE status
+        </p>
+        <span style="font-size:12px; background:#fff3cd; color:#856404;
+               padding:2px 8px; border-radius:4px; font-weight:500;">
+          Contradiction detected
+        </span>
+      </div>
+
+      <div id="cefap-monsoon-flag" style="display:none;">
+        <p style="font-size:11px; color:#6c757d; margin:0 0 2px;">
+          Seasonal mode
+        </p>
+        <span style="font-size:12px; background:#cce5ff; color:#004085;
+               padding:2px 8px; border-radius:4px; font-weight:500;">
+          Monsoon active
+        </span>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal Backdrop -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeAssignModal()"></div>
+
+<!-- Assign Worker Dialog Modal -->
+<div class="assign-modal" id="assignModal">
+    <h3 style="font-family: var(--font-display); font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+        Recommend & Assign Worker
+    </h3>
+    <input type="hidden" id="assignIssueId">
+    
+    <div style="display: flex; flex-direction: column; gap: 1rem;" id="recommendList">
+        <!-- Recommended workers loaded dynamically -->
+    </div>
+    
+    <div style="display: flex; justify-content: flex-end; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <button class="btn btn-secondary" onclick="closeAssignModal()">Cancel</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

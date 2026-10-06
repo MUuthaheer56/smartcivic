@@ -1,0 +1,1 @@
+mongodb://smartcivic_admin:0ChIRWuTVG9YGdBvLraV5ZJbBNxgLS_e@127.0.0.1:27017/smartcivic_prod?authSource=admin&authMechanism=SCRAM-SHA-256&retryWrites=true&retryReads=true&w=majority&readConcernLevel=local&maxPoolSize=100&minPoolSize=5&serverSelectionTimeoutMS=5000&tls=true&tlsAllowInvalidCertificates=false&tlsAllowInvalidHostnames=false&tlsCAFile=/etc/mongodb/tls/ca.pem

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/map.css">
+{% endblock %}
+
+{% block content %}
+<section class="live-map-page" aria-labelledby="liveMapTitle">
+    <div class="live-map-toolbar">
+        <div>
+            <p class="map-eyebrow"><i class="fa-solid fa-satellite-dish"></i> Public civic view</p>
+            <h1 id="liveMapTitle">Live issue map</h1>
+            <p class="map-intro">See active civic reports near you and use your current location to orient the map.</p>
+        </div>
+        <div class="live-map-actions">
+            <button type="button" class="btn btn-secondary" id="locateMapButton">
+                <i class="fa-solid fa-location-crosshairs"></i> Use my location
+            </button>
+            <button type="button" class="btn btn-primary" id="refreshMapButton">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh map
+            </button>
+        </div>
+    </div>
+
+    <div class="live-map-layout">
+        <aside class="live-map-panel glass-panel" aria-live="polite">
+            <div class="live-map-panel-header">
+                <div>
+                    <span class="panel-label">Active reports</span>
+                    <strong id="mapIssueCount">Loading...</strong>
+                </div>
+                <span class="live-indicator"><span></span> Live</span>
+            </div>
+            <p id="mapStatus" class="map-status">Loading the latest public reports...</p>
+            <div id="mapIssueList" class="live-map-list"></div>
+        </aside>
+        <div class="live-map-canvas-wrap">
+            <div id="liveMap" class="live-map-canvas" role="application" aria-label="Map showing active civic reports"></div>
+            <div class="map-location-note" id="locationNote"><i class="fa-solid fa-circle-info"></i> Location is requested only when you select “Use my location”.</div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/live-map.js"></script>
+{% endblock %}
