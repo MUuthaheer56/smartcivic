@@ -45,3 +45,6 @@ eventlet==0.40.3
 Pillow==12.3.0
 flask-wtf==1.2.1
 waitress==3.0.1
+# Computer vision and image integrity tests
+numpy==1.26.4
+opencv-python-headless==4.10.0.84
