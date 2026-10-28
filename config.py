@@ -88,7 +88,8 @@ class Config:
     
     MAX_UPLOAD_SIZE       = 10 * 1024 * 1024  # 10MB
     MAX_IMAGE_BYTES       = 10 * 1024 * 1024  # 10MB
-    UPLOAD_FOLDER         = "static/uploads/issues"
+    UPLOAD_FOLDER         = os.getenv("UPLOAD_FOLDER", "uploads/issues")
+    VERIFICATION_FOLDER   = os.getenv("VERIFICATION_FOLDER", "uploads/docs")
     ALLOWED_EXTENSIONS    = {"jpg", "jpeg", "png", "webp"}
     ALLOWED_MIME_TYPES    = ["image/jpeg", "image/png", "image/webp"]
     
@@ -103,8 +104,9 @@ class Config:
     # Worker matching
     MAX_WORKER_RECOMMENDATIONS = 5
     
-    # ML
-    YOLO_MODEL_PATH          = "ml/models/pothole_yolov8n.onnx"
+    # ML & Computer Vision
+    VISION_ENABLED           = os.getenv("VISION_ENABLED", "false").lower() == "true"
+    YOLO_MODEL_PATH          = os.getenv("YOLO_MODEL_PATH", "ml/models/road_damage_v1.onnx")
     YOLO_CONFIDENCE_THRESHOLD = 0.40
     
     # Routing
@@ -119,17 +121,20 @@ class Config:
         "electricity": "electrical",
         "sanitation":  "sanitation",
         "drainage":    "drainage",
+        "noise":       "sanitation",
         "other":       "roads"
     }
+    CATEGORY_TO_DEPT = CATEGORY_TO_DEPARTMENT
 
     # Skill mapping
     ISSUE_TYPE_TO_SKILLS = {
-        "pothole":       ["road_repair", "pothole_repair"],
-        "road_collapse": ["road_repair", "heavy_machinery"],
-        "water_leak":    ["plumbing", "pipe_repair"],
-        "power_outage":  ["electrical", "transformer_repair"],
-        "garbage":       ["sanitation", "waste_removal"],
-        "other":         ["general_maintenance"]
+        "pothole":         ["road_repair", "pothole_repair"],
+        "road_collapse":   ["road_repair", "heavy_machinery"],
+        "water_leak":      ["plumbing", "pipe_repair"],
+        "power_outage":    ["electrical", "transformer_repair"],
+        "garbage":         ["sanitation", "waste_removal"],
+        "noise_violation": ["noise_monitoring", "general_maintenance"],
+        "other":           ["general_maintenance"]
     }
     
     DEBUG                 = False

@@ -18,6 +18,7 @@ static/uploads/*
 # IDE
 .vscode/
 .idea/
+.kilo/
 
 # Node
 node_modules/
@@ -26,3 +27,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 seed_credentials.txt
+uploads/
+backups/
+*.onnx

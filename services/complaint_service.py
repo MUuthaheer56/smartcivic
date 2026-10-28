@@ -2,12 +2,11 @@ import logging
 import uuid
 from datetime import datetime, timedelta
 from bson import ObjectId
-from flask import g
+from flask import g, has_request_context
 from app import db, socketio
 from models.issue import create_issue_doc, STATUSES, CATEGORIES, DEPARTMENTS, SEVERITIES, ISSUE_STATES, validate_state_transition
 from models.cluster import create_cluster_doc
 from services import ai_service
-from services.priority_service import calculate_priority
 from services.sla_service import assign_sla, check_sla_status
 from services.notification_service import send, COMPLAINT_CREATED, AI_ANALYSIS_COMPLETED
 from services.audit_service import log_audit
@@ -115,23 +114,7 @@ def create_new_complaint(db, citizen_id: str, description: str, location: dict, 
     inserted_id = db.issues.insert_one(issue_doc).inserted_id
     return str(inserted_id)
 
-LEGAL_TRANSITIONS = {
-    "submitted":             ["under_review", "ai_reviewed", "officer_reviewed", "assigned", "rejected"],
-    "ai_reviewed":           ["under_review", "officer_reviewed", "verified", "assigned", "rejected"],
-    "under_review":          ["verified", "officer_reviewed", "assigned", "rejected"],
-    "officer_reviewed":      ["verified", "assigned", "rejected"],
-    "verified":              ["assigned", "rejected"],
-    "assigned":              ["en_route", "work_started", "in_progress"],
-    "en_route":              ["work_started", "in_progress", "work_completed", "resolved"],
-    "work_started":          ["in_progress", "work_completed", "resolved"],
-    "in_progress":           ["work_completed", "resolved"],
-    "work_completed":        ["resolved", "officer_verified", "work_started", "citizen_verification", "closed"],
-    "resolved":              ["officer_verified", "closed", "reopened"],
-    "officer_verified":      ["citizen_verification", "closed"],
-    "citizen_verification":  ["closed", "reopened"],
-    "reopened":              ["assigned"],
-    "duplicate":             ["under_review", "officer_reviewed", "rejected"],
-}
+from constants.states import LEGAL_TRANSITIONS, validate_state_transition as check_transition
 
 def validate_object_id(val):
     if not val:
@@ -175,7 +158,7 @@ def recalculate_cluster_centroid(cluster_id, db):
     )
 
 
-def create_complaint(citizen_id, title: str, description: str, location: dict, images: list = None) -> dict:
+def create_complaint(citizen_id, title: str, description: str, location: dict, images: list = None, category: str = None, issue_type: str = None) -> dict:
     """
     Spawns and populates an Issue document with text/image analysis, duplicate scans, and SLA.
     """
@@ -193,7 +176,9 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
     
     # 1. Resolve ward from input location (or default)
     ward = location.get("ward", "Ward 1")
-    user_ward_id = location.get("ward_id") or (getattr(g, "current_user", {}).get("ward_id") if getattr(g, "current_user", None) else None)
+    user_ward_id = location.get("ward_id")
+    if not user_ward_id and has_request_context() and hasattr(g, "current_user") and g.current_user:
+        user_ward_id = g.current_user.get("ward_id")
     address = location.get("address", "Bangalore, India")
     
     # 2. Build template doc
@@ -201,8 +186,8 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         citizen_id=citizen_id,
         title=title,
         description=description,
-        category="other", # temporary default
-        issue_type="other",
+        category=category or "other",
+        issue_type=issue_type or "other",
         lat=lat,
         lng=lng,
         address=address,
@@ -219,11 +204,12 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
     ai_text = ai_service.analyze_complaint_text(description)
     ai_img = None
     if images:
-        before_imgs = [img for img in images if img.get("type") == "before"]
+        before_imgs = [img for img in images if isinstance(img, dict) and img.get("type") == "before"]
         if before_imgs:
-            # Use filepath (OS path) for Pillow; fall back to url string if filepath missing
             _img_path = before_imgs[0].get("filepath") or before_imgs[0].get("url", "")
             ai_img = ai_service.analyze_complaint_image(_img_path)
+        elif images and isinstance(images[0], str):
+            ai_img = ai_service.analyze_complaint_image(images[0])
 
     if ai_img is None:
         ai_img = {
@@ -239,8 +225,8 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         }
 
     final_prediction = ai_service.fuse_complaint_predictions(ai_text, ai_img)
-    category = final_prediction.get("category", "other")
-    issue_type = final_prediction.get("type", "other")
+    category = final_prediction.get("category", category or "other")
+    issue_type = final_prediction.get("type", issue_type or "other")
     severity = final_prediction.get("severity", "medium")
     department = final_prediction.get("department", "roads")
     confidence = final_prediction.get("confidence", 0.0)
@@ -359,6 +345,7 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         "provider": ai_img.get("provider") if ai_img.get("available") else ai_text.get("provider", "rule_based"),
         "model": ai_img.get("model") if ai_img.get("available") else None,
         "image_analysis_available": bool(ai_img.get("available")),
+        "image_analysis_message": ai_img.get("message") or ("Image analysis completed" if ai_img.get("available") else "Image analysis unavailable, your report was still recorded"),
         "image_detections": ai_img.get("image_detections", []),
         "explanation": final_prediction.get("reason", ""),
         "category_source": "model_predicted" if ai_img.get("available") else "text_analysis",
@@ -420,6 +407,29 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         "status_history": [
             {"status": "submitted", "timestamp": now.isoformat()}
         ]
+    })
+
+    from services.evidence_priority import evaluate_priority
+    evidence_features = {
+        "severity": severity,
+        "urgency": "immediate" if issue_doc.get("emergency") else "normal",
+        "safety_impact": (issue_doc.get("impact") or {}).get("safety_risk"),
+        "confidence": confidence,
+        "image_available": bool(images),
+        "location_available": bool(location.get("provided", True)),
+        "reporter_id": citizen_id,
+        "corroborating_sources": [
+            {"source_id": confirmation.get("citizen_id")}
+            for confirmation in issue_doc.get("community_confirmations", [])
+        ],
+    }
+    priority_decision = evaluate_priority(evidence_features)
+    issue_doc.update({
+        "priority_score": priority_decision["score"],
+        "priority_decision": priority_decision,
+        "priority_model_version": priority_decision["model_version"],
+        "human_review_required": priority_decision["human_review_required"],
+        "missing_evidence": priority_decision["missing_evidence"],
     })
     
     # Deferred SLA calculation after category & severity assignment
@@ -515,13 +525,8 @@ def update_status(issue_id, new_status: str, actor_id, reason: str = None, actor
         raise ValueError("Unauthorized status transition for citizen role.")
 
     # Validate transition
-    allowed = LEGAL_TRANSITIONS.get(old_status, [])
-    if new_status not in allowed:
-        # Reopening fallback/safety
-        if new_status == "reopened" and old_status == "citizen_verification":
-            pass
-        else:
-            raise ValueError(f"Illegal status transition from {old_status} to {new_status}")
+    if not check_transition(old_status, new_status):
+        raise ValueError(f"Illegal status transition from {old_status} to {new_status}")
             
     now = datetime.utcnow()
     status_entry = {
@@ -677,12 +682,30 @@ def add_community_confirmation(issue_id, citizen_id, note: str = None) -> int:
         }
     )
     
-    # Reload and recalculate priority score
+    # Recalculate from the evidence-aware method, preserving source identity.
     updated = db.issues.find_one({"_id": ObjectId(issue_id)})
-    new_priority = calculate_priority(updated, db)
+    from services.evidence_priority import evaluate_priority
+    previous_decision = updated.get("priority_decision") or {}
+    previous_features = previous_decision.get("input_features") or {}
+    corroborating_sources = [
+        {"source_id": confirmation.get("citizen_id")}
+        for confirmation in updated.get("community_confirmations", [])
+    ]
+    new_decision = evaluate_priority({
+        **previous_features,
+        "severity": updated.get("severity"),
+        "reporter_id": updated.get("reporter_id") or updated.get("citizen_id"),
+        "corroborating_sources": corroborating_sources,
+    })
     db.issues.update_one(
         {"_id": ObjectId(issue_id)},
-        {"$set": {"priority_score": new_priority}}
+        {"$set": {
+            "priority_score": new_decision["score"],
+            "priority_decision": new_decision,
+            "priority_model_version": new_decision["model_version"],
+            "human_review_required": new_decision["human_review_required"],
+            "missing_evidence": new_decision["missing_evidence"],
+        }}
     )
     
     new_count = updated.get("confirmation_count", 0)

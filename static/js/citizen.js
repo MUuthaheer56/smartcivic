@@ -336,7 +336,7 @@ function setCtveStatus(msg, type) {
             if (aiPanel && aiResults) {
                 const visionStatus = ai.image_analysis_available
                     ? "Image analysis completed"
-                    : "Image analysis unavailable; text analysis used";
+                    : (ai.image_analysis_message || "Image analysis unavailable, your report was still recorded");
                 aiResults.innerHTML = `
                     <div><strong>Category Detected:</strong> ${ai.category || 'other'}</div>
                     <div><strong>Issue Type:</strong> ${ai.type || 'other'}</div>

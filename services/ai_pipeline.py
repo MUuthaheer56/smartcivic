@@ -5,6 +5,7 @@ safe ONNX check, composite verification, priority rules, authority routing, and 
 """
 import os
 from datetime import datetime
+from config import Config
 from services import ai_service
 from services import ai_classifier
 from services import complaint_verifier
@@ -76,19 +77,16 @@ def run_unified_ai_pipeline(text: str, location_text: str = "", image_path: str 
         image_analysis = ai_service.analyze_complaint_image(image_path)
         image_severity_score = float(image_analysis.get("severity_score", 0.0) if isinstance(image_analysis, dict) else 0.0)
         
-        # Check ONNX file size (> 1KB) to ensure we never run dummy 28-byte placeholder
-        onnx_model_path = os.path.join("ml", "models", "pothole_yolov8n.onnx")
-        if os.path.exists(onnx_model_path) and os.path.getsize(onnx_model_path) > 1024:
-            try:
-                from services import yolo_service
-                yolo_res = yolo_service.run_yolo(image_path)
-                if yolo_res and yolo_res.get("confidence", 0) >= 0.50:
-                    yolo_evidence = yolo_fusion.DEFECT_EVIDENCE_MAP.get(yolo_res.get("defect_class", ""), {})
-            except Exception as e:
-                print(f"[AI Pipeline] YOLO runner exception: {e}")
+        # Run YOLO ONNX detector through fail-closed verification pipeline
+        try:
+            from services import yolo_service
+            yolo_res = yolo_service.run_yolo(image_path)
+            if yolo_res and yolo_res.get("available") and yolo_res.get("confidence", 0) >= 0.50:
+                yolo_evidence = yolo_fusion.DEFECT_EVIDENCE_MAP.get(yolo_res.get("defect_class", ""), {})
+            else:
                 yolo_evidence = None
-        else:
-            # Explicitly mark visual evidence as None when ONNX is dummy/placeholder
+        except Exception as e:
+            print(f"[AI Pipeline] YOLO runner exception: {e}")
             yolo_evidence = None
 
     # ── Step 5: Emergency Decision & Safety Override ────────────────────────

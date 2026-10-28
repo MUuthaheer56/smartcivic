@@ -19,10 +19,6 @@ _DEFECT_CLASS_BY_TYPE = {
     "white_line":    "D44",
 }
 
-def _model_is_real() -> bool:
-    p = getattr(Config, "YOLO_MODEL_PATH", "ml/models/pothole_yolov8n.onnx")
-    return os.path.exists(p) and os.path.getsize(p) > 100_000
-
 def run_yolo(image_path: str) -> dict:
     """
     Runs the local YOLO ONNX detector and returns a pipeline-shaped result.
@@ -42,16 +38,7 @@ def run_yolo(image_path: str) -> dict:
             "issue_type": None,
             "bbox_area": 0.0,
             "reason": "image_missing",
-        }
-
-    if not _model_is_real():
-        return {
-            "available": False,
-            "confidence": 0.0,
-            "defect_class": "",
-            "issue_type": None,
-            "bbox_area": 0.0,
-            "reason": "onnx_model_placeholder_or_missing",
+            "message": "Image analysis unavailable, your report was still recorded"
         }
 
     try:

@@ -1,0 +1,17 @@
+{
+  "model_file": "road_damage_v1.onnx",
+  "sha256": null,
+  "classes": [
+    "longitudinal_crack",
+    "transverse_crack",
+    "alligator_crack",
+    "pothole"
+  ],
+  "input_size": 640,
+  "trained_on": "RDD2022-India + negatives",
+  "metrics": {
+    "map50": null
+  },
+  "license": "CC-BY-SA-4.0",
+  "version": "1.0.0"
+}
