@@ -6,7 +6,7 @@ import os
 import jwt
 from datetime import datetime
 from bson import ObjectId
-from flask import Flask, render_template, request, redirect, g, jsonify, current_app
+from flask import Flask, render_template, request, redirect, g, jsonify, current_app, send_from_directory, abort
 from pymongo import MongoClient
 from flask_socketio import SocketIO, emit, join_room
 from flask_limiter import Limiter
@@ -50,7 +50,21 @@ except ImportError:
 
 # Initialize Socket.IO and Limiter
 socketio = SocketIO(cors_allowed_origins="*", async_mode="threading")
-limiter = Limiter(key_func=get_remote_address, default_limits=["200 per hour"], storage_uri="memory://")
+
+def _get_limiter_storage_uri():
+    configured = os.getenv("RATELIMIT_STORAGE_URI") or os.getenv("REDIS_URL")
+    if configured:
+        return configured
+    mongo_uri = os.getenv("MONGO_URI")
+    if mongo_uri:
+        return mongo_uri
+    return "memory://"
+
+try:
+    _storage_uri = _get_limiter_storage_uri()
+    limiter = Limiter(key_func=get_remote_address, default_limits=["200 per hour"], storage_uri=_storage_uri)
+except Exception as _lim_err:
+    limiter = Limiter(key_func=get_remote_address, default_limits=["200 per hour"], storage_uri="memory://")
 
 
 def _validate_runtime_config(config_cls) -> None:
@@ -193,9 +207,45 @@ def create_app():
     csrf.exempt(civicpulse_api_bp)
     csrf.exempt(graph_bp)
     csrf.exempt(notifications_api_bp)
-    csrf.exempt(auth_bp)
     csrf.exempt(api_mobile_auth_bp)
     csrf.exempt(location_bp)
+
+    # Authenticated private file serving route (F2)
+    KINDS = {"docs", "verification_docs", "issues", "resolution"}
+
+    @app.route("/files/<kind>/<filename>")
+    def private_file(kind, filename):
+        if kind not in KINDS:
+            abort(404)
+
+        filename = os.path.basename(filename)
+
+        auth_header = request.headers.get("Authorization")
+        token = None
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split("Bearer ")[1].strip()
+        elif "access_token" in request.cookies:
+            token = request.cookies.get("access_token")
+
+        if not token:
+            abort(401)
+
+        from utils.security import decode_token, can_view_file
+        payload, err = decode_token(token)
+        if not payload:
+            abort(401)
+
+        user_id = payload.get("user_id") or payload.get("sub_id") or payload.get("sub")
+        role = payload.get("role")
+
+        if not can_view_file(db, user_id, role, kind, filename):
+            abort(403)
+
+        target_dir = os.path.join(Config.PRIVATE_UPLOAD_DIR, kind)
+        if not os.path.exists(os.path.join(target_dir, filename)):
+            abort(404)
+
+        return send_from_directory(target_dir, filename)
 
     # Legacy and general page routes
     @app.route('/login')
@@ -337,13 +387,17 @@ def start_background_jobs(app):
 
     def sla_sweep_job():
         with app.app_context():
-            open_issues = list(db.issues.find({"status": {"$nin": ["closed", "rejected"]}}))
-            from services.sla_service import check_sla_status
-            for issue in open_issues:
-                try:
-                    check_sla_status(issue)
-                except Exception as sweep_err:
-                    app.logger.error(f"SLA Sweep error on issue {issue.get('_id')}: {sweep_err}")
+            from services.scheduler_lock import scheduler_lock
+            with scheduler_lock("sla_sweep_job", ttl_seconds=600) as acquired:
+                if not acquired:
+                    return
+                open_issues = list(db.issues.find({"status": {"$nin": ["closed", "rejected"]}}))
+                from services.sla_service import check_sla_status
+                for issue in open_issues:
+                    try:
+                        check_sla_status(issue)
+                    except Exception as sweep_err:
+                        app.logger.error(f"SLA Sweep error on issue {issue.get('_id')}: {sweep_err}")
 
     scheduler.add_job(sla_sweep_job, 'interval', seconds=app.config.get("SLA_CHECK_INTERVAL", 900))
 

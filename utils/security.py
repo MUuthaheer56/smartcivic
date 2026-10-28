@@ -18,50 +18,11 @@ from utils.validators import (
 logger = logging.getLogger(__name__)
 
 
-# Allowed status transitions matrix (Role -> From Status -> Allowed To Status)
-STATUS_TRANSITION_MATRIX = {
-    "citizen": {
-        "submitted": ["cancelled", "closed"],
-        "citizen_verification": ["closed", "reopened"],
-        "resolved": ["closed", "reopened"],
-        "work_completed": ["closed", "reopened"]
-    },
-    "worker": {
-        "assigned": ["en_route", "work_started", "in_progress", "work_completed", "resolved"],
-        "en_route": ["work_started", "in_progress", "work_completed", "resolved"],
-        "work_started": ["in_progress", "work_completed", "resolved"],
-        "in_progress": ["work_completed", "resolved"]
-    },
-    "officer": {
-        "submitted": ["under_review", "ai_reviewed", "officer_reviewed", "verified", "assigned", "rejected", "duplicate"],
-        "ai_reviewed": ["under_review", "officer_reviewed", "verified", "assigned", "rejected", "duplicate"],
-        "under_review": ["verified", "officer_reviewed", "assigned", "rejected", "duplicate"],
-        "officer_reviewed": ["verified", "assigned", "rejected", "duplicate"],
-        "verified": ["assigned", "rejected"],
-        "assigned": ["en_route", "work_started", "in_progress", "rejected"],
-        "en_route": ["work_started", "in_progress", "work_completed", "resolved"],
-        "work_started": ["in_progress", "work_completed", "resolved"],
-        "in_progress": ["work_completed", "resolved"],
-        "work_completed": ["resolved", "officer_verified", "closed"],
-        "resolved": ["officer_verified", "closed", "reopened"],
-        "officer_verified": ["citizen_verification", "closed"],
-        "citizen_verification": ["closed", "reopened"],
-        "reopened": ["assigned", "rejected"],
-        "duplicate": ["under_review", "officer_reviewed", "rejected"]
-    },
-    "admin": {
-        "submitted": ["under_review", "assigned", "rejected", "closed", "duplicate"],
-        "under_review": ["assigned", "rejected", "closed", "duplicate"],
-        "assigned": ["in_progress", "resolved", "rejected", "closed"],
-        "in_progress": ["resolved", "rejected", "closed"],
-        "work_completed": ["resolved", "officer_verified", "closed"],
-        "resolved": ["officer_verified", "closed", "reopened"],
-        "officer_verified": ["closed"],
-        "citizen_verification": ["closed", "reopened"],
-        "reopened": ["assigned", "rejected", "closed"],
-        "closed": ["reopened"]
-    }
-}
+from constants.states import (
+    STATUS_TRANSITION_MATRIX,
+    ROLE_TRANSITIONS,
+    validate_state_transition
+)
 
 def generate_tokens(user_id, role, ward):
     secret = (current_app.config.get("JWT_SECRET_KEY") or current_app.config.get("JWT_SECRET")) if current_app else None
@@ -116,9 +77,7 @@ def validate_object_id(val):
     return ObjectId(val_str)
 
 def check_status_transition(role, current_status, new_status):
-    role_rules = STATUS_TRANSITION_MATRIX.get(role, {})
-    allowed_next = role_rules.get(current_status, [])
-    return new_status in allowed_next
+    return validate_state_transition(current_status, new_status, role=role)
 
 def sanitize_user_profile(user_doc):
     if not user_doc:
@@ -130,3 +89,72 @@ def sanitize_user_profile(user_doc):
     safe_doc.pop("lockout_until", None)
     safe_doc.pop("locked_until", None)
     return safe_doc
+
+def can_view_file(db, user_id, role, kind, filename: str) -> bool:
+    """
+    Authorization rules for private uploads:
+    - KINDS = {'docs', 'verification_docs', 'issues', 'resolution'}
+    - ID/verification docs only for the owner, officers and admins.
+    - Issue photos for the reporter, assigned worker, officers of the department, and admins.
+    - Resolution photos for the same plus the reporter.
+    - Look up the owning record in MongoDB by stored filename; deny if no record is found.
+    """
+    if not user_id or not role or not kind or not filename:
+        return False
+
+    role = str(role).lower()
+    user_id_str = str(user_id)
+    safe_fn = os.path.basename(filename)
+
+    if role == "admin":
+        return True
+
+    if kind in ["docs", "verification_docs"]:
+        user = db.users.find_one({"$or": [
+            {"verification_doc": {"$regex": safe_fn}},
+            {"documents": {"$regex": safe_fn}}
+        ]})
+        if not user:
+            return False
+            
+        if role == "officer":
+            return True
+        return str(user.get("_id")) == user_id_str
+
+    elif kind in ["issues", "resolution"]:
+        issue = db.issues.find_one({"$or": [
+            {"images.filename": safe_fn},
+            {"images.url": {"$regex": safe_fn}},
+            {"images.filepath": {"$regex": safe_fn}},
+            {"media_urls": {"$regex": safe_fn}},
+            {"photos": {"$regex": safe_fn}},
+            {"resolution_notes.photos": {"$regex": safe_fn}},
+            {"resolution_notes.after_image": {"$regex": safe_fn}},
+            {"ctve_photo_url": {"$regex": safe_fn}}
+        ]})
+        if not issue:
+            return False
+
+        reporter_id = str(issue.get("citizen_id") or issue.get("reporter_id") or issue.get("user_id") or "")
+        assigned_worker = str(issue.get("worker_id") or issue.get("assigned_worker_id") or issue.get("assigned_to") or "")
+        issue_dept = (issue.get("department") or issue.get("category") or "").lower()
+
+        # Reporter can view issue and resolution photos
+        if reporter_id and reporter_id == user_id_str:
+            return True
+
+        # Assigned worker can view issue and resolution photos
+        if assigned_worker and assigned_worker == user_id_str:
+            return True
+
+        # Officers of the department can view
+        if role == "officer":
+            officer = db.users.find_one({"_id": ObjectId(user_id)}) if ObjectId.is_valid(user_id_str) else None
+            officer_dept = (officer.get("department") or "").lower() if officer else ""
+            if not officer_dept or officer_dept == "all" or officer_dept == issue_dept:
+                return True
+
+        return False
+
+    return False
+

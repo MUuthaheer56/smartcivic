@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify, g, current_app
 from bson import ObjectId
 import os
 import uuid
+import math
 try:
     import magic
 except Exception:
@@ -15,7 +16,7 @@ from app import db, limiter
 from routes.auth import require_auth, require_role
 from utils.auth_helpers import verified_required
 from models.issue import IssueCreateSchema, CATEGORIES, SEVERITIES, DEPARTMENTS
-from services import complaint_service, assignment_service, verification_service, priority_service, sla_service
+from services import complaint_service, assignment_service, verification_service, sla_service
 from services.audit_service import log_audit
 from utils import serialize, parse_object_id
 
@@ -66,24 +67,36 @@ def validate_image_file(file):
 @require_role('citizen', 'resident')
 @limiter.limit("10 per hour")
 def create_issue():
-    description = request.form.get("description") or (request.json.get("description") if request.is_json else None)
-    if not description or len(description.strip()) < 10:
+    payload = request.form if request.form else (request.get_json(silent=True) or {})
+    description = payload.get("description")
+    if not isinstance(description, str) or len(description.strip()) < 10:
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "description must be at least 10 characters."}}), 400
-        
-    lat_val = request.form.get("latitude") or request.form.get("lat") or (request.json.get("latitude") or request.json.get("lat") if request.is_json else None)
-    lng_val = request.form.get("longitude") or request.form.get("lng") or (request.json.get("longitude") or request.json.get("lng") if request.is_json else None)
+
+    lat_val = payload.get("latitude")
+    if lat_val is None:
+        lat_val = payload.get("lat")
+    lng_val = payload.get("longitude")
+    if lng_val is None:
+        lng_val = payload.get("lng")
+    location_provided = lat_val is not None and lng_val is not None
     
     try:
         lat = float(lat_val) if lat_val is not None else 12.9716
         lng = float(lng_val) if lng_val is not None else 77.5946
     except (TypeError, ValueError):
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Invalid latitude or longitude."}}), 400
+    if not math.isfinite(lat) or not math.isfinite(lng) or not -90 <= lat <= 90 or not -180 <= lng <= 180:
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Invalid latitude or longitude."}}), 400
 
-    address = request.form.get("address") or (request.json.get("address") if request.is_json else "MG Road, Bengaluru")
-    title = request.form.get("title") or (request.json.get("title") if request.is_json else (description[:40] + "..."))
-    category = request.form.get("category") or (request.json.get("category") if request.is_json else "road")
-    issue_type = request.form.get("type") or (request.json.get("type") if request.is_json else "pothole")
-    ward = request.form.get("ward") or (request.json.get("ward") if request.is_json else "Ward 1")
+    address = payload.get("address") or "MG Road, Bengaluru"
+    title = payload.get("title") or (description[:40] + "...")
+    category = payload.get("category")
+    if category not in CATEGORIES:
+        category = None
+    issue_type = payload.get("type")
+    if not isinstance(issue_type, str) or not 2 <= len(issue_type.strip()) <= 80:
+        issue_type = None
+    ward = payload.get("ward") or "Ward 1"
     citizen_ward = g.current_user.get("ward")
     if citizen_ward and citizen_ward != "all":
         ward = citizen_ward
@@ -92,7 +105,7 @@ def create_issue():
     if 'image' in request.files:
         file = request.files['image']
         if file and file.filename:
-            upload_dir = current_app.config.get("UPLOAD_FOLDER", "static/uploads/issues")
+            upload_dir = current_app.config.get("UPLOAD_FOLDER", os.path.join(current_app.root_path, "uploads", "issues"))
             try:
                 from utils.image_utils import save_uploaded_image
                 img_info = save_uploaded_image(file, upload_dir)
@@ -117,7 +130,8 @@ def create_issue():
         "longitude": lng,
         "ward": ward,
         "ward_id": g.current_user.get("ward_id") if hasattr(g, "current_user") and g.current_user else None,
-        "address": address
+        "address": address,
+        "provided": location_provided,
     }
     
     try:
@@ -126,20 +140,22 @@ def create_issue():
             title=title,
             description=description,
             location=location,
-            images=images
+            images=images,
+            category=category,
+            issue_type=issue_type
         )
         
         if images:
             old_filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], images[0]["filename"])
-            ext = images[0]["filename"].rsplit('.', 1)[-1].lower()
-            new_filename = f"issue_{issue['_id']}_before_{uuid.uuid4().hex[:8]}.{ext}"
+            ext = images[0]["filename"].rsplit('.', 1)[-1].lower() if '.' in images[0]["filename"] else 'jpg'
+            new_filename = f"{uuid.uuid4().hex}.{ext}"
             new_filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], new_filename)
             if os.path.exists(old_filepath):
                 os.rename(old_filepath, new_filepath)
                 
             images[0]["filename"] = new_filename
             images[0]["filepath"] = new_filepath
-            images[0]["url"] = f"/static/uploads/issues/{new_filename}"
+            images[0]["url"] = f"/files/issues/{new_filename}"
             db.issues.update_one({"_id": issue["_id"]}, {"$set": {
                 "images": images,
                 "image": {"url": images[0]["url"], "filename": new_filename}
@@ -182,6 +198,8 @@ def create_issue():
             "ai_prediction": issue.get("ai_prediction", {}),
             "duplicate": issue.get("duplicate", {"is_duplicate": False}),
             "priority": issue.get("priority", "medium"),
+            "priority_score": issue.get("priority_score", 0.0),
+            "priority_decision": issue.get("priority_decision", {}),
             "cips_score": issue.get("cips_score"),
             "evidence_reliability": issue.get("evidence_reliability"),
             "evidence_agreement": issue.get("evidence_agreement"),
@@ -331,13 +349,13 @@ def ctve_response(issue_id):
             if not valid:
                 return jsonify({"error": err_msg or "Invalid image file"}), 400
 
-            upload_dir = current_app.config.get("UPLOAD_FOLDER", "static/uploads/issues")
+            upload_dir = current_app.config.get("UPLOAD_FOLDER", os.path.join(current_app.root_path, "uploads", "issues"))
             os.makedirs(upload_dir, exist_ok=True)
             ext = image_file.filename.rsplit('.', 1)[-1].lower() if '.' in image_file.filename else 'jpg'
-            new_filename = f"issue_{issue['_id']}_ctve_{uuid.uuid4().hex[:8]}.{ext}"
+            new_filename = f"{uuid.uuid4().hex}.{ext}"
             new_filepath = os.path.join(upload_dir, new_filename)
             image_file.save(new_filepath)
-            image_url = f"/static/uploads/issues/{new_filename}"
+            image_url = f"/files/issues/{new_filename}"
 
             from services import ai_service
             image_result = ai_service.analyze_complaint_image(new_filepath)
@@ -614,20 +632,82 @@ def review_issue(id):
         db.issues.update_one({"_id": parsed_id}, {"$set": {"status": "officer_reviewed", "updated_at": datetime.utcnow()}})
         log_audit("issue", str(parsed_id), g.current_user["_id"], "APPROVE_AI", reason="AI auto-classification confirmed by Officer.")
         
-    # Recalculate priority & SLA target
+    # Recalculate the versioned evidence score from the revised classification.
     updated_issue = db.issues.find_one({"_id": parsed_id})
     new_deadline = sla_service.assign_sla(updated_issue)
-    new_priority = priority_service.calculate_priority(updated_issue, db)
+    from services.evidence_priority import evaluate_priority
+    old_decision = updated_issue.get("priority_decision") or {}
+    old_features = old_decision.get("input_features") or {}
+    new_decision = evaluate_priority({
+        **old_features,
+        "severity": updated_issue.get("severity"),
+        "image_available": bool(updated_issue.get("images")),
+        "location_available": "location" not in (updated_issue.get("missing_evidence") or []),
+    })
     
     db.issues.update_one(
         {"_id": parsed_id},
         {"$set": {
             "sla_deadline": new_deadline,
-            "priority_score": new_priority
+            "priority_score": new_decision["score"],
+            "priority_decision": new_decision,
+            "priority_model_version": new_decision["model_version"],
+            "human_review_required": new_decision["human_review_required"],
+            "missing_evidence": new_decision["missing_evidence"],
         }}
     )
         
     return jsonify({"success": True, "message": "AI analysis override successful."}), 200
+
+@issues_api_bp.route('/api/issues/<id>/priority', methods=['POST'])
+@require_auth
+@require_role('officer')
+def override_issue_priority(id):
+    parsed_id = parse_object_id(id)
+    if not parsed_id:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Invalid issue ID format."}}), 404
+
+    issue = db.issues.find_one({"_id": parsed_id})
+    if not issue:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
+    officer_ward = g.current_user.get("ward")
+    if officer_ward not in [None, "all", "ALL", "*"] and officer_ward != issue.get("ward"):
+        return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to your assigned ward."}}), 403
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        score = float(payload.get("score"))
+    except (TypeError, ValueError):
+        score = -1
+    reason = payload.get("reason")
+    if not math.isfinite(score) or not 0 <= score <= 100 or not isinstance(reason, str) or len(reason.strip()) < 3:
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "A score from 0 to 100 and a reason are required."}}), 422
+
+    now = datetime.utcnow()
+    decision = issue.get("priority_decision") or {}
+    decision["model_score"] = decision.get("model_score", decision.get("score"))
+    decision["score"] = round(score, 2)
+    decision["priority_tier"] = "P1" if score >= 75 else "P2" if score >= 50 else "P3" if score >= 25 else "P4"
+    decision["decision_source"] = "human_override"
+    decision["human_override"] = {
+        "score": round(score, 2),
+        "reason": reason.strip(),
+        "officer_id": str(g.current_user["_id"]),
+        "overridden_at": now.isoformat(),
+    }
+    decision["reasons"] = list(decision.get("reasons") or []) + [{
+        "code": "human_override",
+        "contribution": 0.0,
+        "detail": reason.strip(),
+    }]
+    db.issues.update_one({"_id": parsed_id}, {"$set": {
+        "priority_score": round(score, 2),
+        "priority_decision": decision,
+        "priority_override": decision["human_override"],
+        "updated_at": now,
+    }})
+    log_audit("issue", str(parsed_id), g.current_user["_id"], "PRIORITY_OVERRIDE", "priority_score", issue.get("priority_score"), score, reason.strip())
+    return jsonify({"success": True, "priority_score": round(score, 2), "priority_decision": decision}), 200
 
 @issues_api_bp.route('/api/issues/<id>/assign', methods=['POST'])
 @require_auth
@@ -645,6 +725,8 @@ def assign_issue(id):
     try:
         assignment_service.assign_worker(str(parsed_id), worker_id, str(g.current_user["_id"]))
         return jsonify({"success": True, "message": "Worker assigned successfully."}), 200
+    except ValueError as e:
+        return jsonify({"success": False, "error": {"code": "INVALID_OPERATION", "message": str(e)}}), 400
     except Exception as e:
         current_app.logger.exception(e)
         return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
@@ -732,19 +814,18 @@ def resolve_issue(id):
     if not valid:
         return jsonify({"success": False, "error": {"code": "SECURITY_ERROR", "message": err}}), 400
         
-    upload_dir = current_app.config.get("UPLOAD_FOLDER", "static/uploads/issues")
+    upload_dir = current_app.config.get("RESOLUTION_FOLDER", os.path.join(current_app.root_path, "uploads", "resolution"))
     os.makedirs(upload_dir, exist_ok=True)
     
-    safe_uid = uuid.uuid4().hex[:8]
-    ext = file.filename.rsplit('.', 1)[-1].lower()
-    filename = f"issue_{parsed_id}_after_{safe_uid}.{ext}"
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'jpg'
+    filename = f"{uuid.uuid4().hex}.{ext}"
     filepath = os.path.join(upload_dir, filename)
     file.save(filepath)
     
     after_image = {
         "filename": filename,
         "filepath": filepath,
-        "url": f"/static/uploads/issues/{filename}"
+        "url": f"/files/resolution/{filename}"
     }
     
     # Try to find a before image from the issue details
@@ -1111,13 +1192,13 @@ def submit_resolution_proof(id):
         if 'after_image' in request.files:
             file = request.files['after_image']
             if file and file.filename:
-                upload_dir = current_app.config.get("UPLOAD_FOLDER", "static/uploads/issues")
+                upload_dir = current_app.config.get("RESOLUTION_FOLDER", os.path.join(current_app.root_path, "uploads", "resolution"))
                 os.makedirs(upload_dir, exist_ok=True)
-                ext = file.filename.rsplit('.', 1)[-1].lower()
-                filename = f"issue_{issue['_id']}_after_{uuid.uuid4().hex[:8]}.{ext}"
+                ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'jpg'
+                filename = f"{uuid.uuid4().hex}.{ext}"
                 filepath = os.path.join(upload_dir, filename)
                 file.save(filepath)
-                after_img_url = f"/static/uploads/issues/{filename}"
+                after_img_url = f"/files/resolution/{filename}"
                 
         now = datetime.utcnow()
         resolution_data = {
@@ -1317,13 +1398,13 @@ def submit_food_complaint():
     if 'photos' in request.files:
         for f in request.files.getlist("photos"):
             if f and f.filename:
-                upload_dir = current_app.config.get("UPLOAD_FOLDER", "static/uploads/issues")
+                upload_dir = current_app.config.get("UPLOAD_FOLDER", os.path.join(current_app.root_path, "uploads", "issues"))
                 os.makedirs(upload_dir, exist_ok=True)
-                ext = f.filename.rsplit('.', 1)[-1].lower()
-                fn = f"food_{uuid.uuid4().hex[:8]}.{ext}"
+                ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else 'jpg'
+                fn = f"{uuid.uuid4().hex}.{ext}"
                 fp = os.path.join(upload_dir, fn)
                 f.save(fp)
-                images.append({"filename": fn, "url": f"/static/uploads/issues/{fn}"})
+                images.append({"filename": fn, "url": f"/files/issues/{fn}"})
 
     now = datetime.utcnow()
     complaint = {

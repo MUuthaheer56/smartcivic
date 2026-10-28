@@ -88,8 +88,10 @@ class Config:
     
     MAX_UPLOAD_SIZE       = 10 * 1024 * 1024  # 10MB
     MAX_IMAGE_BYTES       = 10 * 1024 * 1024  # 10MB
-    UPLOAD_FOLDER         = os.getenv("UPLOAD_FOLDER", "uploads/issues")
-    VERIFICATION_FOLDER   = os.getenv("VERIFICATION_FOLDER", "uploads/docs")
+    PRIVATE_UPLOAD_DIR    = os.getenv("PRIVATE_UPLOAD_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads"))
+    UPLOAD_FOLDER         = os.getenv("UPLOAD_FOLDER", os.path.join(PRIVATE_UPLOAD_DIR, "issues"))
+    VERIFICATION_FOLDER   = os.getenv("VERIFICATION_FOLDER", os.path.join(PRIVATE_UPLOAD_DIR, "verification_docs"))
+    RESOLUTION_FOLDER     = os.getenv("RESOLUTION_FOLDER", os.path.join(PRIVATE_UPLOAD_DIR, "resolution"))
     ALLOWED_EXTENSIONS    = {"jpg", "jpeg", "png", "webp"}
     ALLOWED_MIME_TYPES    = ["image/jpeg", "image/png", "image/webp"]
     

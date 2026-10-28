@@ -189,12 +189,12 @@ def register():
                 if not header.startswith(b'%PDF-'):
                     return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Invalid PDF document content."}}), 400
 
-            upload_dir = os.path.join(current_app.config.get("UPLOAD_FOLDER", "static/uploads"), "verification_docs")
+            upload_dir = current_app.config.get("VERIFICATION_FOLDER", os.path.join(current_app.root_path, "uploads", "verification_docs"))
             os.makedirs(upload_dir, exist_ok=True)
-            doc_name = f"doc_{uuid.uuid4().hex[:12]}.{doc_ext}"
+            doc_name = f"{uuid.uuid4().hex}.{doc_ext}"
             saved_path = os.path.join(upload_dir, doc_name)
             doc_file.save(saved_path)
-            user_doc["verification_doc"] = f"/static/uploads/verification_docs/{doc_name}"
+            user_doc["verification_doc"] = f"/files/verification_docs/{doc_name}"
 
     try:
         result = db.users.insert_one(user_doc)
@@ -458,7 +458,7 @@ def verify_ward():
         ward_id = ward.get("ward_id", "ward_1")
         ward_name = ward.get("ward_name", user.get("ward", "Ward 1"))
 
-    # Resident ward code verification verifies citizen account
+    # Valid municipal ward code verification transitions account to active/verified
     db.users.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": {

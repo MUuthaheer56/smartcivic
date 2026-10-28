@@ -61,7 +61,10 @@ def print_startup_dashboard(is_production: bool, server: str, bind: str):
 def _run_dev(host: str, port: int):
     """Werkzeug / Socket.IO dev server — NEVER use this on a public network."""
     os.makedirs("logs", exist_ok=True)
-    os.makedirs("static/uploads/issues", exist_ok=True)
+    os.makedirs("uploads/issues", exist_ok=True)
+    os.makedirs("uploads/verification_docs", exist_ok=True)
+    os.makedirs("uploads/docs", exist_ok=True)
+    os.makedirs("uploads/resolution", exist_ok=True)
     scheduler = start_background_jobs(app)
     print_startup_dashboard(False,
                             server="Flask/Werkzeug + Socket.IO (DEV)",
@@ -110,7 +113,10 @@ def _run_waitress(host: str, port: int):
         sys.exit(2)
 
     os.makedirs("logs", exist_ok=True)
-    os.makedirs("static/uploads/issues", exist_ok=True)
+    os.makedirs("uploads/issues", exist_ok=True)
+    os.makedirs("uploads/verification_docs", exist_ok=True)
+    os.makedirs("uploads/docs", exist_ok=True)
+    os.makedirs("uploads/resolution", exist_ok=True)
     # Import wsgi so the scheduler and app are constructed exactly once.
     import wsgi as wsgi_mod
     print_startup_dashboard(True,

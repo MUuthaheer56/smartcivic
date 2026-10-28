@@ -12,7 +12,7 @@ ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
 MAX_BYTES = 5 * 1024 * 1024  # 5MB limit
 MAX_DIMENSION = 4096
 
-def save_secure_image(file_storage, upload_folder="static/uploads/issues"):
+def save_secure_image(file_storage, upload_folder="uploads/issues"):
     """
     Secure image persistence: validates format, dimension bounds (<=4096px),
     transposes EXIF orientation, converts mode to RGB, and saves JPEG to secure directory.
@@ -42,7 +42,7 @@ def save_secure_image(file_storage, upload_folder="static/uploads/issues"):
     except Exception as e:
         return None, str(e)
 
-def save_image(file_storage, upload_dir: str = "static/uploads/issues") -> str:
+def save_image(file_storage, upload_dir: str = "uploads/issues") -> str:
     """
     Hardened image persistence handler.
     Validates extension, size (<=5MB), Pillow integrity, format,
@@ -100,13 +100,23 @@ def save_image(file_storage, upload_dir: str = "static/uploads/issues") -> str:
     except Exception as e:
         raise ValueError("Corrupt or non-image file") from e
 
-def save_uploaded_image(file, upload_folder: str = "static/uploads/issues") -> dict:
+def save_uploaded_image(file, upload_folder: str = None) -> dict:
     """
-    Wrapper around save_image returning detailed dictionary.
+    Wrapper around save_image returning detailed dictionary with private /files/<kind>/... URL.
     """
+    if not upload_folder:
+        from config import Config
+        upload_folder = getattr(Config, "UPLOAD_FOLDER", "uploads/issues")
+        
     fname = save_image(file, upload_folder)
     filepath = os.path.join(upload_folder, fname)
-    url = f"/{upload_folder}/{fname}".replace("//", "/")
+    
+    norm = os.path.normpath(upload_folder).replace("\\", "/")
+    kind = norm.split("/")[-1] if "/" in norm else "issues"
+    if kind not in ["docs", "verification_docs", "issues", "resolution"]:
+        kind = "issues"
+        
+    url = f"/files/{kind}/{fname}"
     ext = fname.rsplit(".", 1)[-1].lower()
     return {
         "filename": fname,
