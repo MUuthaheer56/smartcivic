@@ -48,22 +48,11 @@ def validate_complaint_payload(form_data, files) -> dict:
     return {"valid": True, "description": description}
 
 
-ALLOWED_TRANSITIONS = {
-    "submitted":             ["under_review", "rejected", "duplicate", "ai_reviewed", "officer_reviewed", "assigned"],
-    "under_review":          ["verified", "rejected", "duplicate", "assigned"],
-    "ai_reviewed":           ["officer_reviewed", "assigned", "rejected"],
-    "officer_reviewed":      ["assigned", "rejected"],
-    "verified":              ["assigned"],
-    "assigned":              ["en_route", "in_progress", "work_started"],
-    "en_route":              ["in_progress", "work_started"],
-    "in_progress":           ["resolved", "work_completed"],
-    "work_started":          ["work_completed", "resolved"],
-    "work_completed":        ["officer_verified", "resolved", "closed"],
-    "officer_verified":      ["citizen_verification", "closed"],
-    "citizen_verification":  ["closed", "reopened"],
-    "resolved":              ["closed"],
-    "reopened":              ["assigned"]
-}
+from constants.states import (
+    ALLOWED_TRANSITIONS,
+    LEGAL_TRANSITIONS,
+    validate_state_transition as check_state_transition
+)
 
 class ValidationError(Exception):
     def __init__(self, message, status_code=400, errors=None):
@@ -121,8 +110,8 @@ def validate_image(file) -> None:
         raise ValidationError("File exceeds maximum allowed size (10MB).", status_code=400)
 
 def validate_status_transition(current_status: str, new_status: str) -> None:
-    allowed = ALLOWED_TRANSITIONS.get(current_status, [])
-    if new_status not in allowed:
+    if not check_state_transition(current_status, new_status):
+        allowed = ALLOWED_TRANSITIONS.get(str(current_status).strip().lower(), [])
         raise ValidationError(
             f"Invalid status transition from '{current_status}' to '{new_status}'. Allowed: {allowed}",
             status_code=422

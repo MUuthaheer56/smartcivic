@@ -23,9 +23,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const headers = { 'Content-Type': 'application/json' };
+      if (csrfToken) headers['X-CSRFToken'] = csrfToken;
       const res = await fetch('/api/auth/login', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body:    JSON.stringify({ email, password }),
       });
 

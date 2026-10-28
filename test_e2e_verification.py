@@ -89,10 +89,10 @@ def run_e2e_verification():
     log_test("Level 1", "Register Resident Riya", reg_riya.status_code in [200, 201], f"HTTP {reg_riya.status_code}")
 
     admin_invite = app.config.get("ADMIN_INVITE_CODE", "SMARTCIVIC-ADMIN-2025")
-    reg_mehta = client.post("/api/auth/register", json={"name": "Officer Mehta", "email": "mehta@test.sc", "password": "Test@1234", "role": "officer", "ward": "Test Ward (Dev)", "invite_code": admin_invite})
+    reg_mehta = client.post("/api/auth/register", json={"name": "Officer Mehta", "email": "mehta@test.sc", "password": "Test@1234", "role": "officer", "ward": "Ward 1", "invite_code": admin_invite})
 
     if reg_mehta.status_code in [404, 403, 422]:
-        reg_mehta = client.post("/auth/register", json={"name": "Officer Mehta", "email": "mehta@test.sc", "password": "Test@1234", "role": "officer", "ward": "Test Ward (Dev)", "invite_code": admin_invite})
+        reg_mehta = client.post("/auth/register", json={"name": "Officer Mehta", "email": "mehta@test.sc", "password": "Test@1234", "role": "officer", "ward": "Ward 1", "invite_code": admin_invite})
     log_test("Level 1", "Register Officer Mehta", reg_mehta.status_code in [200, 201], f"HTTP {reg_mehta.status_code}")
 
     reg_arjun = client.post("/api/auth/register", json={"name": "Worker Arjun", "email": "arjun@test.sc", "password": "Test@1234", "role": "worker", "invite_code": admin_invite})
@@ -148,7 +148,7 @@ def run_e2e_verification():
             if not riya_token and db.users.find_one({"email": "riya@test.sc"}):
                 riya_token, _ = generate_tokens(str(db.users.find_one({"email": "riya@test.sc"})["_id"]), "resident", "Ward 1")
             if not mehta_token and db.users.find_one({"email": "mehta@test.sc"}):
-                mehta_token, _ = generate_tokens(str(db.users.find_one({"email": "mehta@test.sc"})["_id"]), "officer", "Test Ward (Dev)")
+                mehta_token, _ = generate_tokens(str(db.users.find_one({"email": "mehta@test.sc"})["_id"]), "officer", "Ward 1")
             if not arjun_token and arjun_user:
                 arjun_token, _ = generate_tokens(str(arjun_id), "worker", "Ward 1")
 

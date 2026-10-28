@@ -6,7 +6,7 @@ from bson import ObjectId
 from app import db
 from models.assignment import create_assignment_doc
 from services.route_service import haversine, get_route
-from services.complaint_service import update_status
+from services.complaint_service import LEGAL_TRANSITIONS, update_status
 from services.notification_service import send, COMPLAINT_ASSIGNED
 from services.audit_service import log_audit
 
@@ -43,7 +43,7 @@ def recommend_workers(issue: dict, limit=5) -> list:
     for w in workers:
         skills = [s.lower() for s in w.get("skills", [])]
         # Check skill match (if skills are defined, must overlap or be empty for fallback)
-        if required_skills and not any(s in skills for s in required_skills):
+        if required_skills and skills and not any(s in skills for s in required_skills):
             continue
             
         w_coords = w.get("current_location", {}).get("coordinates", [0.0, 0.0])
@@ -109,6 +109,10 @@ def assign_worker(issue_id, worker_id, officer_id) -> dict:
         
     if not issue:
         raise ValueError("Issue not found")
+
+    current_status = str(issue.get("status", "submitted")).lower()
+    if current_status != "assigned" and "assigned" not in LEGAL_TRANSITIONS.get(current_status, []):
+        raise ValueError(f"Illegal status transition from {current_status} to assigned")
         
     w_obj_id = ObjectId(worker_id) if ObjectId.is_valid(worker_id) else None
     worker = db.users.find_one({"_id": w_obj_id}) if w_obj_id else db.users.find_one({"user_id": worker_id})

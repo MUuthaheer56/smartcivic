@@ -52,15 +52,48 @@ def get_location_context():
     }), 200
 
 def _find_ward_by_coords(lat, lng):
-    """Nearest-ward lookup using Haversine."""
+    """
+    Ward assignment using polygon containment first.
+    Queries MongoDB for GeoJSON polygon $geoIntersects, tests shapely point-in-polygon,
+    and only falls back to centroid Haversine distance if the coordinate is outside all ward boundaries.
+    """
     try:
+        # 1. MongoDB native $geoIntersects query on GeoJSON polygon boundary
+        point_geom = {"type": "Point", "coordinates": [lng, lat]}  # GeoJSON is [lng, lat]
+        try:
+            matched = db.ward_registry.find_one({
+                "active": True,
+                "$or": [
+                    {"boundary": {"$geoIntersects": {"$geometry": point_geom}}},
+                    {"polygon": {"$geoIntersects": {"$geometry": point_geom}}}
+                ]
+            })
+            if matched:
+                return matched
+        except Exception:
+            pass
+
+        # 2. In-memory Shapely point-in-polygon check for precision
+        try:
+            from shapely.geometry import Point, shape
+            pt = Point(lng, lat)
+            for w in db.ward_registry.find({"active": True}):
+                poly_data = w.get("boundary") or w.get("polygon")
+                if poly_data:
+                    poly = shape(poly_data)
+                    if poly.contains(pt):
+                        return w
+        except Exception:
+            pass
+
+        # 3. Fallback to nearest centroid distance using Haversine
         wards = list(db.ward_registry.find({"active": True},
                      {"ward_id": 1, "ward_name": 1, "center_lat": 1, "center_lng": 1}))
         if not wards:
             wards = list(db.ward_registry.find({}, {"ward_id": 1, "ward_name": 1, "center_lat": 1, "center_lng": 1}))
         if not wards:
             return {"ward_id": "ward_1", "ward_name": "Ward 1"}
-            
+
         best = min(
             wards,
             key=lambda w: haversine(

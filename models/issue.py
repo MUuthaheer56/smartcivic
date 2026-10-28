@@ -10,59 +10,17 @@ CATEGORIES = [
     "drainage", "noise", "other"
 ]
 SEVERITIES = ["low", "medium", "high", "critical"]
-STATUSES = [
-    "submitted", "ai_reviewed", "officer_reviewed", "assigned",
-    "work_started", "work_completed", "officer_verified",
-    "citizen_verification", "closed", "reopened"
-]
 DEPARTMENTS = ["roads", "water_supply", "electrical", "sanitation", "drainage", "other"]
 SLA_STATUSES = ["on_track", "warning", "urgent", "breached"]
 
-ISSUE_STATES = [
-    "SUBMITTED",
-    "AI_ANALYZED",
-    "OFFICER_REVIEW",
-    "ASSIGNED",
-    "EN_ROUTE",
-    "IN_PROGRESS",
-    "WORK_COMPLETED",
-    "OFFICER_VERIFICATION",
-    "RESOLVED",
-    "RESIDENT_CONFIRMATION",
-    "CLOSED",
-    "REOPENED"
-]
-
-def validate_state_transition(current_state: str, target_state: str) -> bool:
-    """Strict transition verification for the issue lifecycle."""
-    curr = str(current_state or "").upper().strip()
-    target = str(target_state or "").upper().strip()
-    
-    alias_map = {
-        "AI_REVIEWED": "AI_ANALYZED",
-        "UNDER_REVIEW": "OFFICER_REVIEW",
-        "OFFICER_REVIEWED": "OFFICER_REVIEW",
-        "WORK_STARTED": "IN_PROGRESS",
-        "OFFICER_VERIFIED": "OFFICER_VERIFICATION",
-        "CITIZEN_VERIFICATION": "RESIDENT_CONFIRMATION"
-    }
-    curr = alias_map.get(curr, curr)
-    target = alias_map.get(target, target)
-
-    transitions = {
-        "SUBMITTED": ["AI_ANALYZED", "OFFICER_REVIEW"],
-        "AI_ANALYZED": ["OFFICER_REVIEW"],
-        "OFFICER_REVIEW": ["ASSIGNED", "REOPENED"],
-        "ASSIGNED": ["EN_ROUTE", "IN_PROGRESS"],
-        "EN_ROUTE": ["IN_PROGRESS"],
-        "IN_PROGRESS": ["WORK_COMPLETED"],
-        "WORK_COMPLETED": ["OFFICER_VERIFICATION"],
-        "OFFICER_VERIFICATION": ["RESOLVED", "REOPENED"],
-        "RESOLVED": ["RESIDENT_CONFIRMATION", "REOPENED"],
-        "RESIDENT_CONFIRMATION": ["CLOSED", "REOPENED"],
-        "REOPENED": ["OFFICER_REVIEW"]
-    }
-    return target in transitions.get(curr, [])
+from constants.states import (
+    STATUSES,
+    ISSUE_STATES,
+    STATUS_ALIASES,
+    LEGAL_TRANSITIONS,
+    validate_state_transition,
+    normalize_status
+)
 
 def create_issue_doc(citizen_id, title, description, category, issue_type, lat, lng, address, ward, images=None) -> dict:
     now = datetime.utcnow()

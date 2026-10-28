@@ -395,25 +395,33 @@ async function openAssignWorker(issueId) {
         const res = await fetch(`/api/workers/recommend?issue_id=${issueId}`);
         const data = await res.json();
         
-        if (data.success) {
-            recList.innerHTML = "";
-            if (data.data.length === 0) {
-                recList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem;">No available matching workers found in this area.</div>`;
-                return;
-            }
+        if (!res.ok || !data.success) {
+            const errorMessage = document.createElement("div");
+            errorMessage.style.textAlign = "center";
+            errorMessage.style.color = "var(--danger)";
+            errorMessage.textContent = data.error?.message || "Unable to load worker recommendations.";
+            recList.replaceChildren(errorMessage);
+            return;
+        }
+
+        recList.innerHTML = "";
+        if (!Array.isArray(data.data) || data.data.length === 0) {
+            recList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem;">No available matching workers found in this area.</div>`;
+            return;
+        }
+
+        data.data.forEach(rec => {
+            const w = rec.worker;
+            const recCard = document.createElement("div");
+            recCard.className = "glass-panel";
+            recCard.style.padding = "1rem";
+            recCard.style.cursor = "pointer";
+            recCard.style.display = "flex";
+            recCard.style.justifyContent = "space-between";
+            recCard.style.alignItems = "center";
+            recCard.onclick = () => assignWorker(issueId, w.id);
             
-            data.data.forEach(rec => {
-                const w = rec.worker;
-                const recCard = document.createElement("div");
-                recCard.className = "glass-panel";
-                recCard.style.padding = "1rem";
-                recCard.style.cursor = "pointer";
-                recCard.style.display = "flex";
-                recCard.style.justifyContent = "space-between";
-                recCard.style.alignItems = "center";
-                recCard.onclick = () => assignWorker(issueId, w.id);
-                
-                recCard.innerHTML = `
+            recCard.innerHTML = `
                     <div>
                         <strong style="font-size: 0.95rem;">${w.name}</strong>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Active Jobs: ${w.active_assignments} / ETA: ${rec.eta_minutes} mins</div>
@@ -423,9 +431,8 @@ async function openAssignWorker(issueId) {
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Distance: ${rec.distance_km}km</div>
                     </div>
                 `;
-                recList.appendChild(recCard);
-            });
-        }
+            recList.appendChild(recCard);
+        });
     } catch (err) {
         recList.innerHTML = `<div style="text-align: center; color: var(--danger);">Failed to load worker recommendations.</div>`;
     }
@@ -439,12 +446,16 @@ async function assignWorker(issueId, workerId) {
             body: JSON.stringify({ worker_id: workerId })
         });
         const data = await res.json();
-        if (data.success) {
-            showToast("Worker assigned successfully!", "success");
-            closeAssignModal();
-            loadIssuesQueue("priority-queue");
+        if (!res.ok || !data.success) {
+            showToast(data.error?.message || "Assignment failed.", "danger");
+            return;
         }
+
+        showToast("Worker assigned successfully!", "success");
+        closeAssignModal();
+        loadIssuesQueue("priority-queue");
     } catch (err) {
+        console.error("Worker assignment failed:", err);
         showToast("Assignment failed.", "danger");
     }
 }

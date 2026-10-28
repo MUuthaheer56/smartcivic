@@ -98,9 +98,12 @@ def seed_ward_registry(db, force=False):
     try:
         count = db.ward_registry.count_documents({})
         if count > 0 and not force:
-            _log("info", "seed_wards",
-                 f"ward_registry already has {count} documents — skipping.")
-            return True
+            missing_bound = db.ward_registry.count_documents({"boundary": {"$exists": False}})
+            if missing_bound == 0:
+                _safe_create_index(db.ward_registry, [("boundary", GEOSPHERE)])
+                _log("info", "seed_wards", f"ward_registry already has {count} documents with boundaries — skipping.")
+                return True
+            _log("info", "seed_wards", f"Backfilling polygon boundaries for {missing_bound} wards...")
     except PyMongoError as exc:
         _log("error", "seed_wards", "unable to query ward_registry",
              error_type=type(exc).__name__, error=str(exc))
@@ -144,6 +147,17 @@ def seed_ward_registry(db, force=False):
     now = datetime.utcnow()
     for w in WARDS:
         w["created_at"] = now
+        d = 0.015
+        w["boundary"] = {
+            "type": "Polygon",
+            "coordinates": [[
+                [round(w["center_lng"] - d, 4), round(w["center_lat"] - d, 4)],
+                [round(w["center_lng"] + d, 4), round(w["center_lat"] - d, 4)],
+                [round(w["center_lng"] + d, 4), round(w["center_lat"] + d, 4)],
+                [round(w["center_lng"] - d, 4), round(w["center_lat"] + d, 4)],
+                [round(w["center_lng"] - d, 4), round(w["center_lat"] - d, 4)]
+            ]]
+        }
 
     try:
         db.ward_registry.insert_many(WARDS, ordered=False)
@@ -152,11 +166,22 @@ def seed_ward_registry(db, force=False):
         _log("warn", "seed_wards", "partial insert_many (duplicates?)",
              error_type=type(exc).__name__, error=str(exc))
 
-    # Seeded wards — build the two unique indexes even if the seed partially ran
+    # Ensure existing wards in DB also get boundary polygons
+    for w in WARDS:
+        try:
+            db.ward_registry.update_one(
+                {"ward_id": w["ward_id"], "boundary": {"$exists": False}},
+                {"$set": {"boundary": w["boundary"]}}
+            )
+        except Exception:
+            pass
+
+    # Seeded wards — build the indexes including GEOSPHERE for polygon containment
     _safe_create_index(db.ward_registry, "area_code", unique=True)
     _safe_create_index(db.ward_registry, "ward_id",   unique=True)
     _safe_create_index(db.ward_registry, "active")
-    _log("info", "seed_wards", f"Seeded up to {len(WARDS)} wards into ward_registry.")
+    _safe_create_index(db.ward_registry, [("boundary", GEOSPHERE)])
+    _log("info", "seed_wards", f"Seeded up to {len(WARDS)} wards into ward_registry with polygon boundaries.")
     return True
 
 

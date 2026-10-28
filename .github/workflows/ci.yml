@@ -10,6 +10,10 @@ jobs:
   test-and-verify:
     name: Build, Lint & Test
     runs-on: ubuntu-latest
+    env:
+      MONGO_URI: mongodb://127.0.0.1:27017/smartcivic_ci
+      JWT_SECRET: ci_test_jwt_secret_12345
+      SECRET_KEY: ci_test_secret_key_67890
     services:
       mongodb:
         image: mongo:6.0

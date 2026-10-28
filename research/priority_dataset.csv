@@ -1,0 +1,17 @@
+case_id,severity,image_severity,location_type,vote_count,history_count,created_at,sla_deadline,urgency,safety_impact,confidence,image_available,location_available,corroborating_source_ids,reporter_id,target_priority_score
+R001,critical,critical,hospital,4,3,2024-12-31T00:00:00,2025-01-01T04:00:00,immediate,critical,0.96,true,true,source-a;source-b;source-c;source-d,reporter-1,98
+R002,high,high,school,2,1,2024-12-30T00:00:00,2025-01-02T00:00:00,high,high,0.88,true,true,source-e;source-f,reporter-2,82
+R003,medium,,residential,0,0,2024-12-31T12:00:00,2025-01-03T12:00:00,normal,low,0.90,false,true,,reporter-3,28
+R004,low,,park,0,0,2024-12-31T18:00:00,2025-01-07T18:00:00,low,low,0.92,false,true,,reporter-4,16
+R005,high,medium,main_road,3,2,2024-12-29T00:00:00,2025-01-01T00:00:00,immediate,high,0.72,true,true,reporter-5;source-g;source-g,reporter-5,76
+R006,medium,high,emergency,1,1,2024-12-31T00:00:00,2025-01-01T00:00:00,high,critical,0.61,true,true,source-h,reporter-6,73
+R007,low,low,lane,0,1,2024-12-31T00:00:00,2025-01-07T00:00:00,normal,low,0.84,true,false,,reporter-7,19
+R008,critical,,unknown,1,0,2024-12-31T00:00:00,2025-01-01T00:00:00,immediate,critical,0.44,false,false,source-i,reporter-8,77
+R009,medium,medium,school,5,4,2024-12-20T00:00:00,2024-12-23T00:00:00,high,medium,0.81,true,true,source-j;source-k;source-l;source-m;source-n,reporter-9,69
+R010,high,,residential,1,0,2024-12-31T00:00:00,2025-01-01T00:00:00,normal,medium,0.77,false,true,source-o,reporter-10,52
+R011,low,high,highway,2,2,2024-12-30T00:00:00,2025-01-02T00:00:00,high,high,0.58,true,true,source-p;source-q,reporter-11,63
+R012,medium,,hospital,0,1,2024-12-31T00:00:00,2025-01-03T00:00:00,normal,high,0.95,false,true,,reporter-12,50
+R013,critical,medium,fire_station,3,1,2024-12-31T00:00:00,2025-01-01T00:00:00,immediate,critical,0.69,true,true,source-r;source-s;source-t,reporter-13,91
+R014,low,,residential,0,0,2024-12-31T00:00:00,2025-01-07T00:00:00,low,low,0.33,false,false,,reporter-14,12
+R015,high,high,commercial,2,3,2024-12-25T00:00:00,2024-12-28T00:00:00,high,high,0.87,true,true,source-u;source-v,reporter-15,79
+R016,medium,low,metro_station,1,2,2024-12-31T00:00:00,2025-01-02T00:00:00,normal,medium,0.73,true,true,source-w,reporter-16,48

@@ -1,0 +1,446 @@
+{
+  "dataset": "priority_dataset.csv",
+  "dataset_sha256": "eb01ac2a5d5e5b86c711798f0a88e5b5b7957c5d77fdc2851759d9784cdaf7f0",
+  "metrics": {
+    "M1_text_only": {
+      "mae": 12.5625,
+      "pairwise_rank_concordance": 0.8292,
+      "rmse": 16.426
+    },
+    "M2_text_image": {
+      "mae": 11.9688,
+      "pairwise_rank_concordance": 0.8625,
+      "rmse": 13.8874
+    },
+    "M3_plus_location": {
+      "mae": 7.125,
+      "pairwise_rank_concordance": 0.9333,
+      "rmse": 9.3475
+    },
+    "M4_no_reliability": {
+      "mae": 12.1125,
+      "pairwise_rank_concordance": 0.9417,
+      "rmse": 14.1267
+    },
+    "evidence_aware_v1": {
+      "mae": 4.25,
+      "pairwise_rank_concordance": 0.9583,
+      "rmse": 5.4199
+    }
+  },
+  "predictions": {
+    "M1_text_only": [
+      {
+        "case_id": "R001",
+        "score": 100.0,
+        "target": 98.0
+      },
+      {
+        "case_id": "R002",
+        "score": 75.0,
+        "target": 82.0
+      },
+      {
+        "case_id": "R003",
+        "score": 50.0,
+        "target": 28.0
+      },
+      {
+        "case_id": "R004",
+        "score": 25.0,
+        "target": 16.0
+      },
+      {
+        "case_id": "R005",
+        "score": 75.0,
+        "target": 76.0
+      },
+      {
+        "case_id": "R006",
+        "score": 50.0,
+        "target": 73.0
+      },
+      {
+        "case_id": "R007",
+        "score": 25.0,
+        "target": 19.0
+      },
+      {
+        "case_id": "R008",
+        "score": 100.0,
+        "target": 77.0
+      },
+      {
+        "case_id": "R009",
+        "score": 50.0,
+        "target": 69.0
+      },
+      {
+        "case_id": "R010",
+        "score": 75.0,
+        "target": 52.0
+      },
+      {
+        "case_id": "R011",
+        "score": 25.0,
+        "target": 63.0
+      },
+      {
+        "case_id": "R012",
+        "score": 50.0,
+        "target": 50.0
+      },
+      {
+        "case_id": "R013",
+        "score": 100.0,
+        "target": 91.0
+      },
+      {
+        "case_id": "R014",
+        "score": 25.0,
+        "target": 12.0
+      },
+      {
+        "case_id": "R015",
+        "score": 75.0,
+        "target": 79.0
+      },
+      {
+        "case_id": "R016",
+        "score": 50.0,
+        "target": 48.0
+      }
+    ],
+    "M2_text_image": [
+      {
+        "case_id": "R001",
+        "score": 100.0,
+        "target": 98.0
+      },
+      {
+        "case_id": "R002",
+        "score": 75.0,
+        "target": 82.0
+      },
+      {
+        "case_id": "R003",
+        "score": 50.0,
+        "target": 28.0
+      },
+      {
+        "case_id": "R004",
+        "score": 25.0,
+        "target": 16.0
+      },
+      {
+        "case_id": "R005",
+        "score": 62.5,
+        "target": 76.0
+      },
+      {
+        "case_id": "R006",
+        "score": 62.5,
+        "target": 73.0
+      },
+      {
+        "case_id": "R007",
+        "score": 25.0,
+        "target": 19.0
+      },
+      {
+        "case_id": "R008",
+        "score": 100.0,
+        "target": 77.0
+      },
+      {
+        "case_id": "R009",
+        "score": 50.0,
+        "target": 69.0
+      },
+      {
+        "case_id": "R010",
+        "score": 75.0,
+        "target": 52.0
+      },
+      {
+        "case_id": "R011",
+        "score": 50.0,
+        "target": 63.0
+      },
+      {
+        "case_id": "R012",
+        "score": 50.0,
+        "target": 50.0
+      },
+      {
+        "case_id": "R013",
+        "score": 75.0,
+        "target": 91.0
+      },
+      {
+        "case_id": "R014",
+        "score": 25.0,
+        "target": 12.0
+      },
+      {
+        "case_id": "R015",
+        "score": 75.0,
+        "target": 79.0
+      },
+      {
+        "case_id": "R016",
+        "score": 37.5,
+        "target": 48.0
+      }
+    ],
+    "M3_plus_location": [
+      {
+        "case_id": "R001",
+        "score": 100.0,
+        "target": 98.0
+      },
+      {
+        "case_id": "R002",
+        "score": 76.5,
+        "target": 82.0
+      },
+      {
+        "case_id": "R003",
+        "score": 29.0,
+        "target": 28.0
+      },
+      {
+        "case_id": "R004",
+        "score": 23.5,
+        "target": 16.0
+      },
+      {
+        "case_id": "R005",
+        "score": 66.0,
+        "target": 76.0
+      },
+      {
+        "case_id": "R006",
+        "score": 72.5,
+        "target": 73.0
+      },
+      {
+        "case_id": "R007",
+        "score": 25.0,
+        "target": 19.0
+      },
+      {
+        "case_id": "R008",
+        "score": 52.0,
+        "target": 77.0
+      },
+      {
+        "case_id": "R009",
+        "score": 59.0,
+        "target": 69.0
+      },
+      {
+        "case_id": "R010",
+        "score": 39.0,
+        "target": 52.0
+      },
+      {
+        "case_id": "R011",
+        "score": 53.5,
+        "target": 63.0
+      },
+      {
+        "case_id": "R012",
+        "score": 50.0,
+        "target": 50.0
+      },
+      {
+        "case_id": "R013",
+        "score": 85.0,
+        "target": 91.0
+      },
+      {
+        "case_id": "R014",
+        "score": 19.0,
+        "target": 12.0
+      },
+      {
+        "case_id": "R015",
+        "score": 69.0,
+        "target": 79.0
+      },
+      {
+        "case_id": "R016",
+        "score": 47.0,
+        "target": 48.0
+      }
+    ],
+    "M4_no_reliability": [
+      {
+        "case_id": "R001",
+        "score": 84.1,
+        "target": 98.0
+      },
+      {
+        "case_id": "R002",
+        "score": 63.2,
+        "target": 82.0
+      },
+      {
+        "case_id": "R003",
+        "score": 20.2,
+        "target": 28.0
+      },
+      {
+        "case_id": "R004",
+        "score": 15.6,
+        "target": 16.0
+      },
+      {
+        "case_id": "R005",
+        "score": 61.7,
+        "target": 76.0
+      },
+      {
+        "case_id": "R006",
+        "score": 61.4,
+        "target": 73.0
+      },
+      {
+        "case_id": "R007",
+        "score": 17.7,
+        "target": 19.0
+      },
+      {
+        "case_id": "R008",
+        "score": 46.9,
+        "target": 77.0
+      },
+      {
+        "case_id": "R009",
+        "score": 60.2,
+        "target": 69.0
+      },
+      {
+        "case_id": "R010",
+        "score": 38.6,
+        "target": 52.0
+      },
+      {
+        "case_id": "R011",
+        "score": 48.7,
+        "target": 63.0
+      },
+      {
+        "case_id": "R012",
+        "score": 35.8,
+        "target": 50.0
+      },
+      {
+        "case_id": "R013",
+        "score": 73.9,
+        "target": 91.0
+      },
+      {
+        "case_id": "R014",
+        "score": 13.7,
+        "target": 12.0
+      },
+      {
+        "case_id": "R015",
+        "score": 61.5,
+        "target": 79.0
+      },
+      {
+        "case_id": "R016",
+        "score": 39.4,
+        "target": 48.0
+      }
+    ],
+    "evidence_aware_v1": [
+      {
+        "case_id": "R001",
+        "score": 100.0,
+        "target": 98.0
+      },
+      {
+        "case_id": "R002",
+        "score": 75.0,
+        "target": 82.0
+      },
+      {
+        "case_id": "R003",
+        "score": 28.0,
+        "target": 28.0
+      },
+      {
+        "case_id": "R004",
+        "score": 10.0,
+        "target": 16.0
+      },
+      {
+        "case_id": "R005",
+        "score": 75.0,
+        "target": 76.0
+      },
+      {
+        "case_id": "R006",
+        "score": 60.0,
+        "target": 73.0
+      },
+      {
+        "case_id": "R007",
+        "score": 18.0,
+        "target": 19.0
+      },
+      {
+        "case_id": "R008",
+        "score": 85.0,
+        "target": 77.0
+      },
+      {
+        "case_id": "R009",
+        "score": 65.0,
+        "target": 69.0
+      },
+      {
+        "case_id": "R010",
+        "score": 53.0,
+        "target": 52.0
+      },
+      {
+        "case_id": "R011",
+        "score": 55.0,
+        "target": 63.0
+      },
+      {
+        "case_id": "R012",
+        "score": 48.0,
+        "target": 50.0
+      },
+      {
+        "case_id": "R013",
+        "score": 95.0,
+        "target": 91.0
+      },
+      {
+        "case_id": "R014",
+        "score": 10.0,
+        "target": 12.0
+      },
+      {
+        "case_id": "R015",
+        "score": 75.0,
+        "target": 79.0
+      },
+      {
+        "case_id": "R016",
+        "score": 43.0,
+        "target": 48.0
+      }
+    ]
+  },
+  "record_count": 16,
+  "score_scale": "0-100; CEFAP CIPS scores multiplied by 100",
+  "time_reference": "2025-01-01T00:00:00"
+}

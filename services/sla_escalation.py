@@ -12,20 +12,27 @@ SLA_HOURS = {
     "P3": 72,
 }
 
+from services.scheduler_lock import scheduler_lock
+
 def run_escalation_check():
     """
     Background worker task called periodically by APScheduler.
     Evaluates SLA deadlines for all active, non-emergency complaints.
+    Protected by distributed lock to prevent N-times execution under multi-worker Gunicorn.
     """
-    now = datetime.utcnow()
-    try:
-        active = list(db.issues.find({
-            "status": {"$nin": ["closed", "CLOSED", "REJECTED", "work_completed", "officer_verified"]},
-            "emergency": False
-        }))
-    except Exception as e:
-        print(f"[SLA Scheduler] Error querying active issues: {e}")
-        return
+    with scheduler_lock("sla_escalation_check", ttl_seconds=180) as acquired:
+        if not acquired:
+            return
+
+        now = datetime.utcnow()
+        try:
+            active = list(db.issues.find({
+                "status": {"$nin": ["closed", "CLOSED", "REJECTED", "work_completed", "officer_verified"]},
+                "emergency": False
+            }))
+        except Exception as e:
+            print(f"[SLA Scheduler] Error querying active issues: {e}")
+            return
 
     for complaint in active:
         priority = complaint.get("priority", "P3")

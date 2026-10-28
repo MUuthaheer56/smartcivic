@@ -10,16 +10,11 @@ from datetime import datetime
 from bson import ObjectId
 import json
 from services.logger_service import log_ai_call
+from config import Config
 
-# Fallback classifier mappings
-CATEGORY_TO_DEPT = {
-    "road": "roads",
-    "water": "water_supply",
-    "electricity": "electrical",
-    "sanitation": "sanitation",
-    "drainage": "drainage",
-    "other": "roads"
-}
+# Department mapping imported from single source of truth in Config
+CATEGORY_TO_DEPT = Config.CATEGORY_TO_DEPARTMENT
+
 
 VISION_MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-1.5-flash")
 ALLOWED_CATEGORIES = {"road", "water", "electricity", "sanitation", "drainage", "noise", "other"}
@@ -475,7 +470,7 @@ def verify_resolution(before_image_path: str, after_image_path: str, issue_type:
     Uses Gemini Vision to compare before/after photos.
     Note: gemini-pro-vision is deprecated in modern Gemini APIs; use gemini-1.5-flash for new implementations.
     """
-    key = os.getenv("GEMINI_API_KEY")
+    key = _get_gemini_api_key()
     if not key:
         return {
             "status": "uncertain",
