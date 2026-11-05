@@ -25,6 +25,10 @@ def _rule_based_fallback_category(description: str) -> str:
         return "Water Supply"
     return "General"
 
+ROUTE_HIGH_CONFIDENCE = "HIGH_CONFIDENCE"
+# Backward-compatibility alias
+AUTO_ROUTE = ROUTE_HIGH_CONFIDENCE
+
 def compute_route_decision(text_analysis: dict, is_emergency: bool, emergency_state: str = None) -> str:
     if emergency_state in ("IMMEDIATE_112", "SAFETY_REVIEW"):
         return emergency_state
@@ -35,7 +39,7 @@ def compute_route_decision(text_analysis: dict, is_emergency: bool, emergency_st
     if text_analysis.get("needs_clarification"):
         return "CLARIFICATION_NEEDED"
     if conf >= 0.90:
-        return "AUTO_ROUTE"
+        return ROUTE_HIGH_CONFIDENCE
     if conf >= 0.70:
         return "OFFICER_CONFIRM"
     return "GEMINI_FALLBACK"

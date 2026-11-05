@@ -41,6 +41,7 @@ def require_officer_page(f):
                 pass
 
         return redirect("/login")
+    decorated._is_auth_protected = True
     return decorated
 
 @officer_bp.route('/officer/dashboard')

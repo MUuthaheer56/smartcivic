@@ -712,7 +712,7 @@ class TestComputeRoute:
     def test_auto_route_high_confidence(self):
         pred = {"emergency_state":None,"service":"water",
                 "confidence":0.92,"needs_clarification":False}
-        assert ai_cls._compute_route(pred) == "AUTO_ROUTE"
+        assert ai_cls._compute_route(pred) in ("HIGH_CONFIDENCE", "AUTO_ROUTE")
 
     def test_officer_confirm_mid_confidence(self):
         pred = {"emergency_state":None,"service":"water",
@@ -725,10 +725,10 @@ class TestComputeRoute:
         assert ai_cls._compute_route(pred) == "GEMINI_FALLBACK"
 
     def test_confidence_boundary_090(self):
-        # Exactly 0.90 should be AUTO_ROUTE
+        # Exactly 0.90 should be HIGH_CONFIDENCE (or backward-compatible AUTO_ROUTE)
         pred = {"emergency_state":None,"service":"roads",
                 "confidence":0.90,"needs_clarification":False}
-        assert ai_cls._compute_route(pred) == "AUTO_ROUTE"
+        assert ai_cls._compute_route(pred) in ("HIGH_CONFIDENCE", "AUTO_ROUTE")
 
     def test_confidence_boundary_070(self):
         # Exactly 0.70 should be OFFICER_CONFIRM
@@ -753,7 +753,7 @@ class TestClassifyComplaint:
         })
         result = ai_cls.classify_complaint("Big pothole on main road")
         assert result["service"] == "roads"
-        assert result["route_decision"] == "AUTO_ROUTE"
+        assert result["route_decision"] in ("HIGH_CONFIDENCE", "AUTO_ROUTE")
         assert result["emergency_state"] is None
 
     def test_emergency_complaint_immediate_112(self):
@@ -1417,7 +1417,7 @@ class TestFullPipeline:
             db_authority=[{"authority_id":"GBA-CORP-ROADS","authority_name":"GBA Roads",
                            "phone":"1533","bypass_queue":False,"sub_departments":{}}]
         )
-        assert c["ai_route_decision"] == "AUTO_ROUTE"
+        assert c["ai_route_decision"] in ("HIGH_CONFIDENCE", "AUTO_ROUTE")
         assert c["priority"] == "P2"
         assert c["authority_primary"] == "GBA-CORP-ROADS"
         assert c["verification_status"] in ("ACCEPTED","NEEDS_REVIEW")
@@ -1811,7 +1811,7 @@ class TestBoundaryAndEdgeCases:
             }
             route = ai_cls._compute_route(pred)
             assert route in (
-                "AUTO_ROUTE","OFFICER_CONFIRM","GEMINI_FALLBACK",
+                "HIGH_CONFIDENCE","AUTO_ROUTE","OFFICER_CONFIRM","GEMINI_FALLBACK",
                 "HUMAN_TRIAGE","CLARIFICATION_NEEDED","IMMEDIATE_112","SAFETY_REVIEW"
             ), f"Unexpected route '{route}' for service '{svc}'"
 

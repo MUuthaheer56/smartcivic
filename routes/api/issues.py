@@ -770,7 +770,17 @@ def list_issues():
         
     user_role = g.current_user.get("role")
     if user_role in ["citizen", "resident"]:
-        query["citizen_id"] = ObjectId(g.current_user["_id"])
+        import hmac
+        import hashlib
+        user_id_str = str(g.current_user["_id"])
+        secret_key = current_app.config.get("SECRET_KEY", "default-salt").encode("utf-8")
+        reporter_hash = hmac.new(secret_key, user_id_str.encode("utf-8"), hashlib.sha256).hexdigest()
+        anon_docs = list(db.anonymous_reporters.find({"reporter_hash": reporter_hash}, {"issue_id": 1}))
+        anon_ids = [d["issue_id"] for d in anon_docs if "issue_id" in d]
+        if anon_ids:
+            query["$or"] = [{"citizen_id": ObjectId(g.current_user["_id"])}, {"_id": {"$in": anon_ids}}]
+        else:
+            query["citizen_id"] = ObjectId(g.current_user["_id"])
     else:
         officer_ward = g.current_user.get("ward")
         if officer_ward and officer_ward != "all":
@@ -1688,7 +1698,7 @@ def submit_clarification(id):
             "$set": {
                 "issue_type": selected_issue_id,
                 "type": selected_issue_id,
-                "ai_route_decision": "AUTO_ROUTE",
+                "ai_route_decision": "HIGH_CONFIDENCE",
                 "verification_status": "ACCEPTED",
                 "authority_primary": auth.get("authority_id"),
                 "authority_secondary": auth.get("secondary", []),

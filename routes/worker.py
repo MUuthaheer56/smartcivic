@@ -38,6 +38,7 @@ def require_worker_page(f):
                 pass
 
         return redirect("/login")
+    decorated._is_auth_protected = True
     return decorated
 
 @worker_bp.route('/worker/dashboard')

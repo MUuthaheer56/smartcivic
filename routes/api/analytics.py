@@ -475,6 +475,8 @@ analytics_bp = analytics_api_bp
 
 @analytics_api_bp.route('/ward-health/<ward>', methods=['GET'])
 @analytics_api_bp.route('/api/analytics/ward-health/<ward>', methods=['GET'])
+@require_auth
+@require_role('officer', 'admin')
 def get_ward_health(ward):
     user_role = session.get('role') or (g.current_user.get('role') if getattr(g, 'current_user', None) else None)
     user_id = session.get('user_id') or (g.current_user.get('_id') if getattr(g, 'current_user', None) else None)

@@ -58,6 +58,10 @@ def pattern_emergency_check(text: str) -> bool:
             return True
     return False
 
+ROUTE_HIGH_CONFIDENCE = "HIGH_CONFIDENCE"
+# Backward-compatibility alias
+AUTO_ROUTE = ROUTE_HIGH_CONFIDENCE
+
 def _compute_route(pred: dict) -> str:
     """Computes high-level AI route decision."""
     emg_state = pred.get("emergency_state")
@@ -72,7 +76,7 @@ def _compute_route(pred: dict) -> str:
     if pred.get("needs_clarification"):
         return "CLARIFICATION_NEEDED"
     if conf >= 0.90:
-        return "AUTO_ROUTE"
+        return ROUTE_HIGH_CONFIDENCE
     if conf >= 0.70:
         return "OFFICER_CONFIRM"
     return "GEMINI_FALLBACK"

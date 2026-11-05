@@ -744,6 +744,9 @@ python test_e2e_verification.py
 - **Gemini API Quota Limits**: When Gemini API free-tier quotas (HTTP 429) are exceeded, text analysis falls back to local rule-based heuristics (`confidence_type: "heuristic"`).
 - **OSRM Router Connectivity**: If the public OSRM router is offline or times out (5s), routing falls back cleanly to `available: false` rather than rendering misleading straight-line polylines.
 - **Single-Node In-Memory Limiter**: `Flask-Limiter` uses in-memory storage (`memory://`); multi-instance production clusters should attach a Redis backend storage URI.
+- **AI Routing Classification & No Autonomous Dispatch**: Issues with model confidence $\ge 0.90$ receive the `HIGH_CONFIDENCE` route decision label (formerly `AUTO_ROUTE`, which is retained as a backward-compatible alias). This is a triage recommendation label; autonomous field dispatch is not implemented. All complaint assignments require explicit triage and manual dispatch by an on-duty municipal officer.
+- **External Notifications (SMS/Email Deferred)**: External SMS gateways (e.g. Twilio, Fast2SMS) and external email delivery (SMTP, SendGrid) are not present in this release. All notifications are delivered via persistent MongoDB in-app notification inboxes and real-time Flask-SocketIO WebSockets under the `/civic` namespace.
+- **Crowd Consensus Verification Deferred**: 3-citizen crowd verification consensus is deferred. Resolution proof verification is performed by the original reporting resident and ward officers.
 
 ---
 

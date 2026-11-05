@@ -29,6 +29,7 @@ def require_citizen_page(f):
         except Exception:
             return redirect("/login")
         return f(*args, **kwargs)
+    decorated._is_auth_protected = True
     return decorated
 
 @citizen_bp.route('/citizen/dashboard')

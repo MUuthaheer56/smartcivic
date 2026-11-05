@@ -115,6 +115,7 @@ def verified_required(f):
 
         return f(*args, **kwargs)
 
+    decorated._is_auth_protected = True
     return decorated
 
 def officer_required(f):
@@ -125,6 +126,7 @@ def officer_required(f):
     def decorated(*args, **kwargs):
         from routes.auth import require_auth, require_role
         return require_auth(require_role('officer', 'admin')(f))(*args, **kwargs)
+    decorated._is_auth_protected = True
     return decorated
 
 def authorize_issue_access(user, issue):
@@ -166,6 +168,18 @@ def authorize_issue_access(user, issue):
         owner_id = str(issue.get("citizen_id") or issue.get("user_id") or issue.get("reporter_id") or "")
         if user_id and user_id == owner_id:
             return True, None
+        if issue.get("is_anonymous") and user_id:
+            import hmac
+            import hashlib
+            from flask import current_app
+            secret_key = current_app.config.get("SECRET_KEY", "default-salt").encode("utf-8")
+            reporter_hash = hmac.new(secret_key, user_id.encode("utf-8"), hashlib.sha256).hexdigest()
+            link = db.anonymous_reporters.find_one({
+                "issue_id": issue.get("_id"),
+                "reporter_hash": reporter_hash
+            })
+            if link:
+                return True, None
         return False, ({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to issue owner."}}, 403)
 
     return False, ({"success": False, "error": {"code": "FORBIDDEN", "message": "Unauthorized role for issue access."}}, 403)

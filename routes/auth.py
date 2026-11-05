@@ -158,6 +158,7 @@ def require_auth(f):
             return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Invalid access token."}}), 401
 
         return f(*args, **kwargs)
+    auth_wrapper._is_auth_protected = True
     return auth_wrapper
 
 def require_role(*roles):
@@ -176,6 +177,7 @@ def require_role(*roles):
                 return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Access denied for this user role."}}), 403
 
             return f(*args, **kwargs)
+        role_wrapper._is_auth_protected = True
         return role_wrapper
     return decorator
 

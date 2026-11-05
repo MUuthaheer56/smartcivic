@@ -58,13 +58,28 @@ except ImportError:
     csrf = DummyCSRF()
 
 def _get_cors_origins():
-    origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    origins = os.getenv("ALLOWED_ORIGINS") or os.getenv("CORS_ALLOWED_ORIGINS", "")
+    flask_env = os.getenv("FLASK_ENV", os.getenv("ENV", "development")).strip().lower()
+    is_prod = flask_env in ("production", "prod")
+
     if origins:
         parts = [o.strip() for o in origins.split(",") if o.strip()]
-        return parts if parts else "*"
-    if os.getenv("FLASK_ENV", "production").lower() == "production":
-        return ["http://localhost:5000", "http://127.0.0.1:5000", "https://smartcivic.local"]
-    return ["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:3000"]
+    else:
+        if is_prod:
+            raise RuntimeError(
+                "CRITICAL: ALLOWED_ORIGINS environment variable must be explicitly defined in production mode."
+            )
+        parts = ["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:3000"]
+
+    if is_prod:
+        for origin in parts:
+            origin_lower = origin.lower()
+            if "localhost" in origin_lower or "127.0.0.1" in origin_lower or "0.0.0.0" in origin_lower:
+                raise RuntimeError(
+                    f"CRITICAL: Production mode refuses localhost/loopback in ALLOWED_ORIGINS: '{origin}'."
+                )
+
+    return parts
 
 # Initialize Socket.IO with restricted origins, Limiter, and 1MB buffer limit
 socketio = SocketIO(
@@ -152,6 +167,8 @@ def _validate_runtime_config(config_cls) -> None:
                 "CRITICAL: Production mode requires COOKIE_SECURE=true. Set it in "
                 "your .env to ensure JWT cookies are only sent over HTTPS."
             )
+        # Validate CORS allowed origins in production (refuses localhost/loopback)
+        _get_cors_origins()
 
 def create_app():
     app = Flask(__name__)
@@ -160,7 +177,13 @@ def create_app():
     app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
     
     # Initialize extensions with app context
-    socketio.init_app(app)
+    cors_origins = _get_cors_origins()
+    socketio.init_app(app, cors_allowed_origins=cors_origins)
+    try:
+        from flask_cors import CORS
+        CORS(app, origins=cors_origins, supports_credentials=True)
+    except ImportError:
+        pass
     limiter.init_app(app)
     if app.config.get("TESTING") or "pytest" in sys.modules or os.getenv("TESTING", "").lower() == "true":
         limiter.enabled = False
@@ -506,6 +529,16 @@ def start_background_jobs(app):
                 app.logger.error(f"CivicPulse prediction sweep exception: {err}")
 
     scheduler.add_job(civicpulse_prediction_job, 'cron', day_of_week='tue', hour=2)
+
+    def verification_doc_retention_job():
+        with app.app_context():
+            try:
+                from services.retention_service import run_retention_purge_job
+                run_retention_purge_job()
+            except Exception as err:
+                app.logger.error(f"Verification doc retention purge exception: {err}")
+
+    scheduler.add_job(verification_doc_retention_job, 'cron', hour=3, minute=0)
 
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
         scheduler.start()
