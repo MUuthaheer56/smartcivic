@@ -26,7 +26,14 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY . .
 
 # Create required runtime directories (uploads, logs, backups)
-RUN mkdir -p logs static/uploads/issues backups
+RUN mkdir -p logs uploads/issues uploads/verification_docs uploads/docs uploads/resolution static/uploads/issues backups
+
+# Hardening: Run as non-privileged non-root user
+RUN groupadd -g 1001 appuser && \
+    useradd -u 1001 -g appuser -s /bin/sh -m appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
 
 # ── Runtime configuration ────────────────────────────────────────────────────
 EXPOSE 5000
@@ -65,7 +72,6 @@ CMD ["sh", "-c", \
     --keep-alive 5 \
     --bind 0.0.0.0:${PORT:-5000} \
     --forwarded-allow-ips='${FORWARDED_ALLOW_IPS:-127.0.0.1}' \
-    --proxy-protocol \
     --access-logfile - \
     --error-logfile - \
     --log-level info \
@@ -76,4 +82,4 @@ CMD ["sh", "-c", \
 # causes Docker / ECS / ECS Fargate / Kubernetes to restart the container if
 # MongoDB disappears or the Flask factory fails.
 HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:${PORT:-5000}/api/health || exit 1
+    CMD curl -fsS http://127.0.0.1:${PORT:-5000}/health || exit 1

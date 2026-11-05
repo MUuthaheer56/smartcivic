@@ -724,12 +724,16 @@ def declare_emergency(issue_id, declared_by_id, emergency_category: str) -> dict
         reason=f"Emergency declared: {emergency_category}."
     )
     
-    # Emit to officer room via Socket.IO in /civic namespace
-    from utils import serialize
+    # Emit to officer room via Socket.IO in /civic namespace with sanitized payload
+    from utils.serializers import serialize_public_issue
     try:
+        clean_payload = serialize_public_issue(updated)
+        clean_payload["emergency"] = True
+        clean_payload["emergency_category"] = emergency_category
+        clean_payload["emergency_declared_at"] = now.isoformat() if hasattr(now, "isoformat") else str(now)
         socketio.emit(
             "emergency_declared",
-            serialize(updated),
+            clean_payload,
             room="role_officer", # broadcast to officer room
             namespace="/civic"
         )

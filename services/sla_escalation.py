@@ -77,6 +77,6 @@ def run_escalation_check():
                             "priority": priority,
                             "escalation_level": new_level,
                             "sla_hours": sla_hours
-                        }, room="officers")
+                        }, room="role_officer", namespace="/civic")
                     except Exception:
                         pass

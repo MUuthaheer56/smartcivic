@@ -279,7 +279,12 @@ def _run_ai_async(app, issue_id_str, text, location_text, image_path, reporter_v
                 }}
             )
             if socketio:
-                socketio.emit("issue_updated", {"id": issue_id_str, "issue_id": issue_id_str, "ai_status": ai_status}, room=f"ward_{ward_id}")
+                socketio.emit(
+                    "issue_updated",
+                    {"id": issue_id_str, "issue_id": issue_id_str, "ai_status": ai_status},
+                    room=f"ward_{ward_id}",
+                    namespace="/civic"
+                )
 
             try:
                 from services.urban_knowledge_graph import analyze_correlations
@@ -290,7 +295,7 @@ def _run_ai_async(app, issue_id_str, text, location_text, image_path, reporter_v
                             "master_id": str(res["master_id"]),
                             "root_id": str(res["root_id"]),
                             "member_ids": [str(i) for i in res["member_ids"]],
-                        })
+                        }, namespace="/civic")
             except Exception:
                 app.logger.exception("Graph correlation analysis failed for issue %s", issue_id_str)
         except Exception as e:

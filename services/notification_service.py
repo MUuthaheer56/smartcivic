@@ -126,7 +126,18 @@ def create_notification(db, user_id: str, title: str, message: str, notification
     
     try:
         if socketio:
-            socketio.emit(f'notification_{user_id}', {"title": title, "message": message}, room=f"user_{user_id}", namespace="/civic")
+            socketio.emit(
+                'notification',
+                {
+                    "title": title,
+                    "message": message,
+                    "event_type": notification_type,
+                    "type": notification_type,
+                    "notification_id": str(inserted_id)
+                },
+                room=f"user_{user_id}",
+                namespace="/civic"
+            )
     except Exception as e:
         print(f"[Notification Service] Socket.IO emit error: {e}")
         

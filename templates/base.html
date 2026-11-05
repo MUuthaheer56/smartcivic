@@ -540,7 +540,14 @@
             else if (type === 'danger') { color = 'var(--danger)'; icon = 'fa-times-circle'; }
 
             toast.style.borderLeftColor = color;
-            toast.innerHTML = `<i class="fa-solid ${icon}" style="color: ${color}"></i> <span>${message}</span>`;
+            const iconElem = document.createElement('i');
+            iconElem.className = `fa-solid ${icon}`;
+            iconElem.style.color = color;
+            const spanElem = document.createElement('span');
+            spanElem.textContent = message;
+            toast.appendChild(iconElem);
+            toast.appendChild(document.createTextNode(' '));
+            toast.appendChild(spanElem);
             container.appendChild(toast);
 
             setTimeout(() => {
@@ -616,16 +623,51 @@
         // Socket.IO Notifications Listener
         {% if g.current_user %}
         fetchNotifications();
-        const socket = io('/civic');
+        const socket = io('/civic', {
+            withCredentials: true,
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000
+        });
+
         socket.on('connect', () => {
             console.log('Connected to real-time notification socket.');
             // Join private user notification channel
             socket.emit('join_room', { room: "user_{{ g.current_user._id }}" });
+            {% if g.current_user.role == 'officer' %}
+            socket.emit('join_room', { room: "role_officer" });
+            {% elif g.current_user.role %}
+            socket.emit('join_room', { room: "role_{{ g.current_user.role }}" });
+            {% endif %}
+            {% if g.current_user.ward and g.current_user.ward != 'all' %}
+            socket.emit('join_room', { room: "ward_{{ g.current_user.ward }}" });
+            {% endif %}
         });
 
         socket.on('notification', (data) => {
-            showToast(data.message, data.event_type.includes('sla') || data.event_type.includes('reopen') ? 'warning' : 'success');
+            const evType = (data && data.event_type) ? String(data.event_type) : '';
+            const isWarn = evType.includes('sla') || evType.includes('reopen') || evType.includes('breach');
+            showToast(data.message || 'New notification', isWarn ? 'warning' : 'success');
             fetchNotifications();
+        });
+
+        socket.on('emergency_declared', (data) => {
+            const msg = `EMERGENCY ALERT: ${data.category || 'High Priority'} issue in Ward ${data.ward || 'N/A'}`;
+            showToast(msg, 'danger');
+            fetchNotifications();
+            if (typeof loadOverviewStats === 'function') loadOverviewStats();
+            if (typeof loadEmergencyBar === 'function') loadEmergencyBar();
+        });
+
+        socket.on('sla_breach', (data) => {
+            const msg = `SLA BREACH ALERT: Issue ${data.issue_id || ''} exceeded ${data.sla_hours || ''}h limit.`;
+            showToast(msg, 'warning');
+            fetchNotifications();
+            if (typeof loadOverviewStats === 'function') loadOverviewStats();
+        });
+
+        socket.on('connect_error', (err) => {
+            console.warn('[Socket.IO] Connection error:', err.message);
         });
         {% endif %}
     </script>

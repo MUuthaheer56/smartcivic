@@ -9,7 +9,7 @@ from datetime import datetime
 from bson import ObjectId
 from flask import Flask, render_template, request, redirect, g, jsonify, current_app, send_from_directory, abort, Response
 from pymongo import MongoClient
-from flask_socketio import SocketIO, emit, join_room
+from flask_socketio import SocketIO, emit, join_room, ConnectionRefusedError
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -66,8 +66,12 @@ def _get_cors_origins():
         return ["http://localhost:5000", "http://127.0.0.1:5000", "https://smartcivic.local"]
     return ["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:3000"]
 
-# Initialize Socket.IO with restricted origins and Limiter
-socketio = SocketIO(cors_allowed_origins=_get_cors_origins(), async_mode="threading")
+# Initialize Socket.IO with restricted origins, Limiter, and 1MB buffer limit
+socketio = SocketIO(
+    cors_allowed_origins=_get_cors_origins(),
+    async_mode="threading",
+    max_http_buffer_size=1048576  # 1MB buffer ceiling
+)
 
 def _get_limiter_storage_uri():
     configured = os.getenv("RATELIMIT_STORAGE_URI") or os.getenv("REDIS_URL")
@@ -175,6 +179,7 @@ def create_app():
         except Exception as e:
             print(f"[APScheduler] Warning starting background SLA scheduler: {e}")
     
+    @app.route('/health', methods=['GET'])
     @app.route('/api/health', methods=['GET'])
     def health_check():
         return jsonify({
@@ -506,23 +511,89 @@ def start_background_jobs(app):
         scheduler.start()
     return scheduler
 
-# Socket.IO Handlers in /civic namespace
+# ── Socket.IO Rate Limiting & Handlers in /civic namespace ──────────────────────
+import time
+from collections import defaultdict
+
+_sid_rate_limits = defaultdict(list)
+_SOCKET_RATE_LIMIT = 60  # max 60 events per minute per SID
+
+def _check_sid_rate_limit(sid):
+    now = time.time()
+    timestamps = [t for t in _sid_rate_limits[sid] if now - t < 60]
+    if len(timestamps) >= _SOCKET_RATE_LIMIT:
+        _sid_rate_limits[sid] = timestamps
+        return False
+    timestamps.append(now)
+    _sid_rate_limits[sid] = timestamps
+    return True
+
+def _extract_socket_token(auth=None):
+    token = None
+    if isinstance(auth, dict):
+        token = auth.get("token")
+    if not token and hasattr(request, "headers"):
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+    if not token and hasattr(request, "cookies"):
+        token = request.cookies.get("access_token")
+    return token
+
+@socketio.on('connect', namespace='/civic')
+def on_connect(auth=None):
+    token = _extract_socket_token(auth)
+    if not token:
+        raise ConnectionRefusedError("Authentication required")
+    try:
+        secret = current_app.config["JWT_SECRET"]
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        request.sid_user = payload
+        user_id = payload.get("user_id")
+        user_role = payload.get("role")
+        user_ward = payload.get("ward")
+
+        # Auto-join canonical rooms based on verified identity
+        if user_id:
+            join_room(f"user_{user_id}")
+        if user_role:
+            join_room(f"role_{user_role}")
+        if user_ward and user_ward != "all":
+            join_room(f"ward_{user_ward}")
+    except Exception as e:
+        raise ConnectionRefusedError(f"Invalid or expired token: {e}")
+
+@socketio.on('disconnect', namespace='/civic')
+def on_disconnect():
+    if hasattr(request, 'sid'):
+        _sid_rate_limits.pop(request.sid, None)
+
 @socketio.on('join_room', namespace='/civic')
 def on_join(data):
+    if hasattr(request, 'sid') and not _check_sid_rate_limit(request.sid):
+        emit('error', {'message': 'Rate limit exceeded'}, room=request.sid, namespace='/civic')
+        return
+
     if not isinstance(data, dict):
         return
     room = data.get('room')
     if not room:
         return
         
-    token = request.cookies.get("access_token")
-    if not token:
-        print("[Socket.IO] Access token cookie missing, reject join.")
-        return
-        
+    payload = getattr(request, 'sid_user', None)
+    if not payload:
+        token = _extract_socket_token()
+        if not token:
+            print("[Socket.IO] Access token missing, reject join.")
+            return
+        try:
+            secret = current_app.config["JWT_SECRET"]
+            payload = jwt.decode(token, secret, algorithms=["HS256"])
+        except Exception as e:
+            print(f"[Socket.IO] Join token validation exception: {e}")
+            return
+
     try:
-        secret = current_app.config["JWT_SECRET"]
-        payload = jwt.decode(token, secret, algorithms=["HS256"])
         user_id = payload.get("user_id")
         user_role = payload.get("role")
         user_ward = payload.get("ward")
@@ -541,6 +612,8 @@ def on_join(data):
         elif room == "role_officer":
             if user_role == "officer":
                 allowed = True
+        elif room == f"role_{user_role}":
+            allowed = True
                 
         if allowed:
             join_room(room)
