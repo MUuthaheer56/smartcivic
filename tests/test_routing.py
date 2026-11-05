@@ -3,7 +3,7 @@ SmartCivic — Routing Service Unit Tests
 Tests coordinate validation, Haversine distance, and unavailable router error handling.
 """
 import unittest
-from services.routing_service import calculate_distance, calculate_eta, get_route
+from services.authority_router import calculate_distance, calculate_eta, get_route
 from utils.geo_utils import validate_coordinates
 
 class TestRouting(unittest.TestCase):

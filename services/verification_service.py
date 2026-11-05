@@ -4,6 +4,7 @@ SmartCivic+ — Resolution Verification Service
 from datetime import datetime
 from bson import ObjectId
 from flask import current_app
+from config import Config
 from app import db
 from services import ai_service
 from services.complaint_service import update_status
@@ -43,7 +44,35 @@ def submit_resolution(issue_id, worker_id, before_image: dict, after_image: dict
         "reasoning": ai_result.get("reasoning", ""),
         "timestamp": now
     }
-    
+
+    # Phase 7: Repair Verification v2 & Evidence Storage (behind AI_REPAIR_V2_ENABLED)
+    if getattr(Config, "AI_REPAIR_V2_ENABLED", False):
+        try:
+            from services.ai.repair_verifier import verify_repair_v2, record_repair_evidence
+            repair_v2_res = verify_repair_v2(
+                issue_doc=issue,
+                before_photo_path=before_image.get("filepath"),
+                after_photo_path=after_image.get("filepath"),
+                after_photo_gps=after_image.get("gps")
+            )
+            evidence_id = record_repair_evidence(
+                db=db,
+                issue_id=str(issue_id),
+                worker_id=str(worker_id),
+                before_img=before_image,
+                after_img=after_image,
+                verification_res=repair_v2_res,
+                department=issue.get("department", "roads"),
+                contractor_id=issue.get("contractor_id") or str(worker_id)
+            )
+            ai_verification["repair_evidence_id"] = evidence_id
+            ai_verification["v2_verdict"] = repair_v2_res.get("value", {}).get("verdict")
+            ai_verification["v2_confidence"] = repair_v2_res.get("value", {}).get("confidence")
+            ai_verification["requires_officer_review"] = repair_v2_res.get("value", {}).get("requires_officer_review", True)
+        except Exception as v2_err:
+            if current_app:
+                current_app.logger.warning(f"[VerificationService] Repair v2 error: {v2_err}")
+
     # Append resolution images to issue images list
     images_list = issue.get("images", [])
     
@@ -102,6 +131,13 @@ def officer_verify(issue_id, officer_id, approved: bool, notes: str) -> dict:
     else:
         # Reject resolution - revert status to work_started so worker can repair it again
         update_status(issue_id, "work_started", officer_id, reason=f"Officer rejected resolution: {notes}")
+        if getattr(Config, "AI_REPAIR_V2_ENABLED", False):
+            try:
+                from services.ai.repair_verifier import record_issue_reopen
+                record_issue_reopen(db, issue_id, officer_id, "officer", notes)
+            except Exception as e:
+                if current_app:
+                    current_app.logger.warning(f"[OfficerVerify] Error recording reopen: {e}")
         
         # Notify worker
         worker_id = issue.get("worker_id")
@@ -200,6 +236,13 @@ def citizen_verify(issue_id, citizen_id, resolved: bool, feedback: str) -> dict:
     else:
         # Reopen complaint
         update_status(issue_id, "reopened", citizen_id, reason=f"Citizen disputed resolution. Feedback: {feedback}")
+        if getattr(Config, "AI_REPAIR_V2_ENABLED", False):
+            try:
+                from services.ai.repair_verifier import record_issue_reopen
+                record_issue_reopen(db, issue_id, citizen_id, "citizen", feedback)
+            except Exception as e:
+                if current_app:
+                    current_app.logger.warning(f"[CitizenVerify] Error recording reopen: {e}")
         
         db.issues.update_one(
             {"_id": ObjectId(issue_id)},
@@ -264,4 +307,10 @@ def officer_verify_resolution(db, issue_id: str, officer_id: str, approved: bool
     if approved:
         return transition_issue_state(db, issue_id, "RESOLVED", officer_id, notes=f"Officer approved: {feedback}")
     else:
+        if getattr(Config, "AI_REPAIR_V2_ENABLED", False):
+            try:
+                from services.ai.repair_verifier import record_issue_reopen
+                record_issue_reopen(db, issue_id, officer_id, "officer", feedback)
+            except Exception:
+                pass
         return transition_issue_state(db, issue_id, "REOPENED", officer_id, notes=f"Officer rejected resolution: {feedback}")

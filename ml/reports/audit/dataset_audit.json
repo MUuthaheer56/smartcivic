@@ -1,0 +1,103 @@
+{
+  "dataset_name": "Data Y12 Final",
+  "dataset_path": "C:\\Users\\Muthaheer\\Desktop\\main project\\code 1\\images for ml\\Data Y12 Final",
+  "classes_in_yaml": [
+    "Crack",
+    "Pothole",
+    "Surface Erosion"
+  ],
+  "total_images": 1075,
+  "corrupt_files_count": 0,
+  "corrupt_files": [],
+  "extensions": {
+    ".jpg": 1075
+  },
+  "subfolders": {
+    "train": 914,
+    "valid": 161
+  },
+  "file_size_kb": {
+    "min": 25.99,
+    "max": 163.19,
+    "mean": 72.32,
+    "median": 73.06
+  },
+  "resolution": {
+    "most_common": [
+      "640x640 (1075 imgs)"
+    ],
+    "min_dimension": [
+      640,
+      640
+    ],
+    "max_dimension": [
+      640,
+      640
+    ]
+  },
+  "exif_orientation_issues": 0,
+  "quality": {
+    "laplacian_blur": {
+      "mean": 1415.87,
+      "median": 1008.82,
+      "blurry_count_under_100": 136,
+      "blurry_percentage": 12.65
+    },
+    "brightness": {
+      "mean": 125.97,
+      "median": 126.05,
+      "dark_count_under_50": 1,
+      "dark_percentage": 0.09,
+      "bright_count_over_200": 0,
+      "bright_percentage": 0.0
+    }
+  },
+  "duplicates": {
+    "exact_sha256_clusters": 0,
+    "exact_sha256_duplicates_total": 0,
+    "near_dup_clusters_dhash4": 15,
+    "near_dup_images_total": 30,
+    "largest_near_dup_cluster_size": 2
+  },
+  "grouping": {
+    "total_inferred_groups": 1075,
+    "group_sample_counts": {
+      "crack_100_jpg": 1,
+      "crack_101_jpg": 1,
+      "crack_102_jpg": 1,
+      "crack_103_jpg": 1,
+      "crack_104_jpg": 1
+    },
+    "mean_images_per_group": 1.0,
+    "grouping_reliability": "High: Roboflow export stem names preserve original image identity across augmentations"
+  },
+  "label_coverage": {
+    "has_label_file": 1071,
+    "empty_label_file": 4,
+    "missing_label_file": 0
+  },
+  "annotations": {
+    "total_boxes": 1846,
+    "class_distribution": {
+      "Crack": 522,
+      "Surface Erosion": 397,
+      "Pothole": 927
+    },
+    "boxes_per_image": {
+      "mean": 1.72,
+      "median": 1.0,
+      "max": 24
+    },
+    "box_size_distribution": {
+      "small (<5% image)": 689,
+      "medium (5-25% image)": 574,
+      "large (>25% image)": 583
+    },
+    "sanity": {
+      "zero_area_boxes": 0,
+      "out_of_bounds_boxes": 0,
+      "invalid_class_ids": 0,
+      "total_issues_logged": 0
+    }
+  }
+}

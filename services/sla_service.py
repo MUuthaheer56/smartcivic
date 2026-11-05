@@ -5,29 +5,13 @@ Assigns and tracks complaint service level agreement (SLA) deadlines.
 from datetime import datetime, timedelta
 from bson import ObjectId
 from app import db
-from models.sla import SLA_RULES, SLA_THRESHOLDS
+from models.sla import SLA_RULES, SLA_THRESHOLDS, SLA_HOURS
 from services.notification_service import send, SLA_WARNING, SLA_BREACHED
 
-SLA_HOURS = {
-    "Critical": 4,
-    "critical": 4,
-    "P0": 4,
-    "P1": 6,
-    "High": 12,
-    "high": 12,
-    "P2": 24,
-    "Medium": 24,
-    "medium": 24,
-    "Low": 72,
-    "low": 72,
-    "P3": 72
-}
-
 def assign_initial_sla(priority_or_severity: str) -> datetime:
-    """Calculates the strict target deadline based on priority or severity tier."""
-    hours = SLA_HOURS.get(priority_or_severity, 24)
-    if priority_or_severity in ["P0", "P1"]:
-        hours = min(hours, 6)
+    """Calculates target deadline based on canonical priority (P0: 1h, P1: 4h, P2: 24h, P3: 72h)."""
+    clean_prio = str(priority_or_severity).upper()
+    hours = SLA_HOURS.get(clean_prio, SLA_HOURS.get(str(priority_or_severity).lower(), 72))
     return datetime.utcnow() + timedelta(hours=hours)
 
 def check_and_flag_sla_risks(db) -> int:
@@ -68,11 +52,12 @@ def assign_sla(issue: dict) -> datetime:
     if isinstance(created_at, str):
         created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00")).replace(tzinfo=None)
         
-    if issue.get("is_emergency"):
+    if issue.get("is_emergency") or issue.get("emergency") or str(issue.get("priority", "")).upper() == "P0":
         delta = timedelta(hours=1)
     else:
-        severity = issue.get("severity", "medium").lower()
-        delta = SLA_RULES.get(severity, timedelta(hours=24))
+        prio = str(issue.get("priority") or "P3").upper()
+        sev = str(issue.get("severity") or "medium").lower()
+        delta = SLA_RULES.get(prio, SLA_RULES.get(sev, timedelta(hours=72)))
     
     deadline = created_at + delta
     return deadline
@@ -166,8 +151,7 @@ def get_sla_health(ward=None, department=None) -> dict:
     }
 
 def calculate_sla_deadline(priority: str) -> datetime:
-    from config import Config
-    hours = Config.SLA_HOURS.get(str(priority).lower(), 72)
+    hours = SLA_HOURS.get(str(priority).upper(), SLA_HOURS.get(str(priority).lower(), 72))
     return datetime.utcnow() + timedelta(hours=hours)
 
 def is_sla_breached(issue: dict) -> bool:

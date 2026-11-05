@@ -139,7 +139,9 @@ def register():
         error_message = f"{first_field.capitalize()}: {first_msg}"
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": error_message, "fields": errors}}), 422
 
-    role = data.get("role", "resident").lower().strip()
+    role = data.get("role", "citizen").lower().strip()
+    if role in ["resident", "citizen"]:
+        role = "citizen"
     ward = data.get("ward") or "Ward 1"
 
     if role in ["officer", "worker"]:
@@ -147,8 +149,8 @@ def register():
         invite_code = data.get("invite_code")
         if not expected_code or not invite_code or not hmac.compare_digest(str(invite_code).strip(), str(expected_code).strip()):
             return jsonify({"error": "Unauthorized staff registration.", "success": False, "message": "Unauthorized staff registration."}), 403
-    elif role not in ["resident", "citizen"]:
-        role = "resident"
+    elif role not in ["citizen"]:
+        role = "citizen"
 
     if role != "admin" and ward == "all":
         return jsonify({"error": "Global scope assignment prohibited during registration.", "success": False, "message": "Global scope assignment prohibited during registration."}), 400

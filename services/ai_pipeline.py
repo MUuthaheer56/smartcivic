@@ -40,7 +40,7 @@ def compute_route_decision(text_analysis: dict, is_emergency: bool, emergency_st
         return "OFFICER_CONFIRM"
     return "GEMINI_FALLBACK"
 
-def run_unified_ai_pipeline(text: str, location_text: str = "", image_path: str = None, reporter_verified: bool = False, ward_id: str = "ward_1", support_count: int = 0) -> dict:
+def run_unified_ai_pipeline(text: str, location_text: str = "", image_path: str = None, reporter_verified: bool = False, ward_id: str = "ward_1", support_count: int = 0, existing_cefap: dict = None) -> dict:
     """
     Executes the canonical single-pass AI decision pipeline:
     1. Language Detection & Translation
@@ -72,22 +72,45 @@ def run_unified_ai_pipeline(text: str, location_text: str = "", image_path: str 
     image_analysis = None
     yolo_evidence = None
     image_severity_score = 0.0
+    image_source = None
+    det_res = None
     
     if image_path and os.path.exists(image_path):
+        # Local road defect detector (Phase 4, behind AI_LOCAL_DETECTOR_ENABLED)
+        if getattr(Config, "AI_LOCAL_DETECTOR_ENABLED", False):
+            try:
+                from services.ai.road_detector import run_road_detector
+                det_res = run_road_detector(image_path)
+                det_val = det_res.get("value", {})
+                if det_val.get("available") and det_val.get("detections"):
+                    yolo_evidence = {
+                        "name": det_val.get("primary_defect"),
+                        "severity_signal": det_val.get("severity"),
+                        "defect_class": det_val.get("defect_class")
+                    }
+                    image_severity_score = float(det_val.get("severity_score", 0.0))
+                    image_source = "yolo"
+            except Exception as e:
+                print(f"[AI Pipeline] Local detector exception: {e}")
+
+        # Gemini Vision Analysis
         image_analysis = ai_service.analyze_complaint_image(image_path)
-        image_severity_score = float(image_analysis.get("severity_score", 0.0) if isinstance(image_analysis, dict) else 0.0)
+        if not image_source and isinstance(image_analysis, dict) and image_analysis.get("severity"):
+            image_severity_score = float(image_analysis.get("severity_score", 0.0))
+            image_source = "gemini_vision"
         
-        # Run YOLO ONNX detector through fail-closed verification pipeline
-        try:
-            from services import yolo_service
-            yolo_res = yolo_service.run_yolo(image_path)
-            if yolo_res and yolo_res.get("available") and yolo_res.get("confidence", 0) >= 0.50:
-                yolo_evidence = yolo_fusion.DEFECT_EVIDENCE_MAP.get(yolo_res.get("defect_class", ""), {})
-            else:
+        # Legacy YOLO service fallback if local detector didn't run or produce evidence
+        if not yolo_evidence:
+            try:
+                from services import yolo_service
+                yolo_res = yolo_service.run_yolo(image_path)
+                if yolo_res and yolo_res.get("available") and yolo_res.get("confidence", 0) >= 0.50:
+                    yolo_evidence = yolo_fusion.DEFECT_EVIDENCE_MAP.get(yolo_res.get("defect_class", ""), {})
+                    if not image_source:
+                        image_source = "yolo"
+            except Exception as e:
+                print(f"[AI Pipeline] YOLO runner exception: {e}")
                 yolo_evidence = None
-        except Exception as e:
-            print(f"[AI Pipeline] YOLO runner exception: {e}")
-            yolo_evidence = None
 
     # ── Step 5: Emergency Decision & Safety Override ────────────────────────
     is_emergency = (text_analysis.get("severity") == "critical") or regex_emergency
@@ -119,22 +142,25 @@ def run_unified_ai_pipeline(text: str, location_text: str = "", image_path: str 
     except Exception:
         db = None
         
-    from services.cefap_pipeline import cefap_stage
-    
-    cefap_result = cefap_stage(db, {
-        "issue_id": None,
-        "ward_id": ward_id,
-        "service": service_type,
-        "text_severity": severity,
-        "text_confidence": text_analysis.get("confidence", 0.5),
-        "image_severity": image_analysis.get("severity") if isinstance(image_analysis, dict) else None,
-        "image_confidence": image_analysis.get("confidence") if isinstance(image_analysis, dict) else None,
-        "location_type": "unknown",
-        "vote_count": max(support_count, 0),
-        "historical_complaints": [],
-        "created_at": datetime.utcnow(),
-        "sla_deadline": None,
-    })
+    if existing_cefap:
+        cefap_result = existing_cefap
+    else:
+        from services.cefap_pipeline import cefap_stage
+        cefap_result = cefap_stage(db, {
+            "issue_id": None,
+            "ward_id": ward_id,
+            "service": service_type,
+            "text_severity": severity,
+            "text_confidence": text_analysis.get("confidence", 0.5),
+            "image_severity": yolo_evidence.get("severity_signal") if yolo_evidence else (image_analysis.get("severity") if isinstance(image_analysis, dict) else None),
+            "image_confidence": det_res.get("confidence") if (image_source == "yolo" and det_res) else (image_analysis.get("confidence") if isinstance(image_analysis, dict) else None),
+            "image_source": image_source,
+            "location_type": "unknown",
+            "vote_count": max(support_count, 0),
+            "historical_complaints": [],
+            "created_at": datetime.utcnow(),
+            "sla_deadline": None,
+        })
 
     if is_emergency:
         priority = "P0"
@@ -192,13 +218,32 @@ def _run_ai_async(app, issue_id_str, text, location_text, image_path, reporter_v
     with app.app_context():
         try:
             from app import db, socketio
+            existing_cefap = None
+            if db is not None:
+                query_filter = {"$or": [{"issue_id": issue_id_str}]}
+                if ObjectId.is_valid(issue_id_str):
+                    query_filter["$or"].append({"_id": ObjectId(issue_id_str)})
+                doc = db.issues.find_one(query_filter)
+                if doc and doc.get("cips_score") is not None:
+                    existing_cefap = {
+                        "cips": doc.get("cips_score"),
+                        "priority": doc.get("priority", "P3"),
+                        "evidence_reliability": doc.get("evidence_reliability"),
+                        "evidence_agreement": doc.get("evidence_agreement", 1.0),
+                        "ctve_triggered": doc.get("ctve_triggered", False),
+                        "ctve_message": doc.get("ctve_message"),
+                        "verification_required": doc.get("verification_required", False),
+                        "monsoon": {"active": doc.get("monsoon_active", False)}
+                    }
+
             ai_res = run_unified_ai_pipeline(
                 text=text,
                 location_text=location_text,
                 image_path=image_path,
                 reporter_verified=reporter_verified,
                 ward_id=ward_id,
-                support_count=support_count
+                support_count=support_count,
+                existing_cefap=existing_cefap
             )
             ai_status = "done"
         except Exception as ex:

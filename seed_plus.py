@@ -61,6 +61,15 @@ def seed_db():
             "created_at": datetime.utcnow(),
             "last_login": None
         },
+        {
+            "name": "System Administrator",
+            "email": "admin@smartcivic.com",
+            "password_hash": pwd_hash,
+            "role": "admin",
+            "ward": "all",
+            "created_at": datetime.utcnow(),
+            "last_login": None
+        },
         # Workers
         {
             "name": "Road Repair Crew",

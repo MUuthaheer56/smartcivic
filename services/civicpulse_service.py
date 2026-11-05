@@ -101,19 +101,33 @@ def _build_health_timeline(segment_id: str) -> list:
         days = max(0.0, (created_at - first_at).total_seconds() / 86400.0)
         status = issue.get("status", "submitted")
 
-        if status in ("closed",):
-            running_health += 3.0   # repair credit
-        else:
-            running_health -= 5.0   # unresolved complaint
-
+        # Complaint event penalty
+        running_health -= 5.0
         if issue.get("sla_status") == "breached":
             running_health -= 4.0
-
         if issue.get("is_recurring"):
             running_health -= 8.0
 
         running_health = max(5.0, min(100.0, running_health))
         timeline.append((days, running_health))
+
+        # Check for real repair event date from resolved issue or repair_evidence
+        repair_date = issue.get("resolved_at") or issue.get("closed_at")
+        if not repair_date:
+            try:
+                ev = db.repair_evidence.find_one({"issue_id": str(issue.get("_id"))}) or db.repair_evidence.find_one({"issue_id": issue.get("issue_id")})
+                if ev:
+                    repair_date = ev.get("created_at")
+            except Exception:
+                pass
+
+        if status in ("closed", "resolved", "work_completed") and repair_date:
+            days_repair = max(days, (repair_date - first_at).total_seconds() / 86400.0)
+            running_health = min(100.0, running_health + 15.0)  # Verified repair restitution
+            timeline.append((days_repair, running_health))
+        elif status in ("closed", "resolved"):
+            running_health = min(100.0, running_health + 5.0)
+            timeline.append((days + 1.0, running_health))
 
     return timeline
 
@@ -177,6 +191,8 @@ def compute_civicpulse_predictions() -> list:
             "days_until_failure": round(days_until_failure, 1),
             "predicted_failure_date": predicted_failure_date,
             "risk_band": risk_band,
+            "expected_reporting_demand": "HIGH" if risk_band in ["CRITICAL", "HIGH"] else ("MODERATE" if risk_band == "MEDIUM" else "LOW"),
+            "proactive_maintenance_due": predicted_failure_date,
             "data_quality": data_quality,   # "fitted" or "estimated"
             "event_count": len(timeline),
             "computed_at": now,

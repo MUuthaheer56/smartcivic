@@ -1,0 +1,3 @@
+id,change,config_hash,seed,epochs,imgsz,device,val_mAP50,val_mAP50_95,val_precision,val_recall,per_class_mAP,training_time_s
+E0,"Baseline fine-tuning (YOLOv8n, 2 ep, imgsz 320, CPU)",d884aef4,42,2,320,cpu,0.1356,0.0401,0.1335,0.1865,"{""Crack"": 0.013997252109255731, ""Pothole"": 0.08654812500022917, ""Surface Erosion"": 0.019901554607852638}",224.0
+E1,"Resolution boost (imgsz 416, 3 ep, fine-tuned from E0 best, CPU)",a6ad4f10,42,3,416,cpu,0.3948,0.1565,0.457,0.4315,"{""Crack"": 0.10917458332439396, ""Pothole"": 0.13319878696322252, ""Surface Erosion"": 0.22700564131697476}",493.5

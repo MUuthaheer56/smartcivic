@@ -3,6 +3,7 @@ SmartCivic+ — Core Application Factory
 Initializes database connections, Socket.IO, security rate limiters, and background task schedulers.
 """
 import os
+import sys
 import jwt
 from datetime import datetime
 from bson import ObjectId
@@ -140,17 +141,21 @@ def create_app():
     # Initialize extensions with app context
     socketio.init_app(app)
     limiter.init_app(app)
+    if app.config.get("TESTING") or "pytest" in sys.modules or os.getenv("TESTING", "").lower() == "true":
+        limiter.enabled = False
+        app.config["RATELIMIT_ENABLED"] = False
     csrf.init_app(app)
 
     
-    # Initialize background SLA escalation scheduler
-    try:
-        from services.sla_escalation import run_escalation_check
-        scheduler = BackgroundScheduler(daemon=True)
-        scheduler.add_job(run_escalation_check, 'interval', minutes=30)
-        scheduler.start()
-    except Exception as e:
-        print(f"[APScheduler] Warning starting background SLA scheduler: {e}")
+    # Initialize background SLA escalation scheduler (skip in test mode)
+    if not app.config.get("TESTING", False):
+        try:
+            from services.sla_escalation import run_escalation_check
+            scheduler = BackgroundScheduler(daemon=True)
+            scheduler.add_job(run_escalation_check, 'interval', minutes=30)
+            scheduler.start()
+        except Exception as e:
+            print(f"[APScheduler] Warning starting background SLA scheduler: {e}")
     
     @app.route('/api/health', methods=['GET'])
     def health_check():

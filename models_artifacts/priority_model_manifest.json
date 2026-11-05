@@ -1,0 +1,25 @@
+{
+  "model_name": "priority_model_v1",
+  "artifact_file": "priority_model_v1.joblib",
+  "sha256": "8ef7bd9cf87936a82ecf163f5bfe5209ea8c1c16866be5c87610e13ce92dbeeb",
+  "feature_names": [
+    "text_severity",
+    "image_severity",
+    "location_impact",
+    "corroboration",
+    "recurrence",
+    "sla_risk",
+    "evidence_reliability",
+    "disagreement",
+    "monsoon_active"
+  ],
+  "macro_f1": 0.9747,
+  "critical_recall": 1.0,
+  "train_sample_count": 117,
+  "test_sample_count": 34,
+  "synthetic": true,
+  "label_sources": {
+    "expert": 150,
+    "awlrf_proxy": 1
+  }
+}

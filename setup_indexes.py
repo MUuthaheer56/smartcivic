@@ -216,6 +216,34 @@ def ensure_graph_indexes(db) -> bool:
     return ok
 
 
+def ensure_ai_audit_indexes(db) -> bool:
+    ok = True
+    ok &= _safe_create_index(db.ai_decisions, [("issue_id", 1), ("stage", 1)])
+    ok &= _safe_create_index(db.ai_decisions, [("created_at", -1)])
+    ok &= _safe_create_index(db.ai_corrections, [("issue_id", 1), ("created_at", -1)])
+    ok &= _safe_create_index(db.ai_corrections, [("field_changed", 1)])
+    ok &= _safe_create_index(db.ai_corrections, [("actor_id", 1)])
+    ok &= _safe_create_index(db.duplicate_links, [("source_issue_id", 1), ("target_issue_id", 1)], unique=True)
+    ok &= _safe_create_index(db.duplicate_links, [("source_issue_id", 1), ("status", 1)])
+    ok &= _safe_create_index(db.duplicate_links, "target_issue_id")
+    ok &= _safe_create_index(db.image_hashes, [("hash", 1)])
+    ok &= _safe_create_index(db.image_hashes, [("issue_id", 1)])
+    ok &= _safe_create_index(db.image_hashes, [("user_id", 1)])
+    ok &= _safe_create_index(db.image_hashes, [("created_at", -1)])
+    # Phase 7: Repair Evidence and Contractor Accountability indexes
+    ok &= _safe_create_index(db.repair_evidence, [("issue_id", 1)])
+    ok &= _safe_create_index(db.repair_evidence, [("recheck_scheduled_at", 1)])
+    ok &= _safe_create_index(db.repair_evidence, [("contractor_id", 1)])
+    ok &= _safe_create_index(db.repair_evidence, [("created_at", -1)])
+    ok &= _safe_create_index(db.contractor_stats, [("contractor_id", 1)], unique=True)
+    # Phase 8: Forecasts collection indexes
+    ok &= _safe_create_index(db.forecasts, [("ward_id", 1), ("category", 1), ("computed_at", -1)])
+    ok &= _safe_create_index(db.forecasts, [("computed_at", -1)])
+    if ok:
+        _log("info", "ai_audit_indexes", "AI decisions, corrections, duplicate_links, image_hashes, repair_evidence, and forecasts indexes created.")
+    return ok
+
+
 def create_indexes(mongo_uri: str = None) -> bool:
     """
     Build every MongoDB index required by SmartCivic+.
@@ -344,6 +372,14 @@ def create_indexes(mongo_uri: str = None) -> bool:
     except Exception as exc:
         _log("warn", "graph_indexes",
              "ensure_graph_indexes raised unexpectedly",
+             error_type=type(exc).__name__, error=str(exc))
+        all_ok = False
+
+    try:
+        ensure_ai_audit_indexes(db)
+    except Exception as exc:
+        _log("warn", "ai_audit_indexes",
+             "ensure_ai_audit_indexes raised unexpectedly",
              error_type=type(exc).__name__, error=str(exc))
         all_ok = False
 

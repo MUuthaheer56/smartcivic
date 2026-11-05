@@ -6,9 +6,13 @@ from datetime import datetime
 from bson import ObjectId
 
 SEVERITY_WEIGHTS = {
+    "p0": 40,
     "critical": 40,
+    "p1": 30,
     "high": 30,
+    "p2": 20,
     "medium": 20,
+    "p3": 10,
     "low": 10
 }
 
@@ -26,8 +30,8 @@ def calculate_priority(issue: dict, db) -> float:
     """
     score = 0.0
     
-    # 1. Severity weight (10 to 40)
-    sev = issue.get("severity", "medium").lower()
+    # 1. Severity / priority weight (10 to 40)
+    sev = str(issue.get("priority") or issue.get("severity") or "medium").lower()
     score += SEVERITY_WEIGHTS.get(sev, 20)
     
     # 2. Complaint age weight (capped at 20)

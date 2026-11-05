@@ -723,7 +723,7 @@ cp .env.example .env
 # Set SECRET_KEY, JWT_SECRET, and ADMIN_INVITE_CODE
 
 # 3. Create MongoDB indexes
-python scripts/create_indexes.py
+python setup_indexes.py
 
 # 4. Seed sample test data
 python seed_plus.py

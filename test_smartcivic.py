@@ -46,6 +46,7 @@ for _lib in [
     "flask", "flask_jwt_extended", "flask_socketio",
     "bson", "bson.objectid",
     "google.generativeai",
+    "google", "google.genai",
     "onnxruntime", "cv2", "numpy",
     "apscheduler", "apscheduler.schedulers.background",
 ]:

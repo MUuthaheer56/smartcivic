@@ -11,6 +11,8 @@ def client():
     os.environ["ADMIN_INVITE_CODE"] = "SMARTCIVIC-ADMIN-TEST"
     app = create_app()
     app.config["TESTING"] = True
+    from app import limiter
+    limiter.enabled = False
     app.config["JWT_SECRET"] = "test_security_suite_jwt_secret_12345"
     app.config["JWT_SECRET_KEY"] = "test_security_suite_jwt_secret_12345"
     app.config["ADMIN_INVITE_CODE"] = "SMARTCIVIC-ADMIN-TEST"

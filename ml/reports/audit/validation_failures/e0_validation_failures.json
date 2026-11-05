@@ -1,0 +1,31 @@
+{
+  "experiment": "E0",
+  "validation_metrics": {
+    "mAP50": 0.1356053669917623,
+    "mAP50_95": 0.04014897723911251,
+    "precision": 0.13350266502323968,
+    "recall": 0.18650786324155103,
+    "per_class_mAP": {
+      "Crack": 0.013997252109255731,
+      "Pothole": 0.08654812500022917,
+      "Surface Erosion": 0.019901554607852638
+    }
+  },
+  "training_time_seconds": 223.9528090953827,
+  "sample_failure_cases": [
+    {
+      "type": "miss (false negative)",
+      "file": "crack_181_jpg.rf.dc478cb0ad34c9a3039dca746a518bc0.jpg",
+      "ground_truth_count": 1,
+      "detected_count": 0,
+      "cause": "Under-detected defect at low epochs / low resolution"
+    },
+    {
+      "type": "miss (false negative)",
+      "file": "crack_223_jpg.rf.cec37c215d38d0439f9f4439c9985a39.jpg",
+      "ground_truth_count": 1,
+      "detected_count": 0,
+      "cause": "Under-detected defect at low epochs / low resolution"
+    }
+  ]
+}

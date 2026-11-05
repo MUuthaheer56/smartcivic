@@ -97,7 +97,7 @@ async function reverseGeocode(lat, lng) {
 
             const address = data.address || {};
             const ward = address.suburb || address.neighbourhood ||
-                         address.quarter || address.city_district || "Ward 1";
+                address.quarter || address.city_district || "Ward 1";
             const wardEl = document.getElementById("ward");
             if (wardEl) wardEl.value = ward;
         }
@@ -181,122 +181,122 @@ async function submitIssue(e) {
         });
         const data = await res.json();
 
-// CTVE state — stored so the upload/confirm functions can access it
-let _ctveComplaintId = null;
-let _ctveData        = null;
+        // CTVE state — stored so the upload/confirm functions can access it
+        let _ctveComplaintId = null;
+        let _ctveData = null;
 
-/**
- * Call this INSTEAD of showing the normal success message
- * when the complaint submission response has ctve_triggered=true.
- *
- * @param {string} complaintId  - ID of the just-created complaint
- * @param {object} ctveData     - {ctve_message, signals: {text_severity, image_severity}}
- */
-function showCtveModal(complaintId, ctveData) {
-  _ctveComplaintId = complaintId;
-  _ctveData        = ctveData;
+        /**
+         * Call this INSTEAD of showing the normal success message
+         * when the complaint submission response has ctve_triggered=true.
+         *
+         * @param {string} complaintId  - ID of the just-created complaint
+         * @param {object} ctveData     - {ctve_message, signals: {text_severity, image_severity}}
+         */
+        function showCtveModal(complaintId, ctveData) {
+            _ctveComplaintId = complaintId;
+            _ctveData = ctveData;
 
-  // Fill in the dynamic message
-  const msgEl = document.getElementById('ctve-message-text');
-  if (msgEl) msgEl.textContent = ctveData.ctve_message || 'Please clarify the evidence.';
+            // Fill in the dynamic message
+            const msgEl = document.getElementById('ctve-message-text');
+            if (msgEl) msgEl.textContent = ctveData.ctve_message || 'Please clarify the evidence.';
 
-  // Show evidence comparison row if image was present
-  const ts = ctveData.signals?.text_severity;
-  const is = ctveData.signals?.image_severity;
-  if (ts !== null && ts !== undefined && is !== null && is !== undefined) {
-    const row = document.getElementById('ctve-evidence-row');
-    if (row) row.style.display = 'flex';
-    const tsEl = document.getElementById('ctve-text-severity');
-    const isEl = document.getElementById('ctve-image-severity');
-    if (tsEl) tsEl.textContent = severityLabel(ts);
-    if (isEl) isEl.textContent = severityLabel(is);
-  }
+            // Show evidence comparison row if image was present
+            const ts = ctveData.signals?.text_severity;
+            const is = ctveData.signals?.image_severity;
+            if (ts !== null && ts !== undefined && is !== null && is !== undefined) {
+                const row = document.getElementById('ctve-evidence-row');
+                if (row) row.style.display = 'flex';
+                const tsEl = document.getElementById('ctve-text-severity');
+                const isEl = document.getElementById('ctve-image-severity');
+                if (tsEl) tsEl.textContent = severityLabel(ts);
+                if (isEl) isEl.textContent = severityLabel(is);
+            }
 
-  // Show modal
-  const modal = document.getElementById('ctve-modal');
-  if (modal) modal.style.display = 'flex';
-}
+            // Show modal
+            const modal = document.getElementById('ctve-modal');
+            if (modal) modal.style.display = 'flex';
+        }
 
-function severityLabel(score) {
-  if (typeof score === 'string') return score;
-  if (score >= 0.85) return 'Critical';
-  if (score >= 0.60) return 'High';
-  if (score >= 0.35) return 'Medium';
-  return 'Low';
-}
+        function severityLabel(score) {
+            if (typeof score === 'string') return score;
+            if (score >= 0.85) return 'Critical';
+            if (score >= 0.60) return 'High';
+            if (score >= 0.35) return 'Medium';
+            return 'Low';
+        }
 
-async function handleCtvePhotoUpload(input) {
-  if (!input.files || !input.files[0]) return;
-  const file = input.files[0];
+        async function handleCtvePhotoUpload(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
 
-  setCtveStatus('Uploading photo…', 'info');
+            setCtveStatus('Uploading photo…', 'info');
 
-  const formData = new FormData();
-  formData.append('photo', file);
-  formData.append('complaint_id', _ctveComplaintId);
-  formData.append('ctve_response', 'photo_uploaded');
+            const formData = new FormData();
+            formData.append('photo', file);
+            formData.append('complaint_id', _ctveComplaintId);
+            formData.append('ctve_response', 'photo_uploaded');
 
-  try {
-    const authFetch = (window.SmartCivicAuth && typeof window.SmartCivicAuth.fetch === 'function')
-      ? window.SmartCivicAuth.fetch.bind(window.SmartCivicAuth)
-      : fetch;
-    const res = await authFetch(
-      `/api/issues/${_ctveComplaintId}/ctve-response`,
-      { method: 'POST', body: formData }
-    );
-    const data = await res.json();
-    if (res.ok) {
-      setCtveStatus('Photo received — your complaint has been updated.', 'success');
-      setTimeout(() => { window.location.href = '/citizen/dashboard'; }, 1800);
-    } else {
-      setCtveStatus(data.error || 'Upload failed. Please try again.', 'error');
-    }
-  } catch {
-    setCtveStatus('Network error. Please try again.', 'error');
-  }
-}
+            try {
+                const authFetch = (window.SmartCivicAuth && typeof window.SmartCivicAuth.fetch === 'function')
+                    ? window.SmartCivicAuth.fetch.bind(window.SmartCivicAuth)
+                    : fetch;
+                const res = await authFetch(
+                    `/api/issues/${_ctveComplaintId}/ctve-response`,
+                    { method: 'POST', body: formData }
+                );
+                const data = await res.json();
+                if (res.ok) {
+                    setCtveStatus('Photo received — your complaint has been updated.', 'success');
+                    setTimeout(() => { window.location.href = '/citizen/dashboard'; }, 1800);
+                } else {
+                    setCtveStatus(data.error || 'Upload failed. Please try again.', 'error');
+                }
+            } catch {
+                setCtveStatus('Network error. Please try again.', 'error');
+            }
+        }
 
-async function confirmCtveOriginal() {
-  setCtveStatus('Confirming…', 'info');
+        async function confirmCtveOriginal() {
+            setCtveStatus('Confirming…', 'info');
 
-  try {
-    const authFetch = (window.SmartCivicAuth && typeof window.SmartCivicAuth.fetch === 'function')
-      ? window.SmartCivicAuth.fetch.bind(window.SmartCivicAuth)
-      : fetch;
-    const res = await authFetch(
-      `/api/issues/${_ctveComplaintId}/ctve-response`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ctve_response: 'description_confirmed', complaint_id: _ctveComplaintId }),
-      }
-    );
-    const data = await res.json();
-    if (res.ok) {
-      setCtveStatus('Confirmed — your complaint has been queued for officer review.', 'success');
-      setTimeout(() => { window.location.href = '/citizen/dashboard'; }, 1800);
-    } else {
-      setCtveStatus(data.error || 'Error. Please try again.', 'error');
-    }
-  } catch {
-    setCtveStatus('Network error. Please try again.', 'error');
-  }
-}
+            try {
+                const authFetch = (window.SmartCivicAuth && typeof window.SmartCivicAuth.fetch === 'function')
+                    ? window.SmartCivicAuth.fetch.bind(window.SmartCivicAuth)
+                    : fetch;
+                const res = await authFetch(
+                    `/api/issues/${_ctveComplaintId}/ctve-response`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ctve_response: 'description_confirmed', complaint_id: _ctveComplaintId }),
+                    }
+                );
+                const data = await res.json();
+                if (res.ok) {
+                    setCtveStatus('Confirmed — your complaint has been queued for officer review.', 'success');
+                    setTimeout(() => { window.location.href = '/citizen/dashboard'; }, 1800);
+                } else {
+                    setCtveStatus(data.error || 'Error. Please try again.', 'error');
+                }
+            } catch {
+                setCtveStatus('Network error. Please try again.', 'error');
+            }
+        }
 
-function setCtveStatus(msg, type) {
-  const el = document.getElementById('ctve-status');
-  if (!el) return;
-  el.style.display = 'block';
-  el.textContent = msg;
-  const colors = {
-    info:    { bg: '#e7f3ff', color: '#004085' },
-    success: { bg: '#d4edda', color: '#155724' },
-    error:   { bg: '#f8d7da', color: '#721c24' },
-  };
-  const c = colors[type] || colors.info;
-  el.style.background = c.bg;
-  el.style.color = c.color;
-}
+        function setCtveStatus(msg, type) {
+            const el = document.getElementById('ctve-status');
+            if (!el) return;
+            el.style.display = 'block';
+            el.textContent = msg;
+            const colors = {
+                info: { bg: '#e7f3ff', color: '#004085' },
+                success: { bg: '#d4edda', color: '#155724' },
+                error: { bg: '#f8d7da', color: '#721c24' },
+            };
+            const c = colors[type] || colors.info;
+            el.style.background = c.bg;
+            el.style.color = c.color;
+        }
 
         if (data.success) {
             const issueId = data.issue_id || (data.data && data.data._id) || (data.data && data.data.issue_id);
@@ -359,6 +359,9 @@ function setCtveStatus(msg, type) {
 
             // Keep the last known location after reset
             updateCoords(lat, lng);
+
+            // Phase 2: Query and render similar report suggestion if available
+            checkAndShowDuplicateSuggestions(issueId);
 
             loadMyIssues();
             loadPublicIssues();
@@ -597,6 +600,83 @@ async function submitIssueFeedback(issueId, rating) {
             showToast(data.error?.message || "Failed to submit rating.", "danger");
         }
     } catch (err) {
-        showToast("Communication error.", "danger");
+        showToast("Error recording feedback.", "danger");
     }
+}
+
+async function checkAndShowDuplicateSuggestions(issueId) {
+    if (!issueId) return;
+    try {
+        const res = await fetch(`/api/issues/${issueId}/duplicate-suggestions`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.suggestions && data.suggestions.length > 0) {
+            showDuplicateSuggestionCard(issueId, data.suggestions[0]);
+        }
+    } catch (e) {
+        console.debug("Duplicate suggestions fetch skipped:", e);
+    }
+}
+
+function showDuplicateSuggestionCard(sourceIssueId, candidate) {
+    const container = document.getElementById("aiPanel") || document.getElementById("citizenAlertArea");
+    if (!container) return;
+
+    // Remove existing card if any
+    const existing = document.getElementById("duplicate-suggestion-card");
+    if (existing) existing.remove();
+
+    const card = document.createElement("div");
+    card.id = "duplicate-suggestion-card";
+    card.style.cssText = "background:#fff3cd; border:1px solid #ffeeba; border-radius:8px; padding:15px; margin-top:15px;";
+    card.innerHTML = `
+        <h5 style="color:#856404; margin-bottom:8px; font-size:1rem;"><i class="fa fa-info-circle"></i> Similar report nearby. Same problem?</h5>
+        <p style="margin-bottom:8px; color:#533f03; font-size:0.9rem;">
+            A similar issue was found <strong>${candidate.distance_meters}m away</strong> (${Math.round(candidate.score * 100)}% match):<br>
+            <em>"${candidate.candidate_title}"</em>
+        </p>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn btn-sm btn-primary" id="btn-support-duplicate" style="background:#0d6efd; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">
+                <i class="fa fa-thumbs-up"></i> Yes, support this existing report
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="btn-reject-duplicate" style="background:#f8f9fa; border:1px solid #ccc; padding:6px 12px; border-radius:4px; cursor:pointer;">
+                No, this is different
+            </button>
+        </div>
+        <div id="duplicate-feedback-msg" style="display:none; margin-top:8px; font-weight:600; color:#155724; font-size:0.9rem;"></div>
+    `;
+
+    container.appendChild(card);
+
+    document.getElementById("btn-support-duplicate")?.addEventListener("click", async () => {
+        try {
+            const resp = await fetch(`/api/issues/${sourceIssueId}/duplicate-confirm`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ target_issue_id: candidate.candidate_issue_id, action: "confirm" })
+            });
+            const fb = document.getElementById("duplicate-feedback-msg");
+            if (fb) {
+                fb.style.display = "block";
+                fb.textContent = "Thank you! Your support was added to the existing report to raise its priority.";
+            }
+            document.getElementById("btn-support-duplicate").style.display = "none";
+            document.getElementById("btn-reject-duplicate").style.display = "none";
+        } catch (err) {
+            console.error("Duplicate confirm error:", err);
+        }
+    });
+
+    document.getElementById("btn-reject-duplicate")?.addEventListener("click", async () => {
+        try {
+            await fetch(`/api/issues/${sourceIssueId}/duplicate-confirm`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ target_issue_id: candidate.candidate_issue_id, action: "reject" })
+            });
+            card.remove();
+        } catch (err) {
+            card.remove();
+        }
+    });
 }

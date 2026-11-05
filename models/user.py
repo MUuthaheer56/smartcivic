@@ -20,13 +20,13 @@ def derive_citizen_tier(score: int) -> str:
 
 def create_user_doc(name: str, email: str, password_hash: str, role: str, ward: str = "Ward 1", skills: list = None) -> dict:
     now = datetime.utcnow()
-    normalized_role = "resident" if role in ["resident", "citizen"] else role
+    normalized_role = "citizen" if role in ["resident", "citizen"] else role
     pending_role = normalized_role in ["resident", "citizen", "worker"]
     doc = {
         "name": name.strip(),
         "email": email.lower().strip(),
         "password_hash": password_hash,
-        "role": normalized_role, # resident, officer, worker
+        "role": normalized_role, # citizen, officer, worker
         "status": "pending_verification" if pending_role else "active",
         "verified": False if pending_role else True,
         "ward": (ward or "Ward 1").strip(),

@@ -1,0 +1,16 @@
+{
+  "evaluation_name": "Rolling-Origin Demand Forecasting Evaluation",
+  "evaluated_at": "2026-11-04T06:45:58.165550",
+  "metric_description": "expected reporting volume (Mean Absolute Error)",
+  "history_months_used": 24,
+  "synthetic": true,
+  "min_history_months_required": 12,
+  "results": {
+    "MAE_Moving_Average_3M": 11.381,
+    "MAE_Seasonal_Naive": 10.867,
+    "MAE_ML_Tree_Ensemble": 6.851,
+    "MAE_Weighted_Ensemble": 6.247
+  },
+  "backtest_summary": "Evaluated across 12 rolling test origins.",
+  "terminology_audit": "Framed exclusively as expected reporting volume, not predicted failures."
+}

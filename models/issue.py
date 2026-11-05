@@ -10,8 +10,39 @@ CATEGORIES = [
     "drainage", "noise", "other"
 ]
 SEVERITIES = ["low", "medium", "high", "critical"]
+PRIORITIES = ["P0", "P1", "P2", "P3"]
 DEPARTMENTS = ["roads", "water_supply", "electrical", "sanitation", "drainage", "other"]
 SLA_STATUSES = ["on_track", "warning", "urgent", "breached"]
+
+PRIORITY_TO_LABEL = {
+    "P0": "critical",
+    "P1": "high",
+    "P2": "medium",
+    "P3": "low"
+}
+
+LABEL_TO_PRIORITY = {
+    "critical": "P0",
+    "p0": "P0",
+    "high": "P1",
+    "p1": "P1",
+    "medium": "P2",
+    "p2": "P2",
+    "low": "P3",
+    "p3": "P3"
+}
+
+def normalize_priority(val: str) -> str:
+    """Always returns canonical P0, P1, P2, or P3."""
+    if not val:
+        return "P3"
+    clean = str(val).strip().lower()
+    return LABEL_TO_PRIORITY.get(clean, "P3" if clean not in ["p0", "p1", "p2", "p3"] else clean.upper())
+
+def priority_to_label(priority: str) -> str:
+    """Returns critical/high/medium/low display label for canonical P0-P3."""
+    norm = normalize_priority(priority)
+    return PRIORITY_TO_LABEL.get(norm, "medium")
 
 from constants.states import (
     STATUSES,
@@ -24,7 +55,7 @@ from constants.states import (
 
 def create_issue_doc(citizen_id, title, description, category, issue_type, lat, lng, address, ward, images=None) -> dict:
     now = datetime.utcnow()
-    ward_str = ward.strip() if ward else "Ward 1"
+    ward_str = str(ward).strip() if ward is not None else "Ward 1"
     return {
         "title": title.strip() if title else description.strip()[:50],
         "description": description.strip(),

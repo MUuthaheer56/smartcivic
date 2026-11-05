@@ -26,14 +26,28 @@ const SmartCivicAuth = {
 
   // Add Authorization & CSRF headers to every API call
   async fetch(url, options = {}) {
-    const token = this.getToken();
+    const token = this.getToken ? this.getToken() : (sessionStorage.getItem('sc_access_token') || localStorage.getItem('token'));
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
+    const headers = { ...(options.headers || {}) };
+
+    // Let the browser set multipart/form-data with its boundary for uploads.
+    if (isFormData) {
+      delete headers["Content-Type"];
+      delete headers["content-type"];
+    } else if (!headers["Content-Type"] && !headers["content-type"]) {
+      headers["Content-Type"] = "application/json";
+    }
+
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
-    };
+    if (csrfToken && !headers["X-CSRFToken"]) {
+      headers["X-CSRFToken"] = csrfToken;
+    }
+
+    if (token && !headers["Authorization"]) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     return fetch(url, { ...options, headers });
   },
 
@@ -57,6 +71,9 @@ const SmartCivicAuth = {
     return true;
   }
 };
+
+window.SmartCivicAuth = SmartCivicAuth;
+window.authFetch = SmartCivicAuth.fetch.bind(SmartCivicAuth);
 
 // Make available globally
 window.SmartCivicAuth = SmartCivicAuth;

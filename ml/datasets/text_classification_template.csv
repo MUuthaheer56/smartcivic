@@ -1,0 +1,28 @@
+text,service,issue_type,emergency,label_source,scenario_group
+"Huge deep pothole on 80ft road Indiranagar causing severe traffic jam",roads,pothole,False,human,SG_ROAD_001
+"Indiranagar 80ft road has a dangerous pothole near the signal",roads,pothole,False,synthetic,SG_ROAD_001
+"Rasteyalli doddadaada gundi biddidhe gaadi chalisalu thondare",roads,pothole,False,synthetic,SG_ROAD_001
+"Asphalt damaged with craters and loose gravel on bypass road",roads,road_damage,False,human,SG_ROAD_002
+"Severe road cracks and surface peeled off on high speed corridor",roads,road_damage,False,synthetic,SG_ROAD_002
+"Main water pipeline burst near water tank, clean drinking water flooding the road",water,pipe_burst,False,human,SG_WATER_001
+"Kudiyuvaneerina pipe odedhu rasteyalli neeru harithide",water,pipe_burst,False,synthetic,SG_WATER_001
+"Drinking water main line leaking profusely since morning",water,pipe_burst,False,synthetic,SG_WATER_001
+"No municipal tap water supply in layout for three consecutive days",water,water_shortage,False,human,SG_WATER_002
+"Kudiyuva neeru barthilla layout nalli mooru dinadinda",water,water_shortage,False,synthetic,SG_WATER_002
+"Water supply completely stopped in cross roads area",water,water_shortage,False,synthetic,SG_WATER_002
+"Electric pole sparking with live wire snapped and lying on wet street after rain",electricity,live_wire,True,human,SG_EMERG_001
+"Live electrical wire fallen on road, danger of shock and fire",electricity,live_wire,True,synthetic,SG_EMERG_001
+"Kharanta thanti biddidhe beedhi rasteyalli benki barabahudu",electricity,live_wire,True,synthetic,SG_EMERG_001
+"Transformer blast and continuous sparks creating severe hazard",electricity,transformer_blast,True,human,SG_EMERG_002
+"Transformer burst open with fire and toxic smoke in residential street",electricity,transformer_blast,True,synthetic,SG_EMERG_002
+"Streetlight pole not functioning dark road at night",electricity,streetlight_out,False,human,SG_ELEC_001
+"Beedhi deepa uriyuthilla rathri gothagolla",electricity,streetlight_out,False,synthetic,SG_ELEC_001
+"All streetlights in 5th cross are non-functional and dark",electricity,streetlight_out,False,synthetic,SG_ELEC_001
+"Garbage dump not cleared for past five days, bad smell attracting stray dogs",sanitation,garbage_overflow,False,human,SG_SANIT_001
+"Rasteyalli kachada thumbidhe, dhandugalu seruthive",sanitation,garbage_overflow,False,synthetic,SG_SANIT_001
+"Large trash pile overflowing onto pedestrian walkway rotting smell",sanitation,garbage_overflow,False,synthetic,SG_SANIT_001
+"Sewage manhole overflowing stinking black water on front street",sanitation,sewage_leak,False,human,SG_SANIT_002
+"Underground drainage overflow open drainage spilling on street",sanitation,sewage_leak,False,synthetic,SG_SANIT_002
+"Storm water drain blocked with debris rainwater entering houses",storm_drainage,drain_blockage,False,human,SG_DRAIN_001
+"Raja kaluve block aagide male neeru manege barthide",storm_drainage,drain_blockage,False,synthetic,SG_DRAIN_001
+"Open stormwater drain clogged with plastic flooding street during rain",storm_drainage,drain_blockage,False,synthetic,SG_DRAIN_001

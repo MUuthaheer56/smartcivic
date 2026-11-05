@@ -1,0 +1,18 @@
+{
+  "model_file": "text_classifier_v1.joblib",
+  "sha256": "a645cf4ae3d763572cceef39be5f9ce1d519cef0d4b1511b7a54ac0b58662687",
+  "model_type": "tfidf_logreg_baseline",
+  "classes": [
+    "electricity",
+    "roads",
+    "sanitation",
+    "storm_drainage",
+    "water"
+  ],
+  "version": "1.0.0",
+  "trained_at": "2026-10-30T07:04:45.664179",
+  "metrics": {
+    "service_macro_f1": 0.1467,
+    "emergency_recall": 0.0
+  }
+}

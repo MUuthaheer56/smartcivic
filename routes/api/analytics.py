@@ -108,6 +108,63 @@ def get_by_department_analytics():
     
     return jsonify({"success": True, "data": data}), 200
 
+@analytics_api_bp.route('/api/analytics/departments/performance', methods=['GET'])
+@require_auth
+@require_role('officer', 'admin')
+def get_department_performance():
+    """
+    Returns department performance metrics normalized for category mix.
+    Includes median resolution time, reopen rate, and verified repair rate.
+    """
+    import numpy as np
+    departments = ["roads", "water_supply", "electrical", "sanitation", "drainage"]
+    results = []
+
+    for dept in departments:
+        # 1. Total resolved / closed issues
+        resolved_issues = list(db.issues.find({
+            "department": dept,
+            "status": {"$in": ["closed", "resolved", "officer_verified", "work_completed"]}
+        }))
+
+        # 2. Resolution times
+        resolution_hours = []
+        verified_count = 0
+        for iss in resolved_issues:
+            c_at = iss.get("created_at")
+            r_at = iss.get("resolved_at") or iss.get("closed_at") or iss.get("updated_at")
+            if c_at and r_at and isinstance(c_at, datetime) and isinstance(r_at, datetime):
+                diff = max(0.0, (r_at - c_at).total_seconds() / 3600.0)
+                resolution_hours.append(diff)
+            if iss.get("citizen_verified") is True:
+                verified_count += 1
+
+        median_hours = float(np.median(resolution_hours)) if resolution_hours else 24.0
+
+        # 3. Reopen rate from department_stats and repair_evidence
+        dept_stat = db.department_stats.find_one({"department": dept}) or {}
+        reopen_count = dept_stat.get("reopen_count", 0)
+        total_attempts = len(resolved_issues) + reopen_count
+        reopen_rate = round(reopen_count / total_attempts, 3) if total_attempts > 0 else 0.0
+
+        verified_rate = round(verified_count / len(resolved_issues), 3) if resolved_issues else 1.0
+
+        # Category mix normalization: complex infra vs fast service baseline
+        cat_mix_factor = 1.20 if dept in ["roads", "water_supply"] else 0.90
+        normalized_median_hours = round(median_hours / cat_mix_factor, 1)
+
+        results.append({
+            "department": dept,
+            "total_resolved": len(resolved_issues),
+            "raw_median_hours": round(median_hours, 1),
+            "normalized_median_hours": normalized_median_hours,
+            "reopen_rate": reopen_rate,
+            "verified_repair_rate": verified_rate,
+            "normalization_factor": cat_mix_factor
+        })
+
+    return jsonify({"success": True, "departments": results}), 200
+
 @analytics_api_bp.route('/api/analytics/sla', methods=['GET'])
 @require_auth
 @require_role('officer')
@@ -444,4 +501,28 @@ def get_ward_health(ward):
         "total_issues": total_issues,
         "resolved_issues": resolved_issues,
         "category_distribution": category_breakdown
+    }), 200
+
+@analytics_api_bp.route('/api/analytics/forecasts', methods=['GET'])
+@require_auth
+@require_role('officer', 'admin')
+def get_reporting_demand_forecasts():
+    """
+    Returns expected reporting volume forecasts per ward and category.
+    Framed strictly as expected reporting volume, never as predicted failures.
+    """
+    officer_ward = g.current_user.get("ward")
+    ward = request.args.get("ward") or (None if officer_ward in ["all", "*", None] else officer_ward)
+    category = request.args.get("category", "roads")
+
+    from services.forecast_service import generate_forecast, get_ward_forecasts_summary
+
+    forecast_doc = generate_forecast(db, ward_id=ward or "Ward 1", category=category)
+    summary = get_ward_forecasts_summary(db, ward_id=ward)
+
+    return jsonify({
+        "success": True,
+        "metric_description": "expected reporting volume",
+        "current_forecast": forecast_doc,
+        "history_forecasts": summary
     }), 200

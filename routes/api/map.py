@@ -52,25 +52,54 @@ def get_map_clusters():
 @map_api_bp.route('/api/map/heatmap', methods=['GET'])
 @require_auth
 def get_map_heatmap():
+    """
+    Returns heatmap coordinates and weights for complaint density.
+    Supports filtering by layer: 'all', 'new' (<48h), 'overdue' (breached), 'repeated'.
+    Framed strictly as complaint density, not 'danger'.
+    """
+    from datetime import datetime, timedelta
+    layer = request.args.get("layer", "all").lower()
+    now = datetime.utcnow()
+
     query = {"status": {"$nin": ["closed", "rejected"]}}
     officer_ward = g.current_user.get("ward")
     if g.current_user["role"] == "officer" and officer_ward != "all":
         query["ward"] = officer_ward
-        
-    issues = list(db.issues.find(query, {"location": 1, "severity": 1}))
-    
+
+    if layer == "new":
+        query["created_at"] = {"$gte": now - timedelta(hours=48)}
+    elif layer == "overdue":
+        query["$or"] = [
+            {"sla_status": "breached"},
+            {"sla_breached": True},
+            {"sla_deadline": {"$lt": now}}
+        ]
+    elif layer == "repeated":
+        query["$or"] = [
+            {"is_recurring": True},
+            {"recurrence": {"$gt": 0.0}}
+        ]
+
+    issues = list(db.issues.find(query, {"location": 1, "severity": 1, "cips_score": 1}))
+
     # Format: [lat, lng, weight]
     heatmap_data = []
     weight_map = {"low": 0.2, "medium": 0.5, "high": 0.8, "critical": 1.0}
-    
+
     for iss in issues:
         coords = iss.get("location", {}).get("coordinates", [])
         if len(coords) == 2:
             lng, lat = coords[0], coords[1]
             w = weight_map.get(iss.get("severity", "medium").lower(), 0.5)
             heatmap_data.append([lat, lng, w])
-            
-    return jsonify({"success": True, "data": heatmap_data}), 200
+
+    return jsonify({
+        "success": True,
+        "layer": layer,
+        "metric_description": "complaint density",
+        "data": heatmap_data,
+        "count": len(heatmap_data)
+    }), 200
 
 @map_api_bp.route('/api/map/workers', methods=['GET'])
 @require_auth

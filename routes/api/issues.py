@@ -12,10 +12,11 @@ try:
 except Exception:
     magic = None
 from datetime import datetime, timedelta
+from config import Config
 from app import db, limiter
 from routes.auth import require_auth, require_role
 from utils.auth_helpers import verified_required
-from models.issue import IssueCreateSchema, CATEGORIES, SEVERITIES, DEPARTMENTS
+from models.issue import IssueCreateSchema, CATEGORIES, SEVERITIES, DEPARTMENTS, normalize_priority
 from services import complaint_service, assignment_service, verification_service, sla_service
 from services.audit_service import log_audit
 from utils import serialize, parse_object_id
@@ -79,6 +80,18 @@ def create_issue():
     if lng_val is None:
         lng_val = payload.get("lng")
     location_provided = lat_val is not None and lng_val is not None
+
+    if not location_provided and 'image' in request.files:
+        try:
+            from services.ai.image_gate import extract_exif_gps
+            img_file = request.files['image']
+            exif_coords = extract_exif_gps(img_file)
+            if exif_coords:
+                lat_val = exif_coords["latitude"]
+                lng_val = exif_coords["longitude"]
+                location_provided = True
+        except Exception:
+            pass
     
     try:
         lat = float(lat_val) if lat_val is not None else 12.9716
@@ -162,6 +175,62 @@ def create_issue():
             }})
             issue["image"] = {"url": images[0]["url"], "filename": new_filename}
             
+        # Phase 3: Image Trust Gate evaluation (behind AI_IMAGE_GATE_ENABLED)
+        image_gate_result = None
+        if images and os.path.exists(images[0]["filepath"]):
+            try:
+                from services.ai.image_gate import evaluate_image_quality, store_image_hash
+                image_gate_result = evaluate_image_quality(
+                    images[0]["filepath"],
+                    issue_id=str(issue["_id"]),
+                    user_id=str(g.current_user["_id"]),
+                    db=db
+                )
+                
+                gate_val = image_gate_result.get("value", {})
+                passed = gate_val.get("passed", True)
+                
+                # Check emergency fast lane (Rule R8: never block emergencies)
+                norm_p = normalize_priority(issue.get("priority"))
+                emerg_val = issue.get("emergency_state")
+                is_emergency = (
+                    (norm_p == "P0")
+                    or bool(issue.get("emergency", False))
+                    or bool(issue.get("is_emergency", False))
+                    or (bool(emerg_val.get("is_emergency", False)) if isinstance(emerg_val, dict) else bool(emerg_val))
+                )
+                
+                # Store perceptual hash for reuse detection
+                dhash_val = gate_val.get("metrics", {}).get("hash")
+                if dhash_val:
+                    store_image_hash(db, dhash_val, str(issue["_id"]), str(g.current_user["_id"]), gate_val.get("metrics"))
+
+                # Log decision to db.ai_decisions
+                from services.ai.decision_logger import log_ai_decision
+                log_ai_decision(
+                    db=db,
+                    issue_id=str(issue["_id"]),
+                    stage="image_gate",
+                    envelope=image_gate_result,
+                    model_version="image_gate_v1"
+                )
+
+                is_gate_enabled = current_app.config.get("AI_IMAGE_GATE_ENABLED", False) or getattr(Config, "AI_IMAGE_GATE_ENABLED", False)
+                if is_gate_enabled:
+                    if not passed and not is_emergency:
+                        # Non-emergency quality issue triggers CTVE clarification
+                        ctve_msg = gate_val.get("clarification_message") or "Your uploaded photo appears unclear. Please upload a clearer photo."
+                        db.issues.update_one({"_id": issue["_id"]}, {"$set": {
+                            "ctve_triggered": True,
+                            "ctve_message": ctve_msg,
+                            "image_gate_flags": gate_val.get("issues", [])
+                        }})
+                        issue["ctve_triggered"] = True
+                        issue["ctve_message"] = ctve_msg
+                        issue["image_gate_flags"] = gate_val.get("issues", [])
+            except Exception as gate_err:
+                current_app.logger.warning(f"Image gate evaluation error: {gate_err}")
+
         try:
             from utils.civic_score import apply_score_delta
             apply_score_delta(db, str(g.current_user["_id"]), "report_filed")
@@ -197,7 +266,7 @@ def create_issue():
             "status": issue.get("status", "submitted"),
             "ai_prediction": issue.get("ai_prediction", {}),
             "duplicate": issue.get("duplicate", {"is_duplicate": False}),
-            "priority": issue.get("priority", "medium"),
+            "priority": normalize_priority(issue.get("priority")),
             "priority_score": issue.get("priority_score", 0.0),
             "priority_decision": issue.get("priority_decision", {}),
             "cips_score": issue.get("cips_score"),
@@ -205,6 +274,7 @@ def create_issue():
             "evidence_agreement": issue.get("evidence_agreement"),
             "ctve_triggered": issue.get("ctve_triggered", False),
             "ctve_message": issue.get("ctve_message"),
+            "image_gate": image_gate_result.get("value") if image_gate_result else None,
             "verification_required": issue.get("verification_required", False),
             "signals": signals,
             "sla": issue.get("sla", {}),
@@ -216,6 +286,163 @@ def create_issue():
         print(f"[create_issue ERROR] {e}", flush=True)
         current_app.logger.exception(e)
         return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
+
+@issues_api_bp.route('/api/issues/image-quality-check', methods=['POST'])
+@limiter.limit("30 per minute")
+@require_auth
+def check_image_quality():
+    """
+    Direct evaluation endpoint for image quality gate.
+    Accepts an uploaded image file, returns quality metrics and AI envelope.
+    """
+    if 'image' not in request.files:
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "No image provided."}}), 400
+    file = request.files['image']
+    if not file or not file.filename:
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Empty file."}}), 400
+        
+    try:
+        from services.ai.image_gate import evaluate_image_quality
+        res = evaluate_image_quality(file, user_id=str(g.current_user["_id"]) if hasattr(g, "current_user") and g.current_user else None, db=db)
+        return jsonify({"success": True, "result": res}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": {"code": "EVAL_ERROR", "message": str(e)}}), 500
+
+@issues_api_bp.route('/api/issues/<id>/ai-audit', methods=['GET'])
+@require_auth
+@require_role('officer', 'admin')
+def get_issue_ai_audit(id):
+    """
+    Returns AI decisions and human corrections for an issue.
+    Strictly restricted to officer and admin roles.
+    """
+    try:
+        query_id = id
+        decisions = list(db.ai_decisions.find({"issue_id": str(query_id)}, {"_id": 0}).sort("created_at", 1))
+        corrections = list(db.ai_corrections.find({"issue_id": str(query_id)}, {"_id": 0}).sort("created_at", 1))
+        return jsonify({
+            "success": True,
+            "issue_id": str(query_id),
+            "decisions": decisions,
+            "corrections": corrections
+        }), 200
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "Failed to fetch AI audit trail."}}), 500
+
+@issues_api_bp.route('/api/issues/<id>/repair-evidence', methods=['GET'])
+@require_auth
+@require_role('officer', 'admin')
+def get_issue_repair_evidence(id):
+    """
+    Returns repair evidence audit records for an issue.
+    Strictly restricted to officer and admin roles per Section 4.2.
+    """
+    try:
+        query_id = id
+        parsed_id = parse_object_id(id)
+        query = {"$or": [{"issue_id": str(query_id)}]}
+        if parsed_id:
+            query["$or"].append({"issue_id": str(parsed_id)})
+        evidence = list(db.repair_evidence.find(query, {"_id": 0}).sort("created_at", -1))
+        return jsonify({
+            "success": True,
+            "issue_id": str(query_id),
+            "evidence": evidence
+        }), 200
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "Failed to fetch repair evidence."}}), 500
+
+@issues_api_bp.route('/api/issues/<id>/duplicate-suggestions', methods=['GET'])
+@require_auth
+def get_duplicate_suggestions(id):
+    """
+    Retrieves suggested duplicate links for a given issue.
+    Returns list of candidate issues with similarity breakdown.
+    """
+    try:
+        links = list(db.duplicate_links.find({"source_issue_id": str(id), "status": "suggested"}, {"_id": 0}))
+        results = []
+        for link in links:
+            target_id = link.get("target_issue_id")
+            target_issue = None
+            if ObjectId.is_valid(target_id):
+                target_issue = db.issues.find_one({"_id": ObjectId(target_id)})
+            if not target_issue:
+                target_issue = db.issues.find_one({"issue_id": target_id})
+            if target_issue:
+                results.append({
+                    "target_issue_id": target_id,
+                    "target_title": target_issue.get("title"),
+                    "target_description": target_issue.get("description"),
+                    "target_category": target_issue.get("category"),
+                    "target_status": target_issue.get("status"),
+                    "score": link.get("score"),
+                    "components": link.get("components", {})
+                })
+        return jsonify({
+            "success": True,
+            "suggestions": results,
+            "prompt": "Similar report nearby. Is this the same problem?" if results else None
+        }), 200
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+
+@issues_api_bp.route('/api/issues/<id>/duplicate-confirm', methods=['POST'])
+@require_auth
+def confirm_duplicate_link(id):
+    """
+    Citizen or officer confirms that issue <id> is a duplicate of target_issue_id.
+    Never auto-merges: records confirmed link in duplicate_links and increments
+    support/corroboration count on target issue.
+    """
+    try:
+        data = request.get_json(silent=True) or request.form
+        target_id = data.get("target_issue_id")
+        if not target_id:
+            return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "target_issue_id is required."}}), 400
+
+        user_id = str(g.current_user["_id"])
+        
+        # Update link status
+        db.duplicate_links.update_one(
+            {"source_issue_id": str(id), "target_issue_id": str(target_id)},
+            {"$set": {"status": "confirmed", "confirmed_by": user_id, "confirmed_at": datetime.utcnow()}},
+            upsert=True
+        )
+
+        # Increment support on target issue
+        filter_target = {"_id": ObjectId(target_id)} if ObjectId.is_valid(target_id) else {"issue_id": target_id}
+        db.issues.update_one(
+            filter_target,
+            {
+                "$addToSet": {"supporters": {"user_id": user_id, "confirmed_at": datetime.utcnow().isoformat()}},
+                "$inc": {"support_count": 1}
+            }
+        )
+
+        # Log AI correction audit record
+        from services.ai.decision_logger import log_ai_correction
+        log_ai_correction(
+            db=db,
+            issue_id=str(id),
+            field_changed="duplicate_link",
+            before_value="suggested",
+            after_value="confirmed",
+            actor_id=user_id,
+            actor_role=g.current_user.get("role", "citizen")
+        )
+
+        return jsonify({
+            "success": True,
+            "status": "confirmed",
+            "message": "Duplicate link confirmed. Target issue support updated."
+        }), 200
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
 
 @issues_api_bp.route('/api/issues/<id>', methods=['GET'])
 @require_auth
@@ -280,6 +507,59 @@ def get_issue(id):
         issue_data["ctve_triggered"] = issue.get("ctve_triggered", False)
         issue_data["ctve_message"] = issue.get("ctve_message")
 
+        # Phase 6: Advisory ML priority suggestion (behind AI_ML_PRIORITY_SHADOW)
+        if getattr(Config, "AI_ML_PRIORITY_SHADOW", False):
+            try:
+                from services.ai.priority_ml import predict_priority_ml
+                ml_signals = {
+                    "text_severity": signals.get("text_severity", 0.5),
+                    "image_severity": signals.get("image_severity", 0.0),
+                    "location_impact": signals.get("location_impact", 0.4),
+                    "corroboration": signals.get("corroboration", 0.0),
+                    "recurrence": signals.get("recurrence", 0.0),
+                    "sla_risk": signals.get("sla_risk", 0.0),
+                    "evidence_reliability": evidence_reliability or 0.5,
+                    "disagreement": abs((signals.get("text_severity") or 0.5) - (signals.get("image_severity") or 0.0)),
+                    "monsoon_active": monsoon_active or False
+                }
+                ml_prio_res = predict_priority_ml(ml_signals)
+                issue_data["ml_priority_suggestion"] = ml_prio_res["value"]
+            except Exception as ml_err:
+                current_app.logger.warning(f"[OfficerAPI] ML priority shadow error: {ml_err}")
+
+        # Phase 9: Unified Lifecycle Timeline with Evidence-Level Badges (Rule R7)
+        timeline_events = []
+        c_at = issue.get("created_at")
+        timeline_events.append({
+            "stage": "Complaint Intake",
+            "actor": "citizen",
+            "evidence_level": "verified",
+            "timestamp": c_at.isoformat() if isinstance(c_at, datetime) else str(c_at),
+            "summary": "Initial report submitted with location and user description."
+        })
+
+        ai_decs = list(db.ai_decisions.find({"$or": [{"issue_id": str(issue["_id"])}, {"issue_id": issue.get("issue_id")}]}).sort("created_at", 1))
+        for dec in ai_decs:
+            res_dict = dec.get("result", {})
+            timeline_events.append({
+                "stage": dec.get("stage", "ai_analysis").replace("_", " ").title(),
+                "actor": res_dict.get("source", "ai_pipeline"),
+                "evidence_level": res_dict.get("evidence_level", "inferred"),
+                "timestamp": dec.get("created_at").isoformat() if isinstance(dec.get("created_at"), datetime) else str(dec.get("created_at")),
+                "summary": f"Completed {dec.get('stage')} evaluation (model: {dec.get('model_version', 'v1')})."
+            })
+
+        for sh in status_hist:
+            timeline_events.append({
+                "stage": f"State: {sh.get('status', '').replace('_', ' ').title()}",
+                "actor": "officer" if "officer" in str(sh.get("status", "")).lower() else ("worker" if "worker" in str(sh.get("status", "")).lower() else "system"),
+                "evidence_level": "verified",
+                "timestamp": str(sh.get("timestamp")),
+                "summary": sh.get("notes") or f"Issue status transitioned to {sh.get('status')}."
+            })
+
+        issue_data["lifecycle_timeline"] = timeline_events
+
         res = {
             "success": True,
             "issue_id": issue.get("issue_id") or str(issue["_id"]),
@@ -289,6 +569,7 @@ def get_issue(id):
             "officer_override": op_classification.get("officer_override", False),
             "priority": issue.get("priority") or issue.get("severity"),
             "status_history": status_hist,
+            "lifecycle_timeline": timeline_events,
             "signals": signals,
             "evidence_reliability": evidence_reliability,
             "evidence_agreement": evidence_agreement,
@@ -296,6 +577,7 @@ def get_issue(id):
             "cips_score": issue_data["cips_score"],
             "ctve_triggered": issue_data["ctve_triggered"],
             "ctve_message": issue_data["ctve_message"],
+            "ml_priority_suggestion": issue_data.get("ml_priority_suggestion"),
             "data": issue_data
         }
         return jsonify(res), 200
@@ -536,6 +818,25 @@ def list_issues():
         iss["sla_breached"] = bool(sla_breached)
         iss["department"] = raw_doc.get("department", "roads")
         iss["worker_id"] = str(w_id) if w_id else None
+
+        if getattr(Config, "AI_ML_PRIORITY_SHADOW", False):
+            try:
+                from services.ai.priority_ml import predict_priority_ml
+                iss_sig = {
+                    "text_severity": raw_doc.get("text_severity", 0.5),
+                    "image_severity": raw_doc.get("image_severity", 0.0),
+                    "location_impact": raw_doc.get("location_impact", 0.4),
+                    "corroboration": raw_doc.get("corroboration", 0.0),
+                    "recurrence": raw_doc.get("recurrence", 0.0),
+                    "sla_risk": raw_doc.get("sla_risk", 0.0),
+                    "evidence_reliability": raw_doc.get("evidence_reliability", 0.5),
+                    "disagreement": raw_doc.get("disagreement", 0.0),
+                    "monsoon_active": raw_doc.get("monsoon_active", False)
+                }
+                ml_sugg = predict_priority_ml(iss_sig)
+                iss["ml_priority_suggestion"] = ml_sugg["value"]
+            except Exception:
+                pass
         
     return jsonify({"success": True, "data": serialized_issues, "page": page, "per_page": per_page}), 200
 
@@ -845,6 +1146,62 @@ def resolve_issue(id):
         current_app.logger.exception(e)
         return jsonify({"success": False, "error": {"code": "SERVER_ERROR", "message": "An internal server error occurred."}}), 500
 
+@issues_api_bp.route('/api/issues/emergency-monitor', methods=['GET'])
+@require_auth
+def get_emergency_monitor():
+    """
+    Returns active P0 emergency issues with live SLA countdown calculations.
+    P0 SLA limit is 1 hour per master specification.
+    """
+    now = datetime.utcnow()
+    query = {
+        "$and": [
+            {"$or": [{"priority": "P0"}, {"emergency": True}]},
+            {"status": {"$nin": ["closed", "resolved", "rejected"]}}
+        ]
+    }
+
+    user_role = g.current_user.get("role")
+    officer_ward = g.current_user.get("ward")
+    if user_role == "officer" and officer_ward not in ["all", "*", None]:
+        query["$and"].append({"$or": [{"ward": officer_ward}, {"location.ward": officer_ward}]})
+
+    p0_issues = list(db.issues.find(query).sort("created_at", -1))
+    results = []
+
+    for iss in p0_issues:
+        c_at = iss.get("created_at") or now
+        if isinstance(c_at, str):
+            try:
+                c_at = datetime.fromisoformat(c_at)
+            except Exception:
+                c_at = now
+
+        sla_deadline = c_at + timedelta(hours=1)
+        remaining_seconds = int((sla_deadline - now).total_seconds())
+        is_breached = remaining_seconds <= 0
+        urgency_tier = "breached" if is_breached else ("imminent_breach" if remaining_seconds < 900 else "active")
+
+        results.append({
+            "issue_id": iss.get("issue_id") or str(iss["_id"]),
+            "title": iss.get("title") or iss.get("description", "")[:40],
+            "category": iss.get("category"),
+            "ward": iss.get("ward"),
+            "status": iss.get("status"),
+            "priority": "P0",
+            "created_at": c_at.isoformat(),
+            "sla_deadline": sla_deadline.isoformat(),
+            "remaining_seconds": max(0, remaining_seconds),
+            "is_breached": is_breached,
+            "urgency_tier": urgency_tier
+        })
+
+    return jsonify({
+        "success": True,
+        "active_p0_count": len(results),
+        "emergencies": results
+    }), 200
+
 @issues_api_bp.route('/api/issues/<id>/declare-emergency', methods=['POST'])
 @require_auth
 @require_role('citizen', 'officer')
@@ -1071,13 +1428,30 @@ def update_issue_classification(id):
                 "category": cat,
                 "type": itype,
                 "severity": sev,
-                "priority": sev,
+                "priority": normalize_priority(sev),
                 "department": dept,
                 "sla": sla_info,
                 "sla_deadline": new_dl,
                 "updated_at": datetime.utcnow()
             }}
         )
+
+        # Phase 1: log correction to db.ai_corrections
+        try:
+            from services.ai.decision_logger import log_ai_correction
+            actor_id = str(g.current_user["_id"])
+            actor_role = g.current_user.get("role", "officer")
+            old_cat = issue.get("category")
+            old_sev = issue.get("severity")
+            old_dept = issue.get("department")
+            if cat != old_cat:
+                log_ai_correction(db, str(issue["_id"]), "category", old_cat, cat, actor_id, actor_role)
+            if sev != old_sev:
+                log_ai_correction(db, str(issue["_id"]), "severity", old_sev, sev, actor_id, actor_role)
+            if dept != old_dept:
+                log_ai_correction(db, str(issue["_id"]), "department", old_dept, dept, actor_id, actor_role)
+        except Exception as corr_err:
+            current_app.logger.warning(f"Failed to log AI correction: {corr_err}")
         
         updated_doc = db.issues.find_one({"_id": issue["_id"]})
         ai_pred = updated_doc.get("ai_prediction") or updated_doc.get("ai_analysis", {}).get("ai_prediction", {})

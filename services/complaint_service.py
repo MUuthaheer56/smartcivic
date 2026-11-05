@@ -3,8 +3,9 @@ import uuid
 from datetime import datetime, timedelta
 from bson import ObjectId
 from flask import g, has_request_context
+from config import Config
 from app import db, socketio
-from models.issue import create_issue_doc, STATUSES, CATEGORIES, DEPARTMENTS, SEVERITIES, ISSUE_STATES, validate_state_transition
+from models.issue import create_issue_doc, STATUSES, CATEGORIES, DEPARTMENTS, SEVERITIES, PRIORITIES, ISSUE_STATES, validate_state_transition, normalize_priority
 from models.cluster import create_cluster_doc
 from services import ai_service
 from services.sla_service import assign_sla, check_sla_status
@@ -230,6 +231,7 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
     severity = final_prediction.get("severity", "medium")
     department = final_prediction.get("department", "roads")
     confidence = final_prediction.get("confidence", 0.0)
+    local_text_res = None
 
     # 4. Integrate SmartCivic v2 Intelligence Pipelines
     try:
@@ -254,7 +256,21 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         )
         
         v2_auth = resolve_authority(v2_class.get("service", category), v2_class.get("issue_type", issue_type), ward)
-        v2_prio = compute_priority(v2_class.get("service", category), v2_class.get("severity", severity), v2_class.get("emergency", False))
+        is_emerg_state = bool(v2_class.get("emergency")) or v2_class.get("emergency_state") in ("IMMEDIATE_112", "SAFETY_REVIEW")
+
+        # Phase 5: Local text classifier shadow mode (behind AI_LOCAL_TEXT_ENABLED)
+        local_text_res = None
+        if getattr(Config, "AI_LOCAL_TEXT_ENABLED", False):
+            try:
+                from services.ai.local_text import predict_local_text
+                local_text_res = predict_local_text(description)
+                # Local model may raise but never lower an emergency flag
+                if local_text_res.get("value", {}).get("emergency"):
+                    is_emerg_state = True
+            except Exception as loc_err:
+                print(f"[ComplaintService] Local text shadow error: {loc_err}")
+
+        v2_prio = "P0" if is_emerg_state else compute_priority(v2_class.get("service", category), v2_class.get("severity", severity), False)
 
         issue_doc.update({
             "service": v2_class.get("service", category),
@@ -262,7 +278,7 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
             "ai_confidence": v2_class.get("confidence", confidence),
             "ai_route_decision": v2_class.get("route_decision"),
             "priority": v2_prio,
-            "emergency": v2_class.get("emergency", False),
+            "emergency": is_emerg_state,
             "emergency_state": v2_class.get("emergency_state"),
             "impact": v2_impact,
             "authority_primary": v2_auth.get("authority_id"),
@@ -275,61 +291,76 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
     except Exception as e:
         print(f"[v2 Pipeline Warning] {e}")
 
-    # 5. Duplicate check
-    duplicates = ai_service.detect_duplicates(str(issue_id), description, location)
-    duplicate_of = None
+    # 5. Duplicate check (v2 embed+geo behind AI_EMBED_DUPLICATES_ENABLED)
     cluster_id = None
-    is_suppressed = False
-    
-    if duplicates and duplicates[0]["similarity"] >= 0.85:
-        matched_raw = duplicates[0]["issue_id"]
-        duplicate_of = ObjectId(matched_raw) if ObjectId.is_valid(matched_raw) else matched_raw
-        is_suppressed = True
-        
-        # Add to parent's duplicate children
-        db.issues.update_one(
-            {"_id": duplicate_of},
-            {"$addToSet": {"duplicate_children": ObjectId(issue_id)}}
+    if getattr(Config, "AI_EMBED_DUPLICATES_ENABLED", False):
+        from services.ai.duplicate_v2 import find_duplicate_candidates_v2
+        v2_envelope = find_duplicate_candidates_v2(
+            db=db,
+            issue_id=issue_id,
+            description=description,
+            location=location,
+            category=category,
+            ward=ward
         )
-        
-        # Link to the same cluster as original
-        original = db.issues.find_one({"_id": duplicate_of})
-        if original and original.get("cluster_id"):
-            cluster_id = original["cluster_id"]
-            db.clusters.update_one(
-                {"_id": ObjectId(cluster_id)},
-                {"$addToSet": {"issue_ids": ObjectId(issue_id)}}
-            )
-            recalculate_cluster_centroid(cluster_id, db)
+        # In v2: suggestions stored in duplicate_links; never auto-merge or suppress
+        duplicate_of = None
+        is_suppressed = False
+        duplicates = v2_envelope.get("value", {}).get("duplicate_links", [])
     else:
-        # Check if there is an existing cluster within 200m of the same category in the same ward
-        from services.route_service import haversine
-        existing_clusters = list(db.clusters.find({"ward": ward, "category": category, "status": "open"}))
-        for c in existing_clusters:
-            c_coords = c["location"]["coordinates"]
-            dist = haversine((lat, lng), (c_coords[1], c_coords[0]))
-            if dist < 0.2: # 200m
-                cluster_id = c["_id"]
+        duplicates = ai_service.detect_duplicates(str(issue_id), description, location)
+        duplicate_of = None
+        is_suppressed = False
+        
+        if duplicates and duplicates[0]["similarity"] >= 0.85:
+            matched_raw = duplicates[0]["issue_id"]
+            duplicate_of = ObjectId(matched_raw) if ObjectId.is_valid(matched_raw) else matched_raw
+            is_suppressed = True
+            
+            # Add to parent's duplicate children
+            db.issues.update_one(
+                {"_id": duplicate_of},
+                {"$addToSet": {"duplicate_children": ObjectId(issue_id)}}
+            )
+            
+            # Link to the same cluster as original
+            original = db.issues.find_one({"_id": duplicate_of})
+            if original and original.get("cluster_id"):
+                cluster_id = original["cluster_id"]
                 db.clusters.update_one(
                     {"_id": ObjectId(cluster_id)},
                     {"$addToSet": {"issue_ids": ObjectId(issue_id)}}
                 )
                 recalculate_cluster_centroid(cluster_id, db)
-                break
-                
-        # If no cluster found, spawn a new one
-        if not cluster_id:
-            cluster_doc = create_cluster_doc(
-                issue_id=issue_id,
-                lat=lat,
-                lng=lng,
-                category=category,
-                issue_type=issue_type,
-                severity=severity,
-                ward=ward
-            )
-            c_res = db.clusters.insert_one(cluster_doc)
-            cluster_id = c_res.inserted_id
+        else:
+            # Check if there is an existing cluster within 200m of the same category in the same ward
+            from services.route_service import haversine
+            existing_clusters = list(db.clusters.find({"ward": ward, "category": category, "status": "open"}))
+            for c in existing_clusters:
+                c_coords = c["location"]["coordinates"]
+                dist = haversine((lat, lng), (c_coords[1], c_coords[0]))
+                if dist < 0.2: # 200m
+                    cluster_id = c["_id"]
+                    db.clusters.update_one(
+                        {"_id": ObjectId(cluster_id)},
+                        {"$addToSet": {"issue_ids": ObjectId(issue_id)}}
+                    )
+                    recalculate_cluster_centroid(cluster_id, db)
+                    break
+                    
+            # If no cluster found, spawn a new one
+            if not cluster_id:
+                cluster_doc = create_cluster_doc(
+                    issue_id=issue_id,
+                    lat=lat,
+                    lng=lng,
+                    category=category,
+                    issue_type=issue_type,
+                    severity=severity,
+                    ward=ward
+                )
+                c_res = db.clusters.insert_one(cluster_doc)
+                cluster_id = c_res.inserted_id
             
     # Update issue doc with calculated AI findings and clustering refs
     ai_analysis = {
@@ -394,7 +425,7 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
             "confidence": confidence,
             "confidence_type": final_prediction.get("confidence_type", "heuristic")
         },
-        "priority": severity,
+        "priority": v2_prio if ('v2_prio' in locals() and v2_prio) else normalize_priority(severity),
         "image": img_info,
         "location": {
             "type": "Point",
@@ -461,13 +492,14 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
             "created_at": now,
             "sla_deadline": sla_dl
         })
+        is_emerg = bool(issue_doc.get("emergency")) or (issue_doc.get("priority") == "P0")
         issue_doc.update({
             "cips_score": cefap_res["cips"],
-            "priority": cefap_res["priority"],
+            "priority": "P0" if is_emerg else cefap_res["priority"],
             "evidence_reliability": cefap_res["evidence_reliability"],
             "evidence_agreement": cefap_res["evidence_agreement"],
-            "ctve_triggered": cefap_res["ctve_triggered"],
-            "ctve_message": cefap_res["ctve_message"],
+            "ctve_triggered": False if is_emerg else cefap_res["ctve_triggered"],
+            "ctve_message": None if is_emerg else cefap_res["ctve_message"],
             "verification_required": cefap_res["verification_required"],
             "monsoon_active": cefap_res["monsoon"]["active"],
         })
@@ -475,6 +507,59 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         print(f"[CEFAP Integration Warning] {ex}")
 
     db.issues.insert_one(issue_doc)
+
+    # Write AI Decision envelopes to db.ai_decisions for audit & evaluation
+    try:
+        from services.ai.decision_logger import log_ai_decision
+        from services.ai.envelope import make_ai_result
+
+        # Language stage decision
+        lang_env = make_ai_result(
+            value=orig_lang,
+            confidence=0.95 if orig_lang != "unknown" else 0.5,
+            source="gemini" if orig_lang != "english" else "rules",
+            evidence_level="inferred"
+        )
+        log_ai_decision(db, formatted_issue_id, "language", lang_env)
+        log_ai_decision(db, str(issue_id), "language", lang_env)
+
+        # Text analysis decision
+        text_env = make_ai_result(
+            value={"category": category, "type": issue_type, "severity": severity},
+            confidence=confidence,
+            source=ai_text.get("provider", "rules"),
+            fallback_used=ai_text.get("provider") == "rule_based",
+            evidence_level="inferred"
+        )
+        log_ai_decision(db, formatted_issue_id, "text_analysis", text_env)
+        log_ai_decision(db, str(issue_id), "text_analysis", text_env)
+
+        if local_text_res:
+            log_ai_decision(db, formatted_issue_id, "local_text", local_text_res)
+            log_ai_decision(db, str(issue_id), "local_text", local_text_res)
+
+        # Vision analysis decision
+        vis_env = make_ai_result(
+            value={"image_available": bool(images), "detections": ai_img.get("image_detections", [])},
+            confidence=ai_img.get("confidence") if ai_img.get("available") else None,
+            source=ai_img.get("provider", "gemini"),
+            fallback_used=not bool(ai_img.get("available")),
+            evidence_level="detected" if ai_img.get("available") else "inferred"
+        )
+        log_ai_decision(db, formatted_issue_id, "vision_analysis", vis_env)
+        log_ai_decision(db, str(issue_id), "vision_analysis", vis_env)
+
+        # CEFAP decision
+        cefap_env = make_ai_result(
+            value={"cips": issue_doc.get("cips_score"), "priority": issue_doc.get("priority")},
+            confidence=issue_doc.get("evidence_reliability"),
+            source="cefap",
+            evidence_level="inferred"
+        )
+        log_ai_decision(db, formatted_issue_id, "cefap", cefap_env)
+        log_ai_decision(db, str(issue_id), "cefap", cefap_env)
+    except Exception as log_err:
+        logger.warning(f"[Complaint Service] log_ai_decision warning: {log_err}")
     
     # Increment Citizen Reports Submitted Count
     db.users.update_one(

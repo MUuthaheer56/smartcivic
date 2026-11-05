@@ -1,0 +1,122 @@
+{
+  "evaluation_name": "ML Prioritisation Model & Ablation Comparison",
+  "evaluated_at": "2026-10-30T07:15:09.400880+00:00",
+  "model_artifact": "models_artifacts/priority_model_v1.joblib",
+  "test_dataset": "ml/datasets/priority_training_dataset.csv",
+  "total_test_samples": 34,
+  "test_wards_held_out": 7,
+  "synthetic": true,
+  "label_source_breakdown": {
+    "expert": 34
+  },
+  "models_comparison": {
+    "ML_Priority_RandomForest": {
+      "macro_f1": 0.9747,
+      "macro_precision": 0.9833,
+      "macro_recall": 0.9688,
+      "critical_recall": 1.0
+    },
+    "CEFAP_Adaptive_Fusion": {
+      "macro_f1": 0.2629,
+      "macro_precision": 0.2619,
+      "macro_recall": 0.3512,
+      "critical_recall": 0.5833
+    },
+    "M4_No_Reliability": {
+      "macro_f1": 0.7948,
+      "macro_precision": 0.8278,
+      "macro_recall": 0.8194,
+      "critical_recall": 0.8333
+    },
+    "M3_Location_Added": {
+      "macro_f1": 0.4974,
+      "macro_precision": 0.4762,
+      "macro_recall": 0.5397,
+      "critical_recall": 0.5833
+    },
+    "M2_Text_Image_Only": {
+      "macro_f1": 0.9053,
+      "macro_precision": 0.9143,
+      "macro_recall": 0.9087,
+      "critical_recall": 0.8333
+    },
+    "M1_Text_Only": {
+      "macro_f1": 0.9053,
+      "macro_precision": 0.9143,
+      "macro_recall": 0.9087,
+      "critical_recall": 0.8333
+    }
+  },
+  "ml_confusion_matrix": {
+    "labels": [
+      "P0",
+      "P1",
+      "P2",
+      "P3"
+    ],
+    "matrix": [
+      [
+        3,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        9,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        14,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        7
+      ]
+    ]
+  },
+  "shap_feature_importance": [
+    {
+      "feature": "location_impact",
+      "mean_abs_shap": 0.1264
+    },
+    {
+      "feature": "text_severity",
+      "mean_abs_shap": 0.0828
+    },
+    {
+      "feature": "sla_risk",
+      "mean_abs_shap": 0.0705
+    },
+    {
+      "feature": "recurrence",
+      "mean_abs_shap": 0.0431
+    },
+    {
+      "feature": "corroboration",
+      "mean_abs_shap": 0.0296
+    },
+    {
+      "feature": "image_severity",
+      "mean_abs_shap": 0.0199
+    },
+    {
+      "feature": "evidence_reliability",
+      "mean_abs_shap": 0.0072
+    },
+    {
+      "feature": "disagreement",
+      "mean_abs_shap": 0.0048
+    },
+    {
+      "feature": "monsoon_active",
+      "mean_abs_shap": 0.0012
+    }
+  ]
+}

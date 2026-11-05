@@ -64,13 +64,14 @@ def _sev(severity):
         return max(0.0, min(float(severity), 1.0))
     return SEVERITY_MAP.get(str(severity or "unknown").lower(), 0.10)
 
-def _img(image_severity, image_confidence):
+def _img(image_severity, image_confidence, image_source=None):
     """Image evidence → dict or None (None = missing, not zero)"""
     if image_severity is None or image_confidence is None:
         return None
     return {
         "score":      _sev(image_severity),
         "confidence": max(0.0, min(float(image_confidence), 1.0)),
+        "source":     image_source or "gemini_vision"
     }
 
 def _loc(location_type):
@@ -211,7 +212,8 @@ def cefap_stage(db, params):
 
         # Step 1: signals
         S  = _sev(params.get("text_severity", "low"))
-        ie = _img(params.get("image_severity"), params.get("image_confidence"))
+        img_src = params.get("image_source") or ("yolo" if params.get("yolo_evidence") else ("gemini_vision" if params.get("image_severity") else None))
+        ie = _img(params.get("image_severity"), params.get("image_confidence"), img_src)
         I  = ie["score"] if ie else None
         L  = _loc(params.get("location_type"))
         C  = _corr(params.get("vote_count", 0))
@@ -264,6 +266,7 @@ def cefap_stage(db, params):
             "verification_required":vr,
             "signals": {
                 "text_severity":   S, "image_severity": I,
+                "image_source":    img_src,
                 "location_impact": L, "corroboration":   C,
                 "recurrence":      R, "sla_risk":        T,
             },
@@ -286,6 +289,7 @@ def cefap_stage(db, params):
             "verification_required": True,
             "signals": {
                 "text_severity": 0.5, "image_severity": None,
+                "image_source": None,
                 "location_impact": 0.4, "corroboration": 0.0,
                 "recurrence": 0.0, "sla_risk": 0.5
             },
@@ -308,6 +312,7 @@ def _persist(db, issue_id, ward_id, result, E):
                 "priority":             result["priority"],
                 "text_severity":        result["signals"]["text_severity"],
                 "image_severity":       result["signals"]["image_severity"],
+                "image_source":         result["signals"].get("image_source"),
                 "location_impact":      result["signals"]["location_impact"],
                 "corroboration":        result["signals"]["corroboration"],
                 "recurrence":           result["signals"]["recurrence"],

@@ -15,10 +15,11 @@ from bson import ObjectId
 from unittest.mock import MagicMock, patch
 
 # Initialize Flask App Context and Client
-from app import create_app, db
+from app import create_app, db, limiter
 
 app = create_app()
 app.config['TESTING'] = True
+limiter.enabled = False
 client = app.test_client()
 
 PASSED_COUNT = 0
@@ -265,8 +266,12 @@ try:
     assert cef_doc.get("disagreement") == 0.0, f"disagreement is {cef_doc.get('disagreement')}"
     assert json.loads(cef_doc.get("weights_snapshot")), "weights_snapshot invalid JSON"
     assert cef_doc.get("computed_at") is not None, "computed_at missing"
+
+    # Phase 1 Verification: ai_decisions row logged
+    ai_dec_count = db.ai_decisions.count_documents({"$or": [{"issue_id": ISSUE_TRACKING_ID}, {"issue_id": OBJ_ID_STR}]})
+    assert ai_dec_count >= 1, f"Expected ai_decisions rows logged, got {ai_dec_count}"
     
-    record_pass(9, "CEFAP DB Persistence", f"CIPS: {cef_doc.get('cips_score')}, E: {cef_doc.get('evidence_reliability')}")
+    record_pass(9, "CEFAP & AI Decisions Persistence", f"CIPS: {cef_doc.get('cips_score')}, E: {cef_doc.get('evidence_reliability')}, Decisions Logged: {ai_dec_count}")
 except Exception as e:
     record_fail(9, "CEFAP DB Persistence", str(e))
 
@@ -504,37 +509,74 @@ except Exception as e:
     record_fail(17, "Authority Routing", str(e))
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 18 — SLA Escalation Scheduler Exists
+# STAGE 18 — SLA Escalation Background Job Behavioral Test
 # ─────────────────────────────────────────────────────────────────────────────
 try:
-    sla_file = os.path.exists("services/sla_escalation.py") or os.path.exists("services/sla_service.py")
-    assert sla_file, "SLA escalation service file not found"
-    
-    from config import Config
-    sla_hours = getattr(Config, "SLA_HOURS", {"critical": 4, "high": 24, "medium": 72, "low": 168})
-    assert "critical" in sla_hours or "P0" in sla_hours or "high" in sla_hours, "SLA hours config missing"
-    
-    record_pass(18, "SLA Scheduler Exists", f"SLA map verified: {sla_hours}")
+    from services.sla_escalation import run_escalation_check, SLA_HOURS
+    from models.issue import create_issue_doc
+
+    # Insert an overdue test complaint (aged past P3 SLA of 72h)
+    test_overdue_id = ObjectId()
+    overdue_doc = create_issue_doc(
+        citizen_id=USER_ID,
+        title="Overdue Issue for SLA Test",
+        description="Testing SLA escalation background worker",
+        category="road",
+        issue_type="pothole",
+        lat=12.9716,
+        lng=77.5946,
+        address="Test Road, Bengaluru",
+        ward="ward_test"
+    )
+    overdue_doc["_id"] = test_overdue_id
+    overdue_doc["issue_id"] = f"SC-TEST-SLA-{test_overdue_id}"
+    overdue_doc["priority"] = "P3"
+    overdue_doc["status"] = "submitted"
+    overdue_doc["emergency"] = False
+    overdue_doc["escalation_level"] = 0
+    overdue_doc["created_at"] = datetime.utcnow() - timedelta(hours=80)
+    db.issues.insert_one(overdue_doc)
+
+    # Run escalation worker
+    run_escalation_check()
+
+    # Verify atomic escalation occurred
+    escalated = db.issues.find_one({"_id": test_overdue_id})
+    assert escalated is not None, "Test issue not found"
+    assert escalated.get("escalation_level") == 1, f"Expected escalation_level 1, got {escalated.get('escalation_level')}"
+    assert escalated.get("sla_status") == "breached", f"Expected sla_status 'breached', got {escalated.get('sla_status')}"
+
+    # Cleanup test issue
+    db.issues.delete_one({"_id": test_overdue_id})
+
+    record_pass(18, "SLA Escalation Behavior", f"Issue successfully escalated L0->L1 on breach past 72h")
 except Exception as e:
-    record_fail(18, "SLA Scheduler Exists", str(e))
+    record_fail(18, "SLA Escalation Behavior", str(e))
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 19 — Socket.IO Emergency Alert Code Path
+# STAGE 19 — Socket.IO Emergency Event Delivery Test
 # ─────────────────────────────────────────────────────────────────────────────
 try:
-    path_found = False
-    for target in ["services/complaint_service.py", "services/notification_service.py", "routes/api/issues.py"]:
-        if os.path.exists(target):
-            with open(target, "r", encoding="utf-8") as f:
-                code = f.read()
-                if "socketio.emit" in code or "emit(" in code:
-                    path_found = True
-                    break
-                    
-    assert path_found, "Socket.IO emit code path not found in services or routes"
-    record_pass(19, "Emergency Socket.IO Path", "Verified socketio.emit code path in services")
+    from app import socketio
+    sio_client = socketio.test_client(app, namespace="/civic")
+    assert sio_client.is_connected(namespace="/civic"), "Socket.IO test client failed to connect to /civic"
+
+    # Emit emergency alert event
+    test_payload = {
+        "issue_id": "SC-2026-EMERGENCY-E2E",
+        "category": "road",
+        "emergency": True,
+        "priority": "P0"
+    }
+    socketio.emit("emergency_declared", test_payload, namespace="/civic")
+
+    received = sio_client.get_received(namespace="/civic")
+    assert any(ev.get("name") == "emergency_declared" for ev in received), f"Event not received by test client: {received}"
+    sio_client.disconnect(namespace="/civic")
+
+    record_pass(19, "Socket.IO Emergency Delivery", "Confirmed real-time event received by Socket.IO client")
 except Exception as e:
-    record_fail(19, "Emergency Socket.IO Path", str(e))
+    record_fail(19, "Socket.IO Emergency Delivery", str(e))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STAGE 20 — Cleanup
@@ -548,9 +590,13 @@ try:
         db.issues.delete_one({"issue_id": ISSUE_TRACKING_ID})
         db.cefap_results.delete_one({"issue_id": ISSUE_TRACKING_ID})
         db.cefap_feedback.delete_one({"issue_id": ISSUE_TRACKING_ID})
+        db.ai_decisions.delete_many({"issue_id": ISSUE_TRACKING_ID})
+        db.ai_corrections.delete_many({"issue_id": ISSUE_TRACKING_ID})
     if OBJ_ID_STR:
         db.cefap_results.delete_one({"issue_id": OBJ_ID_STR})
         db.cefap_feedback.delete_one({"issue_id": OBJ_ID_STR})
+        db.ai_decisions.delete_many({"issue_id": OBJ_ID_STR})
+        db.ai_corrections.delete_many({"issue_id": OBJ_ID_STR})
         
     w_count = db.cefap_weights.count_documents({"ward_id": "ward_test"})
     if w_count > 0:

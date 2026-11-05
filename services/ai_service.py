@@ -33,7 +33,21 @@ def _get_gemini_api_key():
     return key
 
 
-def _generate_content_with_model_fallback(genai, contents, preferred_model: str):
+def _get_gemini_client(key: str):
+    """
+    Returns an initialized Gemini client using the modern google-genai SDK if available,
+    falling back to legacy google-generativeai.
+    """
+    try:
+        from google import genai
+        return genai.Client(api_key=key)
+    except ImportError:
+        import google.generativeai as genai
+        genai.configure(api_key=key)
+        return genai
+
+
+def _generate_content_with_model_fallback(client, contents, preferred_model: str):
     candidates = [preferred_model, "gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-pro", "gemini-flash-latest"]
     seen = set()
     last_err = None
@@ -42,8 +56,13 @@ def _generate_content_with_model_fallback(genai, contents, preferred_model: str)
             continue
         seen.add(name)
         try:
-            model = genai.GenerativeModel(name)
-            response = model.generate_content(contents, request_options={"timeout": 10})
+            if hasattr(client, "models") and hasattr(client.models, "generate_content"):
+                response = client.models.generate_content(model=name, contents=contents)
+            elif hasattr(client, "GenerativeModel"):
+                model = client.GenerativeModel(name)
+                response = model.generate_content(contents, request_options={"timeout": 10})
+            else:
+                response = client.generate_content(model=name, contents=contents)
             return response, name
 
         except Exception as e:
@@ -190,20 +209,36 @@ def analyze_image_with_gemini(image_path: str) -> dict:
         res["vision_confidence"] = 0.0
     return res
 
+def sanitize_gemini_prompt(text: str, max_chars: int = 2000) -> str:
+    """
+    Enforces input length limits and prompt-injection escaping for Gemini calls.
+    Prevents token bloat, delimiter breakout, and adversarial system override instructions.
+    """
+    if not text:
+        return ""
+    cleaned = str(text)[:max_chars].strip()
+    # Strip markdown code fences to prevent delimiter hijacking
+    cleaned = cleaned.replace("```", "'''")
+    # Neutralize prompt injection markers
+    for marker in ["System:", "Assistant:", "User:", "Ignore previous instructions", "Ignore above instructions"]:
+        if marker.lower() in cleaned.lower():
+            cleaned = cleaned.replace(marker, f"[{marker}]")
+    return cleaned
+
 def analyze_complaint_text(description: str) -> dict:
     """
     Returns: category, type, severity, department, confidence
     Falls back to rule-based if Gemini fails or is not configured.
     """
+    clean_desc = sanitize_gemini_prompt(description)
     key = _get_gemini_api_key()
     if not key:
-        res = _rule_based_fallback(description)
+        res = _rule_based_fallback(clean_desc)
         res["analyzed_at"] = datetime.utcnow()
         return res
         
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=key)
+        client = _get_gemini_client(key)
         
         prompt = f"""
         Analyze the following civic complaint description and output a JSON object containing:
@@ -213,11 +248,11 @@ def analyze_complaint_text(description: str) -> dict:
         4. "department" (must be one of: "roads", "water_supply", "electrical", "sanitation", "drainage")
         5. "confidence" (float between 0.0 and 1.0)
         
-        Complaint: "{description}"
+        Complaint: "{clean_desc}"
         JSON:
         """
         t0 = time.time()
-        response, used_model = _generate_content_with_model_fallback(genai, prompt, os.getenv("GEMINI_TEXT_MODEL", VISION_MODEL))
+        response, used_model = _generate_content_with_model_fallback(client, prompt, os.getenv("GEMINI_TEXT_MODEL", VISION_MODEL))
         dur = round((time.time() - t0) * 1000.0, 1)
         parsed = json.loads(_strip_json_fences(response.text))
         parsed["provider"] = "gemini"
@@ -257,9 +292,8 @@ def analyze_complaint_image(image_path: str) -> dict:
         }
 
     try:
-        import google.generativeai as genai
         from PIL import Image
-        genai.configure(api_key=key)
+        client = _get_gemini_client(key)
 
         with Image.open(image_path) as img:
             prompt = """
@@ -275,7 +309,7 @@ def analyze_complaint_image(image_path: str) -> dict:
             Do not infer details that are not visible.
             """
             t0 = time.time()
-            response, used_model = _generate_content_with_model_fallback(genai, [prompt, img], VISION_MODEL)
+            response, used_model = _generate_content_with_model_fallback(client, [prompt, img], VISION_MODEL)
             dur = round((time.time() - t0) * 1000.0, 1)
         parsed = json.loads(_strip_json_fences(response.text))
         category = _normalize_category(parsed.get("category"))
@@ -482,21 +516,19 @@ def verify_resolution(before_image_path: str, after_image_path: str, issue_type:
         }
         
     try:
-        import google.generativeai as genai
         from PIL import Image
-        genai.configure(api_key=key)
+        client = _get_gemini_client(key)
         
-        img_before = Image.open(before_image_path)
-        img_after = Image.open(after_image_path)
-        prompt = f"""
-        Compare these two photos representing a before and after state of a resolved issue: "{issue_type}".
-        Verify if the issue has been successfully resolved/fixed.
-        Return JSON with:
-        "status": "verified", "likely_verified", "uncertain", or "not_verified",
-        "confidence": float 0.0 to 1.0,
-        "reasoning": "explain your decision in one sentence"
-        """
-        response, used_model = _generate_content_with_model_fallback(genai, [prompt, img_before, img_after], VISION_MODEL)
+        with Image.open(before_image_path) as img_before, Image.open(after_image_path) as img_after:
+            prompt = f"""
+            Compare these two photos representing a before and after state of a resolved issue: "{issue_type}".
+            Verify if the issue has been successfully resolved/fixed.
+            Return JSON with:
+            "status": "verified", "likely_verified", "uncertain", or "not_verified",
+            "confidence": float 0.0 to 1.0,
+            "reasoning": "explain your decision in one sentence"
+            """
+            response, used_model = _generate_content_with_model_fallback(client, [prompt, img_before, img_after], VISION_MODEL)
         parsed = json.loads(_strip_json_fences(response.text))
         parsed["provider"] = "gemini"
         parsed["model"] = VISION_MODEL
@@ -540,9 +572,7 @@ def detect_and_translate(text: str) -> dict:
     key = _get_gemini_api_key()
     if key:
         try:
-            import google.generativeai as genai
-            import json
-            genai.configure(api_key=key)
+            client = _get_gemini_client(key)
             prompt = f"""
             Analyze the following text from a civic complaint:
             "{text}"
@@ -554,7 +584,7 @@ def detect_and_translate(text: str) -> dict:
             "translated_text": "the translated text in English",
             "confidence": float 0.0 to 1.0
             """
-            response, used_model = _generate_content_with_model_fallback(genai, prompt, VISION_MODEL)
+            response, used_model = _generate_content_with_model_fallback(client, prompt, VISION_MODEL)
             parsed = json.loads(_strip_json_fences(response.text))
             return {
                 "original_text": text,
@@ -596,8 +626,7 @@ def generate_officer_briefing(stats: dict) -> str:
     key = _get_gemini_api_key()
     if key:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=key)
+            client = _get_gemini_client(key)
             prompt = f"""
             Synthesize a brief, professional daily briefing (maximum 150 words) for the on-duty civic officer based on these metrics:
             - Active emergencies: {stats.get('emergency_count', 0)}
@@ -609,7 +638,7 @@ def generate_officer_briefing(stats: dict) -> str:
             
             Focus on immediate priorities, resource coordination, and urgent recommendations.
             """
-            response, used_model = _generate_content_with_model_fallback(genai, prompt, VISION_MODEL)
+            response, used_model = _generate_content_with_model_fallback(client, prompt, VISION_MODEL)
             return response.text.strip()
         except Exception as e:
             print(f"[AI Service] Gemini generate_officer_briefing exception: {e}")
@@ -636,9 +665,7 @@ def parse_search_query(query: str) -> dict:
     key = _get_gemini_api_key()
     if key:
         try:
-            import google.generativeai as genai
-            import json
-            genai.configure(api_key=key)
+            client = _get_gemini_client(key)
             prompt = f"""
             Analyze this natural language search query for civic issues:
             "{query}"
@@ -653,7 +680,7 @@ def parse_search_query(query: str) -> dict:
             "status": "submitted" | "ai_reviewed" | "officer_reviewed" | "assigned" | "work_started" | "work_completed" | "closed" | "reopened" | null,
             "department": "roads" | "water_supply" | "electrical" | "sanitation" | "drainage" | null
             """
-            response, used_model = _generate_content_with_model_fallback(genai, prompt, VISION_MODEL)
+            response, used_model = _generate_content_with_model_fallback(client, prompt, VISION_MODEL)
             parsed = json.loads(_strip_json_fences(response.text))
             res = {k: v for k, v in parsed.items() if v is not None}
             if "ward" in res and res["ward"]:
@@ -729,9 +756,8 @@ def answer_analytics_question(question: str, context_stats: dict) -> str:
     
     if api_key:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            response, used_model = _generate_content_with_model_fallback(genai, prompt, VISION_MODEL)
+            client = _get_gemini_client(api_key)
+            response, used_model = _generate_content_with_model_fallback(client, prompt, VISION_MODEL)
             if response and response.text:
                 return response.text.strip()
         except Exception as e:

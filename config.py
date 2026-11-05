@@ -95,8 +95,8 @@ class Config:
     ALLOWED_EXTENSIONS    = {"jpg", "jpeg", "png", "webp"}
     ALLOWED_MIME_TYPES    = ["image/jpeg", "image/png", "image/webp"]
     
-    # SLA
-    SLA_HOURS             = {"critical": 4, "high": 24, "medium": 72, "low": 168}
+    # Canonical SLA Table (P0: 1h, P1: 4h, P2: 24h, P3: 72h)
+    SLA_HOURS             = {"P0": 1, "P1": 4, "P2": 24, "P3": 72, "critical": 1, "high": 4, "medium": 24, "low": 72}
     SLA_CHECK_INTERVAL    = 900  # 15 minutes
     
     # Duplicate detection
@@ -110,6 +110,22 @@ class Config:
     VISION_ENABLED           = os.getenv("VISION_ENABLED", "false").lower() == "true"
     YOLO_MODEL_PATH          = os.getenv("YOLO_MODEL_PATH", "ml/models/road_damage_v1.onnx")
     YOLO_CONFIDENCE_THRESHOLD = 0.40
+
+    # Master Implementation Plan Feature Flags (Default OFF)
+    AI_LOCAL_TEXT_ENABLED       = os.getenv("AI_LOCAL_TEXT_ENABLED", "false").lower() == "true"
+    AI_LOCAL_DETECTOR_ENABLED   = os.getenv("AI_LOCAL_DETECTOR_ENABLED", "false").lower() == "true"
+    AI_EMBED_DUPLICATES_ENABLED = os.getenv("AI_EMBED_DUPLICATES_ENABLED", "false").lower() == "true"
+    AI_IMAGE_GATE_ENABLED       = os.getenv("AI_IMAGE_GATE_ENABLED", "false").lower() == "true"
+    AI_REPAIR_V2_ENABLED        = os.getenv("AI_REPAIR_V2_ENABLED", "false").lower() == "true"
+    AI_ML_PRIORITY_SHADOW       = os.getenv("AI_ML_PRIORITY_SHADOW", "false").lower() == "true"
+
+    # Phase 3: Image Trust Gate Constants
+    IMAGE_GATE_MIN_WIDTH              = int(os.getenv("IMAGE_GATE_MIN_WIDTH", "320"))
+    IMAGE_GATE_MIN_HEIGHT             = int(os.getenv("IMAGE_GATE_MIN_HEIGHT", "240"))
+    IMAGE_GATE_BLUR_THRESHOLD         = float(os.getenv("IMAGE_GATE_BLUR_THRESHOLD", "80.0"))
+    IMAGE_GATE_DARK_THRESHOLD         = float(os.getenv("IMAGE_GATE_DARK_THRESHOLD", "35.0"))
+    IMAGE_GATE_OVEREXPOSED_THRESHOLD  = float(os.getenv("IMAGE_GATE_OVEREXPOSED_THRESHOLD", "235.0"))
+    IMAGE_GATE_HASH_HAMMING_THRESHOLD = int(os.getenv("IMAGE_GATE_HASH_HAMMING_THRESHOLD", "5"))
     
     # Routing
     ROUTING_ENGINE_URL       = os.getenv("ROUTING_ENGINE_URL", "http://router.project-osrm.org/route/v1/driving/")

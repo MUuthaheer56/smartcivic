@@ -7,7 +7,7 @@ from routes.auth import hash_password, check_password, generate_tokens, decode_t
 from bson import ObjectId
 from datetime import datetime
 
-VALID_ROLES = {"resident", "officer", "worker"}
+VALID_ROLES = {"citizen", "resident", "officer", "worker"}
 
 def register_user(email: str, password: str, role: str, name: str) -> dict:
     if not email or not password or not role or not name:

@@ -43,8 +43,12 @@ def run_real_vision_test():
     api_key = os.getenv("GEMINI_API_KEY")
     api_configured = bool(api_key and len(api_key.strip()) > 5)
     
-    import google.generativeai as genai
-    sdk_version = getattr(genai, '__version__', 'unknown')
+    try:
+        from google import genai
+        sdk_version = f"google-genai {getattr(genai, '__version__', 'unknown')}"
+    except ImportError:
+        import google.generativeai as genai
+        sdk_version = f"google-generativeai {getattr(genai, '__version__', 'unknown')}"
     vision_model_name = os.getenv("GEMINI_VISION_MODEL", "gemini-1.5-flash")
 
     print(f"Fixture path:       {fixture_path}")

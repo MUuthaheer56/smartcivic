@@ -7,6 +7,7 @@ from bson import ObjectId
 from app import db, limiter
 from routes.auth import require_auth, require_role
 from services import assignment_service
+from models.issue import normalize_priority
 from utils import serialize, parse_object_id
 
 workers_api_bp = Blueprint('workers_api', __name__)
@@ -136,7 +137,7 @@ def get_worker_assigned_tasks():
                 "address": issue.get("address") or issue.get("location", {}).get("address", "Bengaluru, India")
             },
             "status": issue.get("status", "assigned"),
-            "priority": issue.get("priority") or issue.get("severity", "medium")
+            "priority": normalize_priority(issue.get("priority") or issue.get("severity"))
         })
         
     return jsonify({
@@ -202,7 +203,7 @@ def get_worker_tasks(worker_id):
                 "issue_id": iss.get("issue_id") or str(iss["_id"]),
                 "_id": str(iss["_id"]),
                 "description": iss.get("description"),
-                "priority": iss.get("priority") or iss.get("severity", "medium"),
+                "priority": normalize_priority(iss.get("priority") or iss.get("severity")),
                 "image_url": first_url,
                 "location": {
                     "latitude": i_lat,

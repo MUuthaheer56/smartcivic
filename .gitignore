@@ -30,3 +30,11 @@ seed_credentials.txt
 uploads/
 backups/
 *.onnx
+*.pt
+*.pth
+*.weights
+images for ml/
+ml/datasets/work/
+models_artifacts/road_detector/
+ml/reports/audit/visual_samples/
+runs/
