@@ -156,4 +156,5 @@ class Config:
     }
     
     DEBUG                 = False
-    COOKIE_SECURE         = os.getenv("COOKIE_SECURE", "false").lower() == "true"
+    _flask_env            = os.getenv("FLASK_ENV", os.getenv("ENV", "production")).lower()
+    COOKIE_SECURE         = os.getenv("COOKIE_SECURE", "false" if _flask_env == "development" else "true").lower() == "true"

@@ -64,7 +64,7 @@ CMD ["sh", "-c", \
         --graceful-timeout 30 \
         --keep-alive 5 \
         --bind 0.0.0.0:${PORT:-5000} \
-        --forwarded-allow-ips='*' \
+        --forwarded-allow-ips='${FORWARDED_ALLOW_IPS:-127.0.0.1}' \
         --proxy-protocol \
         --access-logfile - \
         --error-logfile - \

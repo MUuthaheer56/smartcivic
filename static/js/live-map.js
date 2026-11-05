@@ -9,9 +9,14 @@ const refreshIntervalMs = 15000;
 
 window.addEventListener("DOMContentLoaded", () => {
     liveMap = L.map("liveMap", { zoomControl: true }).setView(defaultMapCenter, 13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || document.documentElement.classList.contains('dark');
+    const tileUrl = isDark 
+        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+
+    L.tileLayer(tileUrl, {
         maxZoom: 19,
-        attribution: "&copy; OpenStreetMap contributors"
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
     }).addTo(liveMap);
 
     issueLayer = L.layerGroup().addTo(liveMap);
@@ -51,7 +56,7 @@ function renderIssues(issues) {
     list.innerHTML = "";
 
     if (!issues.length) {
-        list.innerHTML = '<div class="map-empty-state"><i class="fa-solid fa-check-circle"></i><span>No active reports in the public feed.</span></div>';
+        list.innerHTML = '<div class="map-empty-state"><i class="fa-solid fa-check-circle" style="color: var(--jewel-emerald, #0f9d6b);"></i><span>No active reports in the public feed.</span></div>';
         return;
     }
 
@@ -62,10 +67,10 @@ function renderIssues(issues) {
         const severity = String(issue.severity || "medium").toLowerCase();
         const marker = L.circleMarker([lat, lng], {
             radius: severity === "critical" ? 10 : 8,
-            color: severityColor(severity),
+            color: "#c9a227", // Imperial Gold accent ring
             fillColor: severityColor(severity),
-            fillOpacity: 0.78,
-            weight: 2
+            fillOpacity: 0.85,
+            weight: 1.5
         });
         marker.bindPopup(buildPopup(issue));
         marker.addTo(issueLayer);
@@ -73,7 +78,7 @@ function renderIssues(issues) {
         const item = document.createElement("button");
         item.type = "button";
         item.className = "map-issue-item";
-        item.innerHTML = `<span class="severity-dot severity-${escapeHtml(severity)}"></span><span><strong>${escapeHtml(issue.category || "Civic report")}</strong><small>${escapeHtml(issue.ward || "Location unavailable")} · ${escapeHtml(issue.status || "active")}</small></span>`;
+        item.innerHTML = `<span class="severity-dot severity-${escapeHtml(severity)}"></span><span><strong>${escapeHtml(issue.category || "Civic report")}</strong><small>${escapeHtml(issue.ward || "Location unavailable")} &bull; ${escapeHtml(issue.status || "active")}</small></span>`;
         item.addEventListener("click", () => {
             liveMap.setView([lat, lng], Math.max(liveMap.getZoom(), 15));
             marker.openPopup();
@@ -83,33 +88,39 @@ function renderIssues(issues) {
 }
 
 function buildPopup(issue) {
-    return `<div class="map-popup"><strong>${escapeHtml(issue.category || "Civic report")}</strong><span>${escapeHtml(issue.status || "active")} · ${escapeHtml(issue.severity || "medium")}</span><small>${escapeHtml(issue.ward || "Ward unavailable")} · ${issue.confirmation_count || 0} confirmations</small></div>`;
+    return `<div class="map-popup"><strong>${escapeHtml(issue.category || "Civic report")}</strong><span>${escapeHtml(issue.status || "active")} &bull; ${escapeHtml(issue.severity || "medium")}</span><small>${escapeHtml(issue.ward || "Ward unavailable")} &bull; ${issue.confirmation_count || 0} confirmations</small></div>`;
 }
 
 function locateMapUser() {
     const button = document.getElementById("locateMapButton");
     const note = document.getElementById("locationNote");
     if (!navigator.geolocation) {
-        note.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Location is not supported by this browser.';
+        note.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color: var(--jewel-ruby, #d1264a);"></i> Location is not supported by this browser.';
         return;
     }
 
     button.disabled = true;
-    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finding you';
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Locating';
     navigator.geolocation.getCurrentPosition(
         ({ coords }) => {
             const position = [coords.latitude, coords.longitude];
             if (userLocationMarker) userLocationMarker.remove();
             if (userAccuracyCircle) userAccuracyCircle.remove();
             userLocationMarker = L.marker(position).addTo(liveMap).bindPopup("You are here").openPopup();
-            userAccuracyCircle = L.circle(position, { radius: coords.accuracy, color: "#0ea5e9", fillColor: "#38bdf8", fillOpacity: 0.16, weight: 1 }).addTo(liveMap);
+            userAccuracyCircle = L.circle(position, { 
+                radius: coords.accuracy, 
+                color: "#c9a227", // Imperial Gold accent ring
+                fillColor: "#6d28d9", // Royal Purple halo
+                fillOpacity: 0.15, 
+                weight: 1.5 
+            }).addTo(liveMap);
             liveMap.setView(position, 16);
-            note.innerHTML = '<i class="fa-solid fa-location-dot"></i> Your location is shown on this device only.';
+            note.innerHTML = '<i class="fa-solid fa-location-dot" style="color: var(--accent-gold, #c9a227);"></i> Your location is shown on this device only.';
             resetLocateButton(button);
         },
         (error) => {
             const message = error.code === error.PERMISSION_DENIED ? "Location permission was denied." : "Your location could not be detected.";
-            note.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${message}`;
+            note.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--jewel-ruby, #d1264a);"></i> ${message}`;
             resetLocateButton(button);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
@@ -122,7 +133,13 @@ function resetLocateButton(button) {
 }
 
 function severityColor(severity) {
-    return { critical: "#dc2626", high: "#ea580c", medium: "#0284c7", low: "#059669" }[severity] || "#64748b";
+    // Royal Civic Jewel Palette
+    return { 
+        critical: "#d1264a", // Jewel Ruby
+        high: "#e0701a",     // Burnt Orange
+        medium: "#d99a1a",   // Amber Gold
+        low: "#0f9d6b"       // Jewel Emerald
+    }[severity] || "#6b6a8a"; // Slate Violet default
 }
 
 function escapeHtml(value) {

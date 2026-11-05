@@ -1,98 +1,110 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="max-width: 480px; margin: 3rem auto; padding: 2.5rem;" class="glass-panel">
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <div style="width: 64px; height: 64px; background: rgba(34, 197, 94, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; border: 1px solid var(--primary);">
-            <i class="fa-solid fa-building-shield" style="font-size: 1.8rem; color: var(--primary);"></i>
+<div class="auth-container" style="max-width: 520px; margin: 3.5rem auto;">
+    <div class="auth-card" style="position: relative; overflow: hidden;">
+        <div
+            style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent-gold-dark), var(--accent-gold), var(--primary-light), var(--accent-gold));">
         </div>
-        <h2 style="font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; margin-bottom: 0.5rem;">Verify Your Ward</h2>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">
-            Please enter your ward area code to verify your account before submitting complaints.
-        </p>
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div
+                style="width: 68px; height: 68px; background: var(--gold-subtle); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; border: 1.5px solid var(--accent-gold); box-shadow: 0 0 24px rgba(201, 162, 39, 0.2);">
+                <i class="fa-solid fa-building-shield" style="font-size: 1.85rem; color: var(--accent-gold-dark);"></i>
+            </div>
+            <h2
+                style="font-family: var(--font-display); font-weight: 700; font-size: 1.75rem; letter-spacing: -0.02em; margin-bottom: 0.6rem; color: var(--text-main);">
+                Verify Ward Jurisdiction</h2>
+            <p
+                style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; max-width: 420px; margin: 0 auto;">
+                Please authenticate your municipal ward code to activate full civic privileges and verified routing.
+            </p>
+        </div>
+
+        <div id="verifyAlert"
+            style="display: none; padding: 0.85rem 1.15rem; border-radius: var(--radius-sm); margin-bottom: 1.5rem; font-size: 0.88rem; font-weight: 500;">
+        </div>
+
+        <form id="verifyWardForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="form-label"
+                    style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; letter-spacing: 0.02em;">
+                    OFFICIAL WARD AREA CODE
+                </label>
+                <div style="position: relative;">
+                    <input type="text" id="areaCodeInput" class="form-control" placeholder="e.g. KOR-017 or WARD101"
+                        required
+                        style="width: 100%; padding: 0.85rem 1rem; border-radius: var(--radius-sm); font-size: 1.1rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600;">
+                </div>
+                <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 0.5rem;">
+                    Obtain your designated jurisdictional code (e.g., KOR-017, JNR-015, TST-0000) from your Ward Officer
+                    or Municipal Portal.
+                </small>
+            </div>
+
+            <button type="submit" class="btn btn-primary"
+                style="width: 100%; padding: 0.9rem; font-weight: 600; border-radius: var(--radius-sm); font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.6rem;">
+                <i class="fa-solid fa-circle-check" style="color: var(--accent-gold);"></i> Verify Ward & Continue
+            </button>
+        </form>
     </div>
-
-    <div id="verifyAlert" style="display: none; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; font-size: 0.85rem;"></div>
-
-    <form id="verifyWardForm">
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label class="form-label" style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem;">
-                Ward Area Code
-            </label>
-            <input type="text" id="areaCodeInput" class="form-control" placeholder="e.g. KOR-017 or WARD101" required
-                   style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; color: white; font-size: 1.1rem; letter-spacing: 1px; text-transform: uppercase;">
-            <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
-                Ask your ward officer for your ward's official area code (e.g., KOR-017, JNR-015, TST-0000).
-            </small>
-        </div>
-
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-weight: 700; border-radius: 8px; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-            <i class="fa-solid fa-circle-check"></i> Verify Ward & Continue
-        </button>
-    </form>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('verifyWardForm');
-    const alertBox = document.getElementById('verifyAlert');
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('verifyWardForm');
+        const alertBox = document.getElementById('verifyAlert');
 
-    form.addEventListener('submit', async function (e) {
-        e.preventDefault();
-        const areaCode = document.getElementById('areaCodeInput').value.trim().toUpperCase();
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const areaCode = document.getElementById('areaCodeInput').value.trim().toUpperCase();
 
-        if (!areaCode) return;
+            if (!areaCode) return;
 
-        try {
-            const token = sessionStorage.getItem('sc_access_token') || localStorage.getItem('sc_access_token');
-            const headers = {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            };
+            try {
+                const res = await fetch('/api/auth/verify-ward', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ area_code: areaCode })
+                });
 
-            const res = await fetch('/api/auth/verify-ward', {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ area_code: areaCode })
-            });
+                const data = await res.json();
 
-            const data = await res.json();
+                if (res.ok) {
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = 'rgba(15, 157, 107, 0.12)';
+                    alertBox.style.border = '1px solid var(--jewel-emerald)';
+                    alertBox.style.color = 'var(--jewel-emerald)';
+                    alertBox.innerHTML = `<i class="fa-solid fa-circle-check"></i> Ward authenticated. Assigned to <strong>${data.ward_name || data.ward_id}</strong>. Redirecting...`;
 
-            if (res.ok) {
+                    // Update local storage user state
+                    try {
+                        const stored = JSON.parse(localStorage.getItem('sc_user') || '{}');
+                        stored.verified = true;
+                        stored.status = 'active';
+                        stored.ward_id = data.ward_id;
+                        localStorage.setItem('sc_user', JSON.stringify(stored));
+                    } catch { }
+
+                    setTimeout(() => {
+                        window.location.href = '/citizen/dashboard';
+                    }, 1500);
+                } else {
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = 'rgba(209, 38, 74, 0.12)';
+                    alertBox.style.border = '1px solid var(--jewel-ruby)';
+                    alertBox.style.color = 'var(--jewel-ruby)';
+                    alertBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${data.error || data.message || 'Invalid area code. Please check with your ward officer.'}`;
+                }
+            } catch (err) {
+                console.error(err);
                 alertBox.style.display = 'block';
-                alertBox.style.background = 'rgba(34, 197, 94, 0.15)';
-                alertBox.style.border = '1px solid var(--primary)';
-                alertBox.style.color = '#22c55e';
-                alertBox.textContent = `✓ Ward verified successfully! Assigned to ${data.ward_name || data.ward_id}. Redirecting...`;
-
-                // Update local storage user state
-                try {
-                    const stored = JSON.parse(localStorage.getItem('sc_user') || '{}');
-                    stored.verified = true;
-                    stored.status = 'active';
-                    stored.ward_id = data.ward_id;
-                    localStorage.setItem('sc_user', JSON.stringify(stored));
-                } catch {}
-
-                setTimeout(() => {
-                    window.location.href = '/citizen/dashboard';
-                }, 1500);
-            } else {
-                alertBox.style.display = 'block';
-                alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
-                alertBox.style.border = '1px solid var(--danger)';
-                alertBox.style.color = '#ef4444';
-                alertBox.textContent = data.error || data.message || 'Invalid area code. Please check with your ward officer.';
+                alertBox.style.background = 'rgba(209, 38, 74, 0.12)';
+                alertBox.style.border = '1px solid var(--jewel-ruby)';
+                alertBox.style.color = 'var(--jewel-ruby)';
+                alertBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Network communication failure. Please re-attempt.';
             }
-        } catch (err) {
-            console.error(err);
-            alertBox.style.display = 'block';
-            alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
-            alertBox.style.border = '1px solid var(--danger)';
-            alertBox.style.color = '#ef4444';
-            alertBox.textContent = 'Network error. Please try again.';
-        }
+        });
     });
-});
 </script>
 {% endblock %}

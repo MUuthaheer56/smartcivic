@@ -1,33 +1,109 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    .auth-container {
+        max-width: 480px;
+        margin: 3.5rem auto;
+        padding: 2.75rem 2.25rem;
+        background: var(--sc-card);
+        border: 1px solid var(--sc-card-border);
+        border-top: 4px solid var(--royal-gold-500, #c9a227);
+        border-radius: var(--radius-xl, 20px);
+        box-shadow: var(--shadow-xl);
+        position: relative;
+    }
+
+    .auth-kicker {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--royal-gold-600);
+        text-align: center;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+    }
+
+    html.dark .auth-kicker {
+        color: var(--royal-gold-400);
+    }
+
+    .auth-title {
+        font-family: var(--font-heading);
+        font-weight: 700;
+        font-size: 2rem;
+        margin-bottom: 0.35rem;
+        text-align: center;
+        color: var(--sc-text);
+        letter-spacing: -0.02em;
+    }
+
+    .auth-subtitle {
+        color: var(--sc-muted);
+        text-align: center;
+        margin-bottom: 2rem;
+        font-size: 0.95rem;
+        line-height: 1.45;
+    }
+
+    .auth-footer {
+        margin-top: 1.75rem;
+        text-align: center;
+        font-size: 0.92rem;
+        color: var(--sc-muted);
+    }
+
+    .auth-footer a {
+        color: var(--royal-gold-600);
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    html.dark .auth-footer a {
+        color: var(--royal-gold-400);
+    }
+
+    .auth-footer a:hover {
+        text-decoration: underline;
+    }
+</style>
 <section class="auth-shell">
-<div class="glass-panel auth-container">
-    <div class="auth-kicker"><i class="fa-solid fa-shield-halved"></i> Secure civic access</div>
-    <h1 class="auth-title">Welcome back</h1>
-    <p class="auth-subtitle">Sign in to report issues, follow progress, or manage your ward.</p>
-    
-    <form id="loginForm">
-        <div class="form-group">
-            <label class="form-label" for="email">Email address</label>
-            <input type="email" id="email" class="form-control" placeholder="you@example.com" autocomplete="email" required>
-        </div>
-        <div class="form-group">
-            <div class="form-label-row">
-                <label class="form-label" for="password">Password</label>
+    <div class="glass-panel auth-container">
+        <div class="auth-kicker"><i class="fa-solid fa-shield-halved"></i> SECURE CIVIC ACCESS</div>
+        <h1 class="auth-title">Welcome Back</h1>
+        <p class="auth-subtitle">Sign in to report issues, follow jurisdictional triage, or dispatch municipal
+            personnel.</p>
+
+        <form id="loginForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label class="form-label" for="email">Email address</label>
+                <input type="email" id="email" class="form-control" placeholder="citizen@smartcivic.local"
+                    autocomplete="email" required>
             </div>
-            <div class="password-field">
-                <input type="password" id="password" class="form-control" placeholder="Enter your password" autocomplete="current-password" required>
-                <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password" title="Show password"><i class="fa-solid fa-eye"></i></button>
+            <div class="form-group">
+                <div class="form-label-row">
+                    <label class="form-label" for="password">Password</label>
+                </div>
+                <div class="password-field">
+                    <input type="password" id="password" class="form-control" placeholder="Enter your password"
+                        autocomplete="current-password" required>
+                    <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password"
+                        title="Show password"><i class="fa-solid fa-eye"></i></button>
+                </div>
             </div>
+            <button type="submit" class="btn btn-primary auth-submit" id="loginSubmit" style="width: 100%;"><i
+                    class="fa-solid fa-arrow-right-to-bracket" style="color: var(--accent-gold);"></i> Sign in</button>
+        </form>
+
+        <div class="auth-footer">
+            Don't have an account? <a href="/register">Create one</a>
         </div>
-        <button type="submit" class="btn btn-primary auth-submit" id="loginSubmit"><i class="fa-solid fa-arrow-right-to-bracket"></i> Sign in</button>
-    </form>
-    
-    <div class="auth-footer">
-        Don't have an account? <a href="/register">Create one</a>
     </div>
-</div>
 </section>
 {% endblock %}
 
@@ -50,7 +126,7 @@
         const password = passwordInput.value;
         submitButton.disabled = true;
         submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing in';
-        
+
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
             const headers = { 'Content-Type': 'application/json' };
@@ -63,7 +139,7 @@
                 body: JSON.stringify({ email, password })
             });
             const data = await res.json().catch(() => ({}));
-            
+
             if (data.success) {
                 showToast("Login successful!", "success");
                 const role = data.data.user.role;
@@ -79,7 +155,7 @@
             showToast("Server communication error.", "danger");
         } finally {
             submitButton.disabled = false;
-            submitButton.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign in';
+            submitButton.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket" style="color: var(--accent-gold);"></i> Sign in';
         }
     });
 </script>

@@ -33,7 +33,7 @@ def generate_tokens(user_id, role, ward="Ward 1"):
         "ward": ward,
         "type": "access",
         "jti": str(uuid.uuid4()),
-        "exp": now + timedelta(minutes=30)
+        "exp": now + timedelta(minutes=15)
     }
     refresh_payload = {
         "sub": str(user_id),

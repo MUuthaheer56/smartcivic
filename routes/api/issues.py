@@ -393,6 +393,7 @@ def get_duplicate_suggestions(id):
 @issues_api_bp.route('/api/issues/<id>/duplicate-confirm', methods=['POST'])
 @require_auth
 @verified_required
+@limiter.limit("20 per minute")
 def confirm_duplicate_link(id):
     """
     Citizen or officer confirms that issue <id> is a duplicate of target_issue_id.
@@ -1244,6 +1245,7 @@ def declare_issue_emergency(id):
 @require_auth
 @verified_required
 @require_role('citizen', 'resident')
+@limiter.limit("20 per minute")
 def confirm_issue(id):
     parsed_id = parse_object_id(id)
     if not parsed_id:
@@ -1695,6 +1697,7 @@ def submit_clarification(id):
 @issues_api_bp.route('/api/complaints/<id>/support', methods=['POST'])
 @require_auth
 @verified_required
+@limiter.limit("20 per minute")
 def support_complaint(id):
     user = g.current_user
     user_id = str(user["_id"])

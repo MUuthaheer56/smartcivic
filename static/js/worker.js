@@ -65,21 +65,23 @@ async function loadMyJobs() {
             data.data.forEach((job, index) => {
                 const isActiveJob = job.status === "work_started";
                 
+                const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
                 const card = document.createElement("div");
                 card.className = `job-card ${isActiveJob ? 'active' : ''}`;
+                const safeJobId = encodeURIComponent(String(job._id || ''));
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <strong style="font-size: 0.95rem;">Stop #${index + 1}: ${job.title}</strong>
-                        <span class="badge ${job.severity === 'critical' ? 'badge-critical' : 'badge-severity'}">${job.severity}</span>
+                        <strong style="font-size: 0.95rem;">Stop #${index + 1}: ${esc(job.title)}</strong>
+                        <span class="badge ${job.severity === 'critical' ? 'badge-critical' : 'badge-severity'}">${esc(job.severity)}</span>
                     </div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted);">${job.description}</div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted);"><i class="fa-solid fa-location-dot"></i> ${job.address}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">${esc(job.description)}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);"><i class="fa-solid fa-location-dot"></i> ${esc(job.address)}</div>
                     
                     <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                        <button onclick="drawRouteTo('${job._id}')" class="btn btn-secondary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;">
+                        <button onclick="drawRouteTo('${safeJobId}')" class="btn btn-secondary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;">
                             <i class="fa-solid fa-location-arrow"></i> Navigate
                         </button>
-                        <button onclick="openJobDetail('${job._id}')" class="btn btn-primary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;">
+                        <button onclick="openJobDetail('${safeJobId}')" class="btn btn-primary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;">
                             <i class="fa-solid fa-folder-open"></i> Open Detail
                         </button>
                     </div>

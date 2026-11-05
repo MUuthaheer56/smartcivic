@@ -87,7 +87,7 @@ def _print_gunicorn_help(port: int):
     print(f"        --threads ${{GUNICORN_THREADS:-32}} \\")
     print(f"        --timeout ${{GUNICORN_TIMEOUT:-120}} \\")
     print(f"        --bind 0.0.0.0:{port} \\")
-    print("        --forwarded-allow-ips='*' \\")
+    print("        --forwarded-allow-ips='${FORWARDED_ALLOW_IPS:-127.0.0.1}' \\")
     print("        --access-logfile - --error-logfile - \\")
     print("        --capture-output \\")
     print("        wsgi:app")

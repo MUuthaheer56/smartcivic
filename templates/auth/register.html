@@ -3,72 +3,72 @@
 {% block content %}
 <style>
     .auth-container {
-        max-width: 500px;
-        margin: 2rem auto;
-        padding: 2.5rem;
+        max-width: 520px;
+        margin: 2.5rem auto;
+        padding: 2.75rem 2.25rem;
+        background: var(--sc-card);
+        border: 1px solid var(--sc-card-border);
+        border-top: 4px solid var(--royal-gold-500, #c9a227);
+        border-radius: var(--radius-xl, 20px);
+        box-shadow: var(--shadow-xl);
     }
+
     .auth-title {
-        font-family: var(--font-display);
-        font-weight: 800;
-        font-size: 1.8rem;
-        margin-bottom: 0.5rem;
+        font-family: var(--font-heading);
+        font-weight: 700;
+        font-size: 2rem;
+        margin-bottom: 0.35rem;
         text-align: center;
+        color: var(--sc-text);
     }
+
     .auth-subtitle {
-        color: var(--text-muted);
+        color: var(--sc-muted);
         text-align: center;
         margin-bottom: 2rem;
         font-size: 0.95rem;
     }
+
     .form-group {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.35rem;
     }
-    .form-label {
-        display: block;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: var(--text-muted);
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .form-control {
-        width: 100%;
-        padding: 0.8rem 1rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        color: white;
-        font-family: var(--font-body);
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-    }
-    .form-control:focus {
-        outline: none;
-        border-color: var(--primary);
-        background: rgba(255, 255, 255, 0.08);
-    }
+
     .auth-footer {
-        margin-top: 1.5rem;
+        margin-top: 1.75rem;
         text-align: center;
-        font-size: 0.9rem;
-        color: var(--text-muted);
+        font-size: 0.92rem;
+        color: var(--sc-muted);
     }
+
     .auth-footer a {
-        color: var(--primary);
+        color: var(--royal-gold-600);
         text-decoration: none;
-        font-weight: 600;
+        font-weight: 700;
     }
+
+    html.dark .auth-footer a {
+        color: var(--royal-gold-400);
+    }
+
+    .auth-footer a:hover {
+        text-decoration: underline;
+    }
+
     #skillsGroup {
         display: none;
     }
 </style>
 
-<div class="glass-panel auth-container">
+<div class="auth-container">
+    <div
+        style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: var(--royal-gold-600); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 0.75rem;">
+        <i class="fa-solid fa-building-shield"></i> Municipal Citizen Register
+    </div>
     <h2 class="auth-title">Join SmartCivic+</h2>
-    <p class="auth-subtitle">Create your secure civic account</p>
-    
+    <p class="auth-subtitle">Create your verified resident or municipal personnel profile</p>
+
     <form id="registerForm" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label class="form-label">Full Name</label>
             <input type="text" id="name" name="name" class="form-control" placeholder="John Doe" required>
@@ -79,7 +79,8 @@
         </div>
         <div class="form-group">
             <label class="form-label">Password</label>
-            <input type="password" id="password" name="password" class="form-control" placeholder="Min. 6 characters" required>
+            <input type="password" id="password" name="password" class="form-control" placeholder="Min. 6 characters"
+                required>
         </div>
         <div class="form-group">
             <label class="form-label">Role</label>
@@ -95,19 +96,23 @@
         </div>
         <div class="form-group" id="docGroup">
             <label class="form-label">Verification Document (ID / Utility Bill - JPG, PNG, PDF)</label>
-            <input type="file" id="verification_doc" name="verification_doc" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
+            <input type="file" id="verification_doc" name="verification_doc" class="form-control"
+                accept=".jpg,.jpeg,.png,.pdf" required>
         </div>
         <div class="form-group" id="inviteCodeGroup" style="display: none;">
             <label class="form-label">Admin Invite Code (Required for Officers / Workers)</label>
-            <input type="text" id="inviteCode" name="invite_code" class="form-control" placeholder="Enter the configured staff invite code" autocomplete="off">
+            <input type="text" id="inviteCode" name="invite_code" class="form-control"
+                placeholder="Enter the configured staff invite code" autocomplete="off">
         </div>
         <div class="form-group" id="skillsGroup" style="display: none;">
             <label class="form-label">Skills (comma-separated list)</label>
-            <input type="text" id="skills" name="skills" class="form-control" placeholder="road_repair, electrical, sanitation, drainage">
+            <input type="text" id="skills" name="skills" class="form-control"
+                placeholder="road_repair, electrical, sanitation, drainage">
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;"><i class="fa-solid fa-user-plus"></i> Register</button>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;"><i
+                class="fa-solid fa-user-plus"></i> Register</button>
     </form>
-    
+
     <div class="auth-footer">
         Already have an account? <a href="/login">Sign in</a>
     </div>
@@ -121,7 +126,7 @@
         const skillsGroup = document.getElementById('skillsGroup');
         const inviteCodeGroup = document.getElementById('inviteCodeGroup');
         const docGroup = document.getElementById('docGroup');
-        
+
         if (role === 'worker') {
             skillsGroup.style.display = 'block';
             inviteCodeGroup.style.display = 'block';
@@ -142,7 +147,7 @@
         const form = document.getElementById('registerForm');
         const formData = new FormData(form);
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-        
+
         const headers = {};
         if (csrfToken) {
             headers['X-CSRFToken'] = csrfToken;
@@ -155,7 +160,7 @@
                 body: formData
             });
             const data = await res.json();
-            
+
             if (data.success) {
                 showToast("Registration successful! Pending verification.", "success");
                 setTimeout(() => {

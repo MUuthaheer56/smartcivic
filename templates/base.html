@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
@@ -9,12 +10,13 @@
     <meta name="format-detection" content="telephone=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <!-- Premium Fonts & Icons -->
 
+    <!-- Premium Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <link rel="stylesheet" href="/static/css/main.css">
@@ -23,51 +25,56 @@
     <script src="/static/js/i18n.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="/static/js/location.js" defer></script>
-    
+
     <style>
-        :root, html.dark {
-            --bg-base: #0b0f19;
-            --bg-gradient: radial-gradient(circle at 10% 20%, rgba(34, 197, 94, 0.12) 0%, transparent 40%),
-                           radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.12) 0%, transparent 40%);
-            --bg-surface: rgba(17, 24, 39, 0.75);
-            --bg-surface-solid: #111827;
-            --header-bg: rgba(15, 23, 42, 0.85);
-            --primary: #22c55e;
-            --primary-hover: #16a34a;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --critical: #8b5cf6;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border-color: rgba(255, 255, 255, 0.1);
-            --input-bg: rgba(255, 255, 255, 0.05);
-            --input-text: #ffffff;
-            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+        :root,
+        html.light,
+        html[data-theme="light"] {
+            --bg-base: #faf8f3;
+            --bg-gradient: radial-gradient(circle at 12% 15%, rgba(76, 29, 149, 0.04) 0%, transparent 45%),
+                radial-gradient(circle at 88% 85%, rgba(201, 162, 39, 0.05) 0%, transparent 50%);
+            --bg-surface: rgba(255, 255, 255, 0.95);
+            --bg-surface-solid: #ffffff;
+            --header-bg: linear-gradient(135deg, #0b1437 0%, #111c4e 100%);
+            --primary: #6d28d9;
+            --primary-hover: #5b21b6;
+            --success: #0f9d6b;
+            --warning: #d99a1a;
+            --danger: #d1264a;
+            --critical: #d1264a;
+            --text-main: #14112b;
+            --text-muted: #5b5a72;
+            --border-color: #e7e3f0;
+            --input-bg: #ffffff;
+            --input-text: #14112b;
+            --card-shadow: 0 10px 28px -4px rgba(76, 29, 149, 0.09), 0 4px 12px -2px rgba(76, 29, 149, 0.04);
             --glass-blur: 16px;
-            --font-display: 'Plus Jakarta Sans', sans-serif;
-            --font-body: 'Inter', sans-serif;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-body: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+            --royal-gold: #c9a227;
+            --royal-gold-light: #e7c76a;
         }
 
-        html.light {
-            --bg-base: #f8fafc;
-            --bg-gradient: radial-gradient(circle at 10% 20%, rgba(34, 197, 94, 0.08) 0%, transparent 50%),
-                           radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 50%);
-            --bg-surface: rgba(255, 255, 255, 0.9);
-            --bg-surface-solid: #ffffff;
-            --header-bg: rgba(255, 255, 255, 0.9);
-            --primary: #16a34a;
-            --primary-hover: #15803d;
-            --success: #059669;
-            --warning: #d97706;
-            --danger: #dc2626;
-            --critical: #7c3aed;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border-color: rgba(0, 0, 0, 0.1);
-            --input-bg: #f1f5f9;
-            --input-text: #0f172a;
-            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        html.dark,
+        html[data-theme="dark"] {
+            --bg-base: #0a0f2c;
+            --bg-gradient: radial-gradient(circle at 12% 15%, rgba(109, 40, 217, 0.16) 0%, transparent 50%),
+                radial-gradient(circle at 88% 85%, rgba(201, 162, 39, 0.08) 0%, transparent 50%);
+            --bg-surface: rgba(18, 26, 69, 0.88);
+            --bg-surface-solid: #121a45;
+            --header-bg: linear-gradient(135deg, #070b24 0%, #0d163d 100%);
+            --primary: #7c3aed;
+            --primary-hover: #6d28d9;
+            --success: #0f9d6b;
+            --warning: #d99a1a;
+            --danger: #d1264a;
+            --critical: #d1264a;
+            --text-main: #f3f1ff;
+            --text-muted: #9e9bc2;
+            --border-color: rgba(109, 40, 217, 0.28);
+            --input-bg: #0e153b;
+            --input-text: #ffffff;
+            --card-shadow: 0 12px 32px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(109, 40, 217, 0.2);
             --glass-blur: 16px;
         }
 
@@ -83,10 +90,10 @@
             background-attachment: fixed;
             color: var(--text-main);
             font-family: var(--font-body);
-            line-height: 1.5;
+            line-height: 1.6;
             min-height: 100vh;
             overflow-x: hidden;
-            transition: background-color 0.3s ease, color 0.3s ease;
+            transition: background-color 0.25s ease, color 0.25s ease;
         }
 
         /* Glassmorphism Styles */
@@ -97,64 +104,116 @@
             border: 1px solid var(--border-color);
             border-radius: 16px;
             box-shadow: var(--card-shadow);
-            transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
         }
 
         header {
-            height: 70px;
+            height: 72px;
             padding: 0 2rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid rgba(201, 162, 39, 0.38);
             background: var(--header-bg);
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             position: sticky;
             top: 0;
             z-index: 1000;
+            box-shadow: 0 4px 20px rgba(11, 20, 55, 0.25);
             transition: background-color 0.3s ease, border-color 0.3s ease;
         }
 
         .logo {
             font-family: var(--font-display);
-            font-weight: 800;
-            font-size: 1.5rem;
-            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1.45rem;
+            color: #faf8f3 !important;
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.65rem;
+            letter-spacing: -0.01em;
         }
 
-        .logo span {
-            color: var(--primary);
+        .royal-crest-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 2px 6px rgba(201, 162, 39, 0.5));
+        }
+
+        .logo span.brand-plus {
+            color: #e7c76a;
+            font-weight: 800;
         }
 
         .nav-links {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 1.25rem;
+        }
+
+        .nav-link {
+            color: rgba(250, 248, 243, 0.85) !important;
+            text-decoration: none;
+            font-size: 0.92rem;
+            font-weight: 500;
+            padding: 0.4rem 0.6rem;
+            position: relative;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover {
+            color: #e7c76a !important;
+        }
+
+        .nav-link.active,
+        .nav-links a.active {
+            color: #e7c76a !important;
+            font-weight: 600;
+        }
+
+        .nav-link.active::after,
+        .nav-links a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0.6rem;
+            right: 0.6rem;
+            height: 2px;
+            background: linear-gradient(90deg, #c9a227, #e7c76a);
+            border-radius: 2px;
+            box-shadow: 0 0 8px rgba(231, 199, 106, 0.8);
         }
 
         .nav-user {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            font-size: 0.9rem;
-            color: var(--text-muted);
+            gap: 0.55rem;
+            font-size: 0.88rem;
+            color: rgba(250, 248, 243, 0.8);
+            background: rgba(255, 255, 255, 0.08);
+            padding: 0.35rem 0.85rem;
+            border-radius: 9999px;
+            border: 1px solid rgba(201, 162, 39, 0.25);
+        }
+
+        .nav-user i {
+            color: #e7c76a;
         }
 
         .btn {
             min-height: 44px;
             min-width: 44px;
-            padding: 0.6rem 1.2rem;
-            border-radius: 8px;
-            font-family: var(--font-display);
+            padding: 0.65rem 1.35rem;
+            border-radius: 12px;
+            font-family: var(--font-body);
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             border: none;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
             text-decoration: none;
             display: inline-flex;
             align-items: center;
@@ -162,30 +221,55 @@
             gap: 0.5rem;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
+            letter-spacing: 0.01em;
         }
 
         .btn-primary {
-            background: var(--primary);
-            color: white;
+            background: linear-gradient(135deg, #4c1d95 0%, #3730a3 100%);
+            color: #ffffff !important;
+            border: 1px solid rgba(231, 199, 106, 0.35);
+            box-shadow: 0 4px 16px rgba(76, 29, 149, 0.3);
         }
 
         .btn-primary:hover {
-            background: var(--primary-hover);
-            transform: translateY(-1px);
+            background: linear-gradient(135deg, #5b21b6 0%, #4338ca 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(76, 29, 149, 0.45);
+            border-color: #e7c76a;
+        }
+
+        .btn-primary:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.55), 0 6px 20px rgba(76, 29, 149, 0.35);
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-main);
-            border: 1px solid var(--border-color);
+            background: rgba(201, 162, 39, 0.08);
+            color: var(--text-main) !important;
+            border: 1px solid rgba(201, 162, 39, 0.45);
+        }
+
+        header .btn-secondary,
+        .navbar .btn-secondary {
+            color: #faf8f3 !important;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(201, 162, 39, 0.4);
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(201, 162, 39, 0.18);
+            border-color: #c9a227;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(201, 162, 39, 0.2);
+        }
+
+        .btn-secondary:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.4);
         }
 
         main {
-            padding: 2rem;
+            padding: 2.25rem 2rem;
             max-width: 1400px;
             margin: 0 auto;
         }
@@ -209,7 +293,7 @@
             padding: 1rem 1.5rem;
             border-radius: 8px;
             color: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             pointer-events: auto;
             animation: slideIn 0.3s ease forwards;
             display: flex;
@@ -219,19 +303,38 @@
         }
 
         @keyframes slideIn {
-            from { transform: translateX(120%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from {
+                transform: translateX(120%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         /* ── Inputs + tap targets (WCAG 2.2 / Apple HIG >= 44px) ── */
-        input[type="text"], input[type="email"], input[type="password"],
-        input[type="number"], input[type="tel"], input[type="url"],
-        input[type="search"], input[type="date"], input[type="file"],
-        select, textarea, label[for] {
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="url"],
+        input[type="search"],
+        input[type="date"],
+        input[type="file"],
+        select,
+        textarea,
+        label[for] {
             min-height: 44px;
-            font-size: 16px;           /* prevents iOS Safari zoom-on-focus */
+            font-size: 16px;
+            /* prevents iOS Safari zoom-on-focus */
         }
-        select, input, textarea {
+
+        select,
+        input,
+        textarea {
             max-width: 100%;
         }
 
@@ -244,6 +347,7 @@
             font-size: 1.5rem;
             padding: 0 0.75rem;
         }
+
         #navMenuToggle:focus-visible {
             outline: 2px solid var(--primary);
             outline-offset: 2px;
@@ -258,18 +362,22 @@
                 gap: 0.5rem;
                 flex-wrap: wrap;
             }
+
             main {
                 padding: 1rem 1rem calc(2rem + env(safe-area-inset-bottom));
             }
+
             .logo {
                 font-size: 1.2rem;
                 flex: 1 1 auto;
             }
+
             #navMenuToggle {
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
             }
+
             .nav-links {
                 display: none;
                 width: 100%;
@@ -279,9 +387,11 @@
                 padding: 0.75rem 0 1rem;
                 border-top: 1px solid var(--border-color);
             }
+
             .nav-links.open {
                 display: flex;
             }
+
             .nav-links .nav-link,
             .nav-links .btn,
             .nav-links .notification-bell,
@@ -291,16 +401,19 @@
                 min-height: 48px;
                 padding: 0.6rem 0.75rem;
             }
+
             .nav-links #notifDropdown {
                 position: static !important;
                 width: 100% !important;
                 margin-top: 0.25rem;
             }
+
             .toast-container {
                 left: 1rem;
                 right: 1rem;
                 top: calc(72px + env(safe-area-inset-top));
             }
+
             .toast {
                 min-width: 0;
             }
@@ -308,39 +421,65 @@
     </style>
     {% block extra_head %}{% endblock %}
 </head>
+
 <body>
     <header>
         <a href="/" class="logo">
-            <i class="fa-solid fa-building-shield"></i> SmartCivic<span>+</span>
+            <span class="royal-crest-mark" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="url(#goldGrad)" stroke="#c9a227"
+                        stroke-width="1.5" />
+                    <path d="M9 12l2 2 4-4" stroke="#0b1437" stroke-width="2.2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <defs>
+                        <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#f4df9b" />
+                            <stop offset="50%" stop-color="#e7c76a" />
+                            <stop offset="100%" stop-color="#c9a227" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </span>
+            <span>SmartCivic<span class="brand-plus">+</span></span>
         </a>
-        <button type="button" id="navMenuToggle" onclick="toggleNavMenu()" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navLinks">
+        <button type="button" id="navMenuToggle" onclick="toggleNavMenu()" aria-label="Toggle navigation menu"
+            aria-expanded="false" aria-controls="navLinks">
             <i class="fa-solid fa-bars"></i>
         </button>
         <div class="nav-links" id="navLinks">
-            <button onclick="toggleTheme()" class="btn btn-secondary" title="Toggle Theme" id="themeToggleBtn" style="padding: 0.6rem 0.8rem;">
+            <button onclick="toggleTheme()" class="btn btn-secondary" title="Toggle Theme" id="themeToggleBtn"
+                style="padding: 0.6rem 0.8rem;">
                 <i class="fa-solid fa-moon"></i>
             </button>
-                <a href="/map" class="nav-link"><i class="fa-solid fa-map-location-dot"></i> Live map</a>
+            <a href="/map" class="nav-link"><i class="fa-solid fa-map-location-dot"></i> Live map</a>
             {% if g.current_user %}
-                <div class="notification-bell" style="position: relative; cursor: pointer; display: flex; align-items: center;" onclick="toggleNotifications()">
-                    <i class="fa-solid fa-bell" style="font-size: 1.2rem; color: var(--text-main);"></i>
-                    <span id="notifBadge" style="display:none; position:absolute; top:-6px; right:-8px; background:var(--danger); color:white; border-radius:50%; width:18px; height:18px; font-size:0.7rem; font-weight: 700; align-items:center; justify-content:center;">0</span>
+            <div class="notification-bell"
+                style="position: relative; cursor: pointer; display: flex; align-items: center;"
+                onclick="toggleNotifications()">
+                <i class="fa-solid fa-bell" style="font-size: 1.2rem; color: #faf8f3;"></i>
+                <span id="notifBadge"
+                    style="display:none; position:absolute; top:-6px; right:-8px; background:var(--danger); color:white; border-radius:50%; width:18px; height:18px; font-size:0.7rem; font-weight: 700; align-items:center; justify-content:center;">0</span>
+            </div>
+            <div id="notifDropdown"
+                style="display:none; position:absolute; top:65px; right:140px; width:340px; max-height:400px; overflow-y:auto; z-index:2000; padding:0; background: var(--sc-card); border: 1px solid var(--border-color); border-top: 3px solid #c9a227;"
+                class="glass-panel">
+                <div
+                    style="padding:1rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size:0.95rem;">Notifications</strong>
+                    <button onclick="markAllRead()" class="btn btn-secondary"
+                        style="padding:0.25rem 0.6rem; font-size:0.75rem;">Mark all read</button>
                 </div>
-                <div id="notifDropdown" style="display:none; position:absolute; top:65px; right:140px; width:340px; max-height:400px; overflow-y:auto; z-index:2000; padding:0; background: rgba(15, 23, 42, 0.98);" class="glass-panel">
-                    <div style="padding:1rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-                        <strong style="font-size:0.95rem;">Notifications</strong>
-                        <button onclick="markAllRead()" class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;">Mark all read</button>
-                    </div>
-                    <div id="notifList" style="padding:0.5rem;"></div>
-                </div>
-                <div class="nav-user">
-                    <i class="fa-solid fa-circle-user"></i>
-                    <span>{{ g.current_user.name }} ({{ g.current_user.role.upper() }})</span>
-                </div>
-                <button onclick="logout()" class="btn btn-secondary"><i class="fa-solid fa-sign-out-alt"></i> Logout</button>
+                <div id="notifList" style="padding:0.5rem;"></div>
+            </div>
+            <div class="nav-user">
+                <i class="fa-solid fa-circle-user"></i>
+                <span>{{ g.current_user.name }} ({{ g.current_user.role.upper() }})</span>
+            </div>
+            <button onclick="logout()" class="btn btn-secondary"><i class="fa-solid fa-sign-out-alt"></i>
+                Logout</button>
             {% else %}
-                <a href="/login" class="btn btn-secondary">Login</a>
-                <a href="/register" class="btn btn-primary">Register</a>
+            <a href="/login" class="btn btn-secondary">Login</a>
+            <a href="/register" class="btn btn-primary">Register</a>
             {% endif %}
         </div>
     </header>
@@ -360,33 +499,29 @@
         // Shared global theme management
         function initTheme() {
             const saved = localStorage.getItem('sc_theme');
-            if (saved === 'light') {
+            const theme = saved === 'light' ? 'light' : 'dark';
+            applyTheme(theme);
+        }
+        function applyTheme(theme) {
+            if (theme === 'light') {
                 document.documentElement.classList.remove('dark');
                 document.documentElement.classList.add('light');
+                document.documentElement.setAttribute('data-theme', 'light');
                 const btn = document.getElementById('themeToggleBtn');
-                if (btn) btn.innerHTML = '<i class="fa-solid fa-sun"></i>';
+                if (btn) btn.innerHTML = '<i class="fa-solid fa-sun" style="color: #e7c76a;"></i>';
             } else {
                 document.documentElement.classList.add('dark');
                 document.documentElement.classList.remove('light');
+                document.documentElement.setAttribute('data-theme', 'dark');
                 const btn = document.getElementById('themeToggleBtn');
-                if (btn) btn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+                if (btn) btn.innerHTML = '<i class="fa-solid fa-moon" style="color: #e7c76a;"></i>';
             }
         }
         function toggleTheme() {
             const isLight = document.documentElement.classList.contains('light');
-            if (isLight) {
-                document.documentElement.classList.remove('light');
-                document.documentElement.classList.add('dark');
-                localStorage.setItem('sc_theme', 'dark');
-                const btn = document.getElementById('themeToggleBtn');
-                if (btn) btn.innerHTML = '<i class="fa-solid fa-moon"></i>';
-            } else {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
-                localStorage.setItem('sc_theme', 'light');
-                const btn = document.getElementById('themeToggleBtn');
-                if (btn) btn.innerHTML = '<i class="fa-solid fa-sun"></i>';
-            }
+            const newTheme = isLight ? 'dark' : 'light';
+            localStorage.setItem('sc_theme', newTheme);
+            applyTheme(newTheme);
         }
         initTheme();
 
@@ -394,20 +529,20 @@
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             if (!container) return;
-            
+
             const toast = document.createElement('div');
             toast.className = 'toast';
-            
+
             let color = 'var(--primary)';
             let icon = 'fa-info-circle';
             if (type === 'success') { color = 'var(--success)'; icon = 'fa-check-circle'; }
             else if (type === 'warning') { color = 'var(--warning)'; icon = 'fa-exclamation-triangle'; }
             else if (type === 'danger') { color = 'var(--danger)'; icon = 'fa-times-circle'; }
-            
+
             toast.style.borderLeftColor = color;
             toast.innerHTML = `<i class="fa-solid ${icon}" style="color: ${color}"></i> <span>${message}</span>`;
             container.appendChild(toast);
-            
+
             setTimeout(() => {
                 toast.style.animation = 'slideIn 0.3s ease reverse forwards';
                 setTimeout(() => toast.remove(), 300);
@@ -425,7 +560,7 @@
                 console.error(err);
             }
         }
-        
+
         async function fetchNotifications() {
             try {
                 const res = await fetch('/api/notifications');
@@ -480,20 +615,21 @@
 
         // Socket.IO Notifications Listener
         {% if g.current_user %}
+        fetchNotifications();
+        const socket = io('/civic');
+        socket.on('connect', () => {
+            console.log('Connected to real-time notification socket.');
+            // Join private user notification channel
+            socket.emit('join_room', { room: "user_{{ g.current_user._id }}" });
+        });
+
+        socket.on('notification', (data) => {
+            showToast(data.message, data.event_type.includes('sla') || data.event_type.includes('reopen') ? 'warning' : 'success');
             fetchNotifications();
-            const socket = io('/civic');
-            socket.on('connect', () => {
-                console.log('Connected to real-time notification socket.');
-                // Join private user notification channel
-                socket.emit('join_room', { room: "user_{{ g.current_user._id }}" });
-            });
-            
-            socket.on('notification', (data) => {
-                showToast(data.message, data.event_type.includes('sla') || data.event_type.includes('reopen') ? 'warning' : 'success');
-                fetchNotifications();
-            });
+        });
         {% endif %}
     </script>
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

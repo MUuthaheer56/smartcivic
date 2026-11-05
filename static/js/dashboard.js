@@ -31,14 +31,14 @@ function switchTab(tabId) {
             btn.classList.add("active");
         }
     });
-    
+
     // Hide all tab panels
     const tabPanels = ["tab-overview", "tab-issues-list", "tab-account-approvals", "tab-map-view", "tab-workers-view", "tab-ward-health", "tab-recurring", "tab-simulation"];
     tabPanels.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = "none";
     });
-    
+
     if (tabId === "overview") {
         document.getElementById("tab-overview").style.display = "block";
         loadOverviewStats();
@@ -104,14 +104,14 @@ async function loadOverviewStats() {
             document.getElementById("statResolved").innerText = stats.resolved;
             document.getElementById("statPending").innerText = stats.pending;
             document.getElementById("statCritical").innerText = stats.critical_active;
-            
+
             // SLA Health Bar update
             const sla = stats.sla || {};
             document.getElementById("seg-ontrack").style.width = `${sla.on_track_pct || 0}%`;
             document.getElementById("seg-warning").style.width = `${sla.warning_pct || 0}%`;
             document.getElementById("seg-urgent").style.width = `${sla.urgent_pct || 0}%`;
             document.getElementById("seg-breached").style.width = `${sla.breached_pct || 0}%`;
-            
+
             document.getElementById("lbl-ontrack").innerText = `${sla.on_track_pct || 0}%`;
             document.getElementById("lbl-warning").innerText = `${sla.warning_pct || 0}%`;
             document.getElementById("lbl-urgent").innerText = `${sla.urgent_pct || 0}%`;
@@ -126,7 +126,7 @@ async function loadIssuesQueue(queueType) {
     const listTitle = document.getElementById("listTitle");
     const issuesGrid = document.getElementById("issuesGrid");
     issuesGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading issues...</div>`;
-    
+
     let url = "/api/issues";
     if (queueType === "new-complaints") {
         listTitle.innerText = "New Complaints (Under Review)";
@@ -145,7 +145,7 @@ async function loadIssuesQueue(queueType) {
         listTitle.innerText = "SLA Breach Warnings";
         url += "?severity=critical";
     }
-    
+
     try {
         const res = await fetch(url);
         const data = await res.json();
@@ -182,26 +182,28 @@ async function loadPendingAccountApprovals(role = "citizen") {
         }
 
         approvalsGrid.innerHTML = "";
+        const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
         users.forEach(user => {
             const card = document.createElement("div");
             card.className = "glass-panel queue-card";
             const registeredDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A';
+            const safeId = encodeURIComponent(String(user._id || ''));
             card.innerHTML = `
                 <div class="queue-card-header">
-                    <span class="badge badge-status">${(user.verification_status || user.status || 'pending').toUpperCase()}</span>
+                    <span class="badge badge-status">${esc((user.verification_status || user.status || 'pending').toUpperCase())}</span>
                     <span class="badge ${user.verified ? 'badge-low' : 'badge-warning'}">${user.verified ? 'Verified' : 'Pending'}</span>
                 </div>
-                <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #ffffff;">${user.name || (user.role === 'worker' ? 'Worker Crew' : 'Resident')}</h4>
+                <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #ffffff;">${esc(user.name || (user.role === 'worker' ? 'Worker Crew' : 'Resident'))}</h4>
                 <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.35rem;">
-                    <div><strong>Role:</strong> <span style="color: var(--text-main);">${user.role || 'resident'}</span></div>
-                    <div><strong>Email:</strong> <span style="color: var(--text-main);">${user.email || 'Unknown'}</span></div>
-                    <div><strong>Ward:</strong> <span style="color: var(--text-main);">${user.ward || 'Ward 1'}</span></div>
-                    <div><strong>Registered On:</strong> <span style="color: var(--text-main);">${registeredDate}</span></div>
-                    <div><strong>Status:</strong> <span style="color: var(--warning);">${user.status || 'pending_verification'}</span></div>
+                    <div><strong>Role:</strong> <span style="color: var(--text-main);">${esc(user.role || 'resident')}</span></div>
+                    <div><strong>Email:</strong> <span style="color: var(--text-main);">${esc(user.email || 'Unknown')}</span></div>
+                    <div><strong>Ward:</strong> <span style="color: var(--text-main);">${esc(user.ward || 'Ward 1')}</span></div>
+                    <div><strong>Registered On:</strong> <span style="color: var(--text-main);">${esc(registeredDate)}</span></div>
+                    <div><strong>Status:</strong> <span style="color: var(--warning);">${esc(user.status || 'pending_verification')}</span></div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                    <button onclick="approveResidentVerification('${user._id}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-check"></i> Approve</button>
-                    <button onclick="rejectResidentVerification('${user._id}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-ban"></i> Reject</button>
+                    <button onclick="approveResidentVerification('${safeId}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-check"></i> Approve</button>
+                    <button onclick="rejectResidentVerification('${safeId}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-ban"></i> Reject</button>
                 </div>
             `;
             approvalsGrid.appendChild(card);
@@ -259,10 +261,10 @@ function renderOfficerIssuesQueue() {
     const issuesGrid = document.getElementById("issuesGrid");
     if (!issuesGrid) return;
     issuesGrid.innerHTML = "";
-    
+
     const filtered = allOfficerQueueIssues.filter(item => officerFilter ? officerFilter.filterItem(item) : true);
     if (officerFilter) officerFilter.updateBadge(filtered.length, allOfficerQueueIssues.length);
-    
+
     if (filtered.length === 0) {
         issuesGrid.innerHTML = `
             <div class="empty-state" style="grid-column: 1/-1;">
@@ -271,7 +273,7 @@ function renderOfficerIssuesQueue() {
             </div>`;
         return;
     }
-    
+
     filtered.forEach(issue => {
         const ageHours = Math.round((new Date() - new Date(issue.created_at)) / 3600000);
         const sev = (issue.severity || 'medium').toLowerCase();
@@ -279,41 +281,43 @@ function renderOfficerIssuesQueue() {
         if (sev === 'critical') badgeClass = 'badge-critical';
         else if (sev === 'high') badgeClass = 'badge-high';
         else if (sev === 'low') badgeClass = 'badge-low';
-        
+
+        const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
         const card = document.createElement("div");
         card.className = "glass-panel queue-card";
+        const safeIssueId = encodeURIComponent(String(issue._id || ''));
         card.innerHTML = `
             <div class="queue-card-header">
-                <span class="badge ${badgeClass}">${issue.severity}</span>
-                <span class="badge badge-status">${issue.status}</span>
+                <span class="badge ${badgeClass}">${esc(issue.severity)}</span>
+                <span class="badge badge-status">${esc(issue.status)}</span>
             </div>
-            <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #ffffff;">${issue.title}</h4>
-            <div style="font-size: 0.85rem; color: var(--sc-muted);">${issue.description}</div>
+            <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #ffffff;">${esc(issue.title)}</h4>
+            <div style="font-size: 0.85rem; color: var(--sc-muted);">${esc(issue.description)}</div>
             <div style="font-size: 0.85rem; color: var(--sc-muted); display: flex; flex-direction: column; gap: 0.25rem;">
-                <div><strong>Category:</strong> ${issue.category}</div>
-                <div><strong>Issue Type:</strong> ${issue.type || 'other'}</div>
+                <div><strong>Category:</strong> ${esc(issue.category)}</div>
+                <div><strong>Issue Type:</strong> ${esc(issue.type || 'other')}</div>
                 <div><strong>AI Vision:</strong> ${issue.ai_analysis?.image_analysis_available ? 'Analyzed' : 'Unavailable'}</div>
-                <div><strong>AI Explanation:</strong> ${issue.ai_analysis?.explanation || 'Not available'}</div>
-                <div><strong>Age:</strong> ${ageHours} hours old</div>
-                <div><strong>Priority Score:</strong> ${issue.priority_score || 0}</div>
+                <div><strong>AI Explanation:</strong> ${esc(issue.ai_analysis?.explanation || 'Not available')}</div>
+                <div><strong>Age:</strong> ${Number(ageHours || 0)} hours old</div>
+                <div><strong>Priority Score:</strong> ${Number(issue.priority_score || 0)}</div>
                 <div><strong>SLA Target:</strong> ${new Date(issue.sla_deadline || Date.now()).toLocaleTimeString()}</div>
             </div>
             
             <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
                 ${['submitted', 'ai_reviewed'].includes(issue.status) ? `
-                    <button onclick="approveAIReview('${issue._id}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-check"></i> Approve</button>
-                    <button onclick="overrideAIReview('${issue._id}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-edit"></i> Override</button>
-                    <button onclick="rejectIssue('${issue._id}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-ban"></i> Reject</button>
+                    <button onclick="approveAIReview('${safeIssueId}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-check"></i> Approve</button>
+                    <button onclick="overrideAIReview('${safeIssueId}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-edit"></i> Override</button>
+                    <button onclick="rejectIssue('${safeIssueId}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-ban"></i> Reject</button>
                 ` : ''}
                 
                 ${issue.status === 'officer_reviewed' ? `
-                    <button onclick="openAssignWorker('${issue._id}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-user-plus"></i> Assign Worker</button>
-                    <button onclick="rejectIssue('${issue._id}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-ban"></i> Reject</button>
+                    <button onclick="openAssignWorker('${safeIssueId}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-user-plus"></i> Assign Worker</button>
+                    <button onclick="rejectIssue('${safeIssueId}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-ban"></i> Reject</button>
                 ` : ''}
                 
                 ${issue.status === 'work_completed' ? `
-                    <button onclick="verifyResolution('${issue._id}', true)" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-circle-check"></i> Approve</button>
-                    <button onclick="verifyResolution('${issue._id}', false)" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--sc-critical-border); color: var(--sc-critical-text);"><i class="fa-solid fa-rotate-left"></i> Reject</button>
+                    <button onclick="verifyResolution('${safeIssueId}', true)" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-circle-check"></i> Approve</button>
+                    <button onclick="verifyResolution('${safeIssueId}', false)" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--sc-critical-border); color: var(--sc-critical-text);"><i class="fa-solid fa-rotate-left"></i> Reject</button>
                 ` : ''}
             </div>
         `;
@@ -343,9 +347,9 @@ async function overrideAIReview(issueId) {
     const severity = prompt("Override Severity (low/medium/high/critical):");
     const department = prompt("Override Department (roads/water_supply/electrical/sanitation/drainage):");
     const type = prompt("Override Issue Type (optional):");
-    
+
     if (!category || !severity || !department) return;
-    
+
     try {
         const res = await fetch(`/api/issues/${issueId}/review`, {
             method: "POST",
@@ -387,14 +391,14 @@ async function openAssignWorker(issueId) {
     document.getElementById("assignIssueId").value = issueId;
     const recList = document.getElementById("recommendList");
     recList.innerHTML = `<div style="text-align: center; padding: 1.5rem;"><i class="fa-solid fa-spinner fa-spin"></i> Finding nearby matching crews...</div>`;
-    
+
     document.getElementById("modalBackdrop").style.display = "block";
     document.getElementById("assignModal").style.display = "flex";
-    
+
     try {
         const res = await fetch(`/api/workers/recommend?issue_id=${issueId}`);
         const data = await res.json();
-        
+
         if (!res.ok || !data.success) {
             const errorMessage = document.createElement("div");
             errorMessage.style.textAlign = "center";
@@ -420,7 +424,7 @@ async function openAssignWorker(issueId) {
             recCard.style.justifyContent = "space-between";
             recCard.style.alignItems = "center";
             recCard.onclick = () => assignWorker(issueId, w.id);
-            
+
             recCard.innerHTML = `
                     <div>
                         <strong style="font-size: 0.95rem;">${w.name}</strong>
@@ -471,7 +475,7 @@ async function verifyResolution(issueId, approved) {
         showToast("Notes required to reject resolutions.", "warning");
         return;
     }
-    
+
     try {
         const res = await fetch(`/api/issues/${issueId}/officer-verify`, {
             method: "POST",
@@ -490,17 +494,17 @@ async function verifyResolution(issueId, approved) {
 
 function initMap() {
     if (map) return;
-    
+
     map = L.map('officerMap').setView([12.9716, 77.5946], 13);
-    
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
-    
+
     markerLayer.addTo(map);
     clusterLayer.addTo(map);
     workerLayer.addTo(map);
-    
+
     loadMapLayers();
     plotPredictiveHotspots();
 }
@@ -516,33 +520,35 @@ async function loadMapLayers() {
                 const coords = issue.location?.coordinates || [];
                 if (coords.length === 2) {
                     const marker = L.marker([coords[1], coords[0]]);
-                    
+
+                    const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
+                    const safeIssueId = encodeURIComponent(String(issue._id || ''));
                     let langInfo = "";
                     if (issue.original_language && issue.original_language !== 'english') {
                         langInfo = `
                             <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 4px; font-size: 0.8rem;">
-                                <strong>Original (${issue.original_language}):</strong><br/>
-                                <em>${issue.original_description || issue.description}</em>
+                                <strong>Original (${esc(issue.original_language)}):</strong><br/>
+                                <em>${esc(issue.original_description || issue.description)}</em>
                             </div>
                         `;
                     }
-                    
+
                     const popupContent = `
                         <div style="font-family: 'Plus Jakarta Sans', sans-serif; min-width: 250px;">
-                            <h4 style="margin: 0 0 5px 0; color: var(--text-main);">${issue.title}</h4>
+                            <h4 style="margin: 0 0 5px 0; color: var(--text-main);">${esc(issue.title)}</h4>
                             <div style="font-size: 0.85rem; color: var(--text-muted); display:flex; flex-direction:column; gap:0.25rem;">
-                                <div><strong>Status:</strong> <span class="badge badge-status">${issue.status}</span></div>
-                                <div><strong>Severity:</strong> <span class="badge ${issue.severity === 'critical' ? 'badge-critical' : 'badge-severity'}">${issue.severity}</span></div>
-                                <div><strong>Category:</strong> ${issue.category}</div>
-                                <div><strong>Confirmations:</strong> ${issue.confirmation_count || 0}</div>
+                                <div><strong>Status:</strong> <span class="badge badge-status">${esc(issue.status)}</span></div>
+                                <div><strong>Severity:</strong> <span class="badge ${issue.severity === 'critical' ? 'badge-critical' : 'badge-severity'}">${esc(issue.severity)}</span></div>
+                                <div><strong>Category:</strong> ${esc(issue.category)}</div>
+                                <div><strong>Confirmations:</strong> ${Number(issue.confirmation_count || 0)}</div>
                                 ${issue.is_recurring ? '<div><span class="badge badge-critical">⚠️ RECURRING HOTSPOT</span></div>' : ''}
                             </div>
                             ${langInfo}
                             <div style="margin-top: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem; display:flex; flex-direction:column; gap:0.5rem;">
-                                <button onclick="openAssignWorker('${issue._id}')" class="btn btn-primary" style="padding: 0.3rem; font-size: 0.75rem;"><i class="fa-solid fa-user-plus"></i> Assign Worker</button>
-                                <button onclick="showAuditInPopup('${issue._id}')" class="btn btn-secondary" style="padding: 0.3rem; font-size: 0.75rem;"><i class="fa-solid fa-clock-rotate-left"></i> View Audit Trail</button>
+                                <button onclick="openAssignWorker('${safeIssueId}')" class="btn btn-primary" style="padding: 0.3rem; font-size: 0.75rem;"><i class="fa-solid fa-user-plus"></i> Assign Worker</button>
+                                <button onclick="showAuditInPopup('${safeIssueId}')" class="btn btn-secondary" style="padding: 0.3rem; font-size: 0.75rem;"><i class="fa-solid fa-clock-rotate-left"></i> View Audit Trail</button>
                             </div>
-                            <div id="audit-popup-${issue._id}" style="margin-top: 0.5rem; max-height: 150px; overflow-y: auto; display: none;"></div>
+                            <div id="audit-popup-${safeIssueId}" style="margin-top: 0.5rem; max-height: 150px; overflow-y: auto; display: none;"></div>
                         </div>
                     `;
                     marker.bindPopup(popupContent);
@@ -553,7 +559,7 @@ async function loadMapLayers() {
     } catch (err) {
         console.error(err);
     }
-    
+
     // 2. Load geo clusters
     try {
         const res = await fetch("/api/map/clusters");
@@ -565,13 +571,13 @@ async function loadMapLayers() {
                 if (coords.length === 2) {
                     const circle = L.circleMarker([coords[1], coords[0]], {
                         radius: Math.min(30, 8 + c.report_count * 2),
-                        fillColor: "#ef4444",
-                        color: "#ffffff",
+                        fillColor: "#d1264a",
+                        color: "#c9a227",
                         weight: 2,
-                        opacity: 0.8,
-                        fillOpacity: 0.4
+                        opacity: 0.9,
+                        fillOpacity: 0.45
                     });
-                    
+
                     circle.on('click', () => {
                         const sidebar = document.getElementById("mapSidebar");
                         sidebar.style.display = "flex";
@@ -605,11 +611,11 @@ async function loadMapLayers() {
 async function loadWorkers() {
     const workersGrid = document.getElementById("workersGrid");
     workersGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading crew status...</div>`;
-    
+
     try {
         const res = await fetch("/api/workers");
         const data = await res.json();
-        
+
         if (data.success) {
             workersGrid.innerHTML = "";
             data.data.forEach(w => {
@@ -649,14 +655,14 @@ async function drawWorkerRouteOnOfficerMap(workerId) {
         const data = await res.json();
         if (data.success && data.data.length > 0) {
             if (officerRouteLine) map.removeLayer(officerRouteLine);
-            
+
             const latlngs = [];
             data.data.forEach(stop => {
                 if (stop.polyline) {
                     latlngs.push(...stop.polyline);
                 }
             });
-            
+
             if (latlngs.length > 0) {
                 officerRouteLine = L.polyline(latlngs, { color: 'var(--primary)', weight: 5, opacity: 0.85 }).addTo(map);
                 map.fitBounds(officerRouteLine.getBounds());
@@ -681,7 +687,7 @@ async function loadBriefing(forceRefresh = false) {
         const data = await res.json();
         if (data.success) {
             document.getElementById("briefingText").innerText = data.data.briefing_text;
-            
+
             const actionsEl = document.getElementById("recommendedActions");
             actionsEl.innerHTML = "";
             if (data.data.recommended_actions.length === 0) {
@@ -705,7 +711,7 @@ async function loadEmergencyBar() {
         const data = await res.json();
         const bar = document.getElementById("emergencyBar");
         const list = document.getElementById("emergencyList");
-        
+
         if (data.success && data.data.length > 0) {
             list.innerHTML = "";
             data.data.forEach(issue => {
@@ -724,7 +730,7 @@ async function loadEmergencyBar() {
                     list.appendChild(row);
                 }
             });
-            
+
             if (list.children.length > 0) {
                 bar.style.display = "block";
             } else {
@@ -742,41 +748,43 @@ async function searchIssues() {
     const q = document.getElementById("searchQuery").value;
     const grid = document.getElementById("issuesGrid");
     grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Querying NLP processor...</div>`;
-    
+
     try {
         const res = await fetch(`/api/issues?q=${encodeURIComponent(q)}`);
         const data = await res.json();
         if (data.success) {
             grid.innerHTML = "";
-            
+
             // Build tags below search
             const tagsEl = document.getElementById("searchTags");
-            tagsEl.innerHTML = q.trim() !== "" ? `<span class="badge" style="background: rgba(56,189,248,0.2); color: var(--accent-primary);">NL Query: "${q}" <i class="fa-solid fa-times" onclick="clearSearch()" style="cursor:pointer; margin-left:5px;"></i></span>` : "";
-            
+            const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
+            tagsEl.innerHTML = q.trim() !== "" ? `<span class="badge" style="background: rgba(56,189,248,0.2); color: var(--accent-primary);">NL Query: "${esc(q)}" <i class="fa-solid fa-times" onclick="clearSearch()" style="cursor:pointer; margin-left:5px;"></i></span>` : "";
+
             if (data.data.length === 0) {
                 grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem;">No issues matching search criteria.</div>`;
                 return;
             }
-            
+
             data.data.forEach(issue => {
                 const ageHours = Math.round((new Date() - new Date(issue.created_at)) / 3600000);
                 const card = document.createElement("div");
                 card.className = "glass-panel queue-card";
+                const safeIssueId = encodeURIComponent(String(issue._id || ''));
                 card.innerHTML = `
                     <div class="queue-card-header">
-                        <span class="badge ${issue.severity === 'critical' ? 'badge-critical' : 'badge-severity'}">${issue.severity}</span>
-                        <span class="badge badge-status">${issue.status}</span>
+                        <span class="badge ${issue.severity === 'critical' ? 'badge-critical' : 'badge-severity'}">${esc(issue.severity)}</span>
+                        <span class="badge badge-status">${esc(issue.status)}</span>
                     </div>
-                    <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;">${issue.title}</h4>
-                    <div style="font-size: 0.85rem; color: var(--text-muted);">${issue.description}</div>
+                    <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;">${esc(issue.title)}</h4>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">${esc(issue.description)}</div>
                     <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
-                        <div><strong>Category:</strong> ${issue.category}</div>
-                        <div><strong>Ward:</strong> ${issue.ward}</div>
-                        <div><strong>Priority Score:</strong> ${issue.priority_score}</div>
-                        <div><strong>Confirmations:</strong> ${issue.confirmation_count || 0} confirmations</div>
+                        <div><strong>Category:</strong> ${esc(issue.category)}</div>
+                        <div><strong>Ward:</strong> ${esc(issue.ward)}</div>
+                        <div><strong>Priority Score:</strong> ${Number(issue.priority_score || 0)}</div>
+                        <div><strong>Confirmations:</strong> ${Number(issue.confirmation_count || 0)} confirmations</div>
                     </div>
                     <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                        <button onclick="openAssignWorker('${issue._id}')" class="btn btn-primary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-user-plus"></i> Assign Worker</button>
+                        <button onclick="openAssignWorker('${safeIssueId}')" class="btn btn-primary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-user-plus"></i> Assign Worker</button>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -796,7 +804,7 @@ function clearSearch() {
 async function loadWardHealth() {
     const grid = document.getElementById("wardHealthGrid");
     grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Calculating health ratios...</div>`;
-    
+
     try {
         const res = await fetch("/api/analytics/by-ward");
         const data = await res.json();
@@ -804,10 +812,10 @@ async function loadWardHealth() {
             grid.innerHTML = "";
             data.data.forEach(w => {
                 const score = w.ward_health_score || 100;
-                let barColor = '#10b981'; // Green
-                if (score < 60) barColor = '#ef4444'; // Red
-                else if (score < 80) barColor = '#f59e0b'; // Orange
-                
+                let barColor = '#0f9d6b'; // Jewel Emerald
+                if (score < 60) barColor = '#d1264a'; // Jewel Ruby
+                else if (score < 80) barColor = '#d99a1a'; // Amber Gold
+
                 const card = document.createElement("div");
                 card.className = "glass-panel queue-card";
                 card.style = "padding: 1.5rem; display:flex; flex-direction:column; gap:0.5rem;";
@@ -835,7 +843,7 @@ async function loadWardHealth() {
 async function loadRecurringHotspots() {
     const grid = document.getElementById("recurringGrid");
     grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Scanning hotspots...</div>`;
-    
+
     try {
         const res = await fetch("/api/analytics/recurring");
         const data = await res.json();
@@ -872,7 +880,7 @@ async function loadAuditTrail(issueId) {
     const auditEl = document.getElementById("auditTrailList");
     if (!auditEl) return;
     auditEl.innerHTML = `<div style="text-align: center; padding: 1rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading audit trail...</div>`;
-    
+
     try {
         const res = await fetch(`/api/issues/${issueId}/audit-log`);
         const data = await res.json();
@@ -908,30 +916,31 @@ async function plotPredictiveHotspots() {
         if (data.success) {
             hotspotCircles.forEach(c => map.removeLayer(c));
             hotspotCircles = [];
-            
+
             data.data.forEach(h => {
                 const lat = h.lat;
                 const lng = h.lng;
                 const risk = h.hotspot_risk;
                 const category = h.category;
-                
-                let color = '#fb7185'; // pink/red
-                if (risk === 'medium') color = '#fbbf24'; // orange
-                else if (risk === 'low') color = '#34d399'; // green
-                
+
+                let color = '#d1264a'; // Jewel Ruby
+                if (risk === 'medium') color = '#d99a1a'; // Amber Gold
+                else if (risk === 'low') color = '#0f9d6b'; // Jewel Emerald
+
                 const circle = L.circle([lat, lng], {
                     radius: 500, // 500m radius
-                    color: color,
+                    color: '#c9a227', // Imperial Gold outline
+                    weight: 1.5,
                     fillColor: color,
-                    fillOpacity: 0.2
+                    fillOpacity: 0.25
                 }).addTo(map);
-                
+
                 circle.bindPopup(`
-                    <div style="font-family: 'Plus Jakarta Sans', sans-serif;">
-                        <h4 style="margin:0 0 5px 0; color: #e11d48;"><i class="fa-solid fa-triangle-exclamation"></i> Predicted Hotspot</h4>
-                        <p style="margin:0; font-size:0.8rem; color:#475569;">Category: <strong>${category.toUpperCase()}</strong></p>
-                        <p style="margin:0; font-size:0.8rem; color:#475569;">Risk Level: <strong>${risk.toUpperCase()}</strong></p>
-                        <p style="margin:0; font-size:0.8rem; color:#475569;">Recurrence Rate: <strong>${h.recurrence_rate}/month</strong></p>
+                    <div style="font-family: 'Plus Jakarta Sans', sans-serif; padding: 4px;">
+                        <h4 style="margin:0 0 5px 0; color: #d1264a; font-family: 'Playfair Display', serif; font-weight:700;"><i class="fa-solid fa-triangle-exclamation"></i> Predicted Hotspot</h4>
+                        <p style="margin:0; font-size:0.8rem; color: #5b5a72;">Category: <strong>${category.toUpperCase()}</strong></p>
+                        <p style="margin:0; font-size:0.8rem; color: #5b5a72;">Risk Level: <strong>${risk.toUpperCase()}</strong></p>
+                        <p style="margin:0; font-size:0.8rem; color: #5b5a72;">Recurrence Rate: <strong>${h.recurrence_rate}/month</strong></p>
                     </div>
                 `);
                 hotspotCircles.push(circle);
@@ -945,15 +954,15 @@ async function plotPredictiveHotspots() {
 async function showAuditInPopup(issueId) {
     const container = document.getElementById(`audit-popup-${issueId}`);
     if (!container) return;
-    
+
     if (container.style.display === "block") {
         container.style.display = "none";
         return;
     }
-    
+
     container.style.display = "block";
     container.innerHTML = `<div style="font-size:0.75rem; text-align:center; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>`;
-    
+
     try {
         const res = await fetch(`/api/issues/${issueId}/audit-log`);
         const data = await res.json();
@@ -963,7 +972,7 @@ async function showAuditInPopup(issueId) {
                 container.innerHTML = `<div style="font-size:0.75rem; text-align:center; color:var(--text-muted);">No log records yet.</div>`;
                 return;
             }
-            
+
             data.data.forEach(log => {
                 const item = document.createElement("div");
                 item.style = "font-size:0.75rem; border-bottom:1px solid rgba(255,255,255,0.05); padding: 0.25rem 0;";
@@ -1107,14 +1116,14 @@ function renderCefapCard(complaint) {
     const badge = document.getElementById('cefap-priority-badge');
     if (badge) {
         const priorityColors = {
-            'P1': '#dc3545',
-            'P2': '#fd7e14',
-            'P3': '#ffc107',
-            'P4': '#0d6efd'
+            'P1': '#d1264a', // Jewel Ruby
+            'P2': '#e0701a', // Burnt Orange
+            'P3': '#d99a1a', // Amber Gold
+            'P4': '#2f5bd8'  // Jewel Sapphire
         };
         const p = complaint.priority || 'P3';
         badge.innerText = p;
-        badge.style.backgroundColor = priorityColors[p] || '#6c757d';
+        badge.style.backgroundColor = priorityColors[p] || '#6b6a8a';
         badge.style.color = '#ffffff';
     }
 
@@ -1127,9 +1136,9 @@ function renderCefapCard(complaint) {
         const pct = Math.round(complaint.cips_score * 100);
         cipsBar.style.width = pct + '%';
         cipsBar.style.backgroundColor =
-            complaint.cips_score >= 0.75 ? '#dc3545' :
-            complaint.cips_score >= 0.50 ? '#fd7e14' :
-            complaint.cips_score >= 0.25 ? '#ffc107' : '#0d6efd';
+            complaint.cips_score >= 0.75 ? '#d1264a' :
+                complaint.cips_score >= 0.50 ? '#e0701a' :
+                    complaint.cips_score >= 0.25 ? '#d99a1a' : '#2f5bd8';
     }
 
     // 6 Signals breakdown
@@ -1156,11 +1165,11 @@ function renderCefapCard(complaint) {
             const pct = Math.round(val * 100);
             return `
                 <div class="d-flex align-items-center mb-1" style="display:flex; align-items:center; margin-bottom:4px; font-size:12px;">
-                    <span style="width:160px; color:#495057; text-transform:capitalize;">${label}</span>
-                    <div style="flex:1; height:6px; background:#e9ecef; border-radius:99px; margin:0 8px; overflow:hidden;">
-                        <div style="width:${pct}%; height:100%; background:#495057; border-radius:99px;"></div>
+                    <span style="width:160px; color:var(--text-secondary); text-transform:capitalize;">${label}</span>
+                    <div style="flex:1; height:6px; background:rgba(201, 162, 39, 0.15); border-radius:99px; margin:0 8px; overflow:hidden;">
+                        <div style="width:${pct}%; height:100%; background:var(--primary); border-radius:99px;"></div>
                     </div>
-                    <span style="width:35px; text-align:right; font-weight:500; color:#212529;">${val.toFixed(2)}</span>
+                    <span style="width:35px; text-align:right; font-weight:600; color:var(--text-main);">${val.toFixed(2)}</span>
                 </div>
             `;
         }).join('');

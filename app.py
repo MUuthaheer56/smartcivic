@@ -42,15 +42,32 @@ db = client[db_name]
 
 try:
     from flask_wtf.csrf import CSRFProtect
-    csrf = CSRFProtect()
+    class SmartCivicCSRFProtect(CSRFProtect):
+        def protect(self):
+            # Exempt Bearer-only mobile API requests from CSRF checks
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                g.csrf_valid = True
+                return
+            super().protect()
+    csrf = SmartCivicCSRFProtect()
 except ImportError:
     class DummyCSRF:
         def init_app(self, app): pass
         def exempt(self, bp): pass
     csrf = DummyCSRF()
 
-# Initialize Socket.IO and Limiter
-socketio = SocketIO(cors_allowed_origins="*", async_mode="threading")
+def _get_cors_origins():
+    origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    if origins:
+        parts = [o.strip() for o in origins.split(",") if o.strip()]
+        return parts if parts else "*"
+    if os.getenv("FLASK_ENV", "production").lower() == "production":
+        return ["http://localhost:5000", "http://127.0.0.1:5000", "https://smartcivic.local"]
+    return ["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:3000"]
+
+# Initialize Socket.IO with restricted origins and Limiter
+socketio = SocketIO(cors_allowed_origins=_get_cors_origins(), async_mode="threading")
 
 def _get_limiter_storage_uri():
     configured = os.getenv("RATELIMIT_STORAGE_URI") or os.getenv("REDIS_URL")
@@ -144,6 +161,7 @@ def create_app():
     if app.config.get("TESTING") or "pytest" in sys.modules or os.getenv("TESTING", "").lower() == "true":
         limiter.enabled = False
         app.config["RATELIMIT_ENABLED"] = False
+        app.config.setdefault("WTF_CSRF_ENABLED", False)
     csrf.init_app(app)
 
     
@@ -203,17 +221,8 @@ def create_app():
     from routes.location import location_bp
     app.register_blueprint(location_bp)
 
-    # Exempt REST API blueprints using Bearer token authentication from form CSRF checks
-    csrf.exempt(issues_api_bp)
-    csrf.exempt(workers_api_bp)
-    csrf.exempt(analytics_api_bp)
-    csrf.exempt(map_api_bp)
-    csrf.exempt(simulation_api_bp)
-    csrf.exempt(civicpulse_api_bp)
-    csrf.exempt(graph_bp)
-    csrf.exempt(notifications_api_bp)
+    # Exempt mobile token authentication endpoints from browser form CSRF checks
     csrf.exempt(api_mobile_auth_bp)
-    csrf.exempt(location_bp)
 
     # Authenticated private file serving route (F2)
     KINDS = {"docs", "verification_docs", "issues", "resolution"}
@@ -311,6 +320,7 @@ def create_app():
         response.headers['X-XSS-Protection'] = '1; mode=block'
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Permissions-Policy'] = 'geolocation=(self), camera=(self), microphone=()'
         
         trusted_cdns = (
             "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com "

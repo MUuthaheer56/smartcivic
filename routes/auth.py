@@ -14,6 +14,7 @@ from app import db, limiter
 from models.user import create_user_doc, UserRegisterSchema, UserLoginSchema
 import os
 import uuid
+import hashlib
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -60,14 +61,17 @@ def validate_password_strength(password: str) -> tuple:
         return False, "Password must contain at least one digit."
     return True, ""
 
-def generate_tokens(user_id: str, role: str, ward: str):
+def generate_tokens(user_id: str, role: str, ward: str, family_id: str = None):
     secret = (current_app.config.get("JWT_SECRET_KEY") or current_app.config.get("JWT_SECRET")) if current_app else os.getenv("JWT_SECRET_KEY", os.getenv("JWT_SECRET", "default_jwt_secret_smartcivic"))
     if not secret or secret == "default_jwt_secret_smartcivic":
         raise RuntimeError("CRITICAL: Weak or missing JWT secret configured.")
 
     now = datetime.now(timezone.utc)
-    access_expiry = now + timedelta(minutes=30)
+    access_expiry = now + timedelta(minutes=15)
     refresh_expiry = now + timedelta(days=7)
+    access_jti = str(uuid.uuid4())
+    refresh_jti = str(uuid.uuid4())
+    fam_id = family_id or str(uuid.uuid4())
 
     access_payload = {
         "sub": str(user_id),
@@ -75,7 +79,7 @@ def generate_tokens(user_id: str, role: str, ward: str):
         "role": role,
         "ward": ward,
         "type": "access",
-        "jti": str(uuid.uuid4()),
+        "jti": access_jti,
         "exp": access_expiry
     }
 
@@ -83,12 +87,28 @@ def generate_tokens(user_id: str, role: str, ward: str):
         "sub": str(user_id),
         "user_id": str(user_id),
         "type": "refresh",
-        "jti": str(uuid.uuid4()),
+        "jti": refresh_jti,
+        "family_id": fam_id,
         "exp": refresh_expiry
     }
 
     access_token = jwt.encode(access_payload, secret, algorithm="HS256")
     refresh_token = jwt.encode(refresh_payload, secret, algorithm="HS256")
+
+    # Store refresh token record in db.refresh_tokens for reuse detection and session management
+    try:
+        token_hash = hashlib.sha256(refresh_token.encode('utf-8')).hexdigest()
+        db.refresh_tokens.insert_one({
+            "jti": refresh_jti,
+            "family_id": fam_id,
+            "user_id": str(user_id),
+            "token_hash": token_hash,
+            "revoked": False,
+            "created_at": datetime.utcnow(),
+            "expires_at": datetime.utcnow() + timedelta(days=7)
+        })
+    except Exception:
+        pass
 
     return access_token, refresh_token
 
@@ -411,8 +431,8 @@ def login():
     }
 
     response = make_response(jsonify(response_data), 200)
-    cookie_secure = current_app.config.get("COOKIE_SECURE", False)
-    response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=1800)
+    cookie_secure = current_app.config.get("COOKIE_SECURE", True)
+    response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=900)
     response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=7*24*3600)
     return response
 
@@ -420,21 +440,59 @@ def login():
 def refresh():
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            refresh_token = auth_header[7:].strip()
+
+    if not refresh_token:
         return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Refresh token cookie missing."}}), 401
         
     secret = current_app.config["JWT_SECRET"]
     try:
         payload = jwt.decode(refresh_token, secret, algorithms=["HS256"])
-        user_id = payload.get("user_id")
+        if payload.get("type") != "refresh":
+            return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Invalid token type context."}}), 401
+
+        user_id = payload.get("user_id") or payload.get("sub")
+        jti = payload.get("jti")
+        family_id = payload.get("family_id")
+
+        # Reuse detection check in db.refresh_tokens
+        rec = db.refresh_tokens.find_one({"jti": jti}) if jti else None
+        if rec and rec.get("revoked") is True:
+            # REUSE DETECTED: Revoke the entire session family immediately!
+            if family_id:
+                db.refresh_tokens.update_many({"family_id": family_id}, {"$set": {"revoked": True}})
+            response = make_response(jsonify({
+                "success": False,
+                "error": {
+                    "code": "TOKEN_REUSE_DETECTED",
+                    "message": "Refresh token reuse detected. All sessions in this family have been revoked."
+                }
+            }), 401)
+            response.delete_cookie("access_token", path="/")
+            response.delete_cookie("refresh_token", path="/")
+            return response
+
+        # Mark current token as revoked upon rotation
+        if jti:
+            db.refresh_tokens.update_one({"jti": jti}, {"$set": {"revoked": True}})
+
         user = db.users.find_one({"_id": ObjectId(user_id)})
-        if not user:
-            return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "User session expired."}}), 401
+        if not user or user.get("status") in ["rejected", "suspended"] or user.get("verification_status") == "rejected":
+            return jsonify({"success": False, "error": {"code": "UNAUTHORIZED", "message": "User session expired or account deactivated."}}), 401
             
-        access_token, new_refresh_token = generate_tokens(str(user["_id"]), user["role"], user.get("ward", ""))
+        access_token, new_refresh_token = generate_tokens(
+            str(user["_id"]), user.get("role", "citizen"), user.get("ward", ""), family_id=family_id
+        )
         
-        cookie_secure = current_app.config.get("COOKIE_SECURE", False)
-        response = make_response(jsonify({"success": True}), 200)
-        response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=1800)
+        cookie_secure = current_app.config.get("COOKIE_SECURE", True)
+        response = make_response(jsonify({
+            "success": True,
+            "access_token": access_token,
+            "refresh_token": new_refresh_token
+        }), 200)
+        response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=900)
         response.set_cookie("refresh_token", new_refresh_token, httponly=True, secure=cookie_secure, samesite="Lax", max_age=7*24*3600)
         return response
     except Exception:
@@ -442,6 +500,20 @@ def refresh():
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
+    refresh_token = request.cookies.get("refresh_token")
+    user_id = session.get("user_id") or (getattr(g, "current_user", None) and str(g.current_user["_id"]))
+    if refresh_token:
+        try:
+            payload = jwt.decode(refresh_token, current_app.config["JWT_SECRET"], algorithms=["HS256"])
+            fam = payload.get("family_id")
+            if fam:
+                db.refresh_tokens.update_many({"family_id": fam}, {"$set": {"revoked": True}})
+        except Exception:
+            pass
+    if user_id:
+        db.refresh_tokens.update_many({"user_id": str(user_id)}, {"$set": {"revoked": True}})
+
+    session.clear()
     response = make_response(jsonify({"success": True, "message": "Logged out successfully."}), 200)
     response.delete_cookie("access_token", path="/")
     response.delete_cookie("refresh_token", path="/")
@@ -610,6 +682,7 @@ def list_pending_users():
 @auth_bp.route('/users/<user_id>/verify', methods=['POST'])
 @auth_bp.route('/users/<user_id>/reject', methods=['POST'])
 @require_auth
+@limiter.limit("30 per minute")
 def manual_verify_user(user_id):
     current = g.current_user
     if current.get("role") not in ["admin", "officer"]:
@@ -668,6 +741,7 @@ def manual_verify_user(user_id):
                 "updated_at": datetime.utcnow()
             }}
         )
+        db.refresh_tokens.update_many({"user_id": str(target_oid)}, {"$set": {"revoked": True}})
         db.audit_logs.insert_one({
             "target_user_id": str(target_oid),
             "actor_id": str(current["_id"]),

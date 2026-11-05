@@ -1,19 +1,81 @@
-/* SmartCivic — AI Panel Styling */
+/* ============================================================
+   SmartCivic — Royal Civic AI Panel & Vision Triage Styling
+   ============================================================ */
+
 .spinner-ring {
   display: inline-block;
-  width: 24px;
-  height: 24px;
-  border: 3px solid rgba(255,255,255,0.1);
+  width: 26px;
+  height: 26px;
+  border: 3px solid rgba(201, 162, 39, 0.2);
   border-radius: 50%;
-  border-top-color: var(--sc-primary);
-  animation: spin-ring 1s ease-in-out infinite;
+  border-top-color: var(--royal-gold-500, #c9a227);
+  animation: spin-ring 0.9s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
 }
 
 @keyframes spin-ring {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-triage-card {
+  background: var(--sc-card, #ffffff);
+  border: 1px solid var(--sc-card-border, #e7e3f0);
+  border-top: 3px solid var(--royal-purple-700, #6d28d9);
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md, 0 6px 18px rgba(76, 29, 149, 0.08));
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-triage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  background: linear-gradient(135deg, rgba(76, 29, 149, 0.12) 0%, rgba(109, 40, 217, 0.18) 100%);
+  border: 1px solid rgba(109, 40, 217, 0.35);
+  border-radius: var(--radius-full, 9999px);
+  color: var(--royal-purple-700, #6d28d9);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+html.dark .ai-triage-badge {
+  color: #ff9e54;
+  border-color: rgba(201, 162, 39, 0.4);
+}
+
+.ai-confidence-meter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.ai-confidence-track {
+  flex: 1;
+  height: 8px;
+  background-color: var(--sc-surface, #f4efe4);
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid var(--sc-divider, rgba(76, 29, 149, 0.08));
+}
+
+.ai-confidence-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--royal-purple-700, #6d28d9) 0%, var(--royal-gold-500, #c9a227) 100%);
+  box-shadow: 0 0 10px rgba(109, 40, 217, 0.35);
+  transition: width 0.5s ease;
 }
 
 .noise-cpcb-result {
   font-weight: 600;
   margin-top: 8px;
+  color: var(--sc-text, #14112b);
 }

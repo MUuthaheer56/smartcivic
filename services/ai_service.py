@@ -20,6 +20,66 @@ VISION_MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-1.5-flash")
 ALLOWED_CATEGORIES = {"road", "water", "electricity", "sanitation", "drainage", "noise", "other"}
 ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
 
+
+class GeminiCircuitBreaker:
+    """
+    Protects against quota burn and cascading latency when Gemini API is throttled or down.
+    - Failure threshold: 5 consecutive failures or 429 quota errors trips state to OPEN.
+    - Reset timeout: 60 seconds (transitions to HALF_OPEN to test recovery).
+    - Cost cap: Daily call quota (default 1000 calls per UTC day, configurable via GEMINI_DAILY_CALL_LIMIT).
+    """
+    def __init__(self, failure_threshold: int = 5, reset_timeout: float = 60.0, daily_limit: int = 1000):
+        self.failure_threshold = failure_threshold
+        self.reset_timeout = reset_timeout
+        self.daily_limit = daily_limit
+        self.failures = 0
+        self.last_failure_time = 0.0
+        self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
+        self.daily_count = 0
+        self.daily_reset_date = datetime.utcnow().date()
+
+    def allow_request(self) -> bool:
+        now = time.time()
+        today = datetime.utcnow().date()
+        if today != self.daily_reset_date:
+            self.daily_reset_date = today
+            self.daily_count = 0
+
+        # Check daily cost cap
+        limit = int(os.getenv("GEMINI_DAILY_CALL_LIMIT", str(self.daily_limit)))
+        if self.daily_count >= limit:
+            return False
+
+        if self.state == "OPEN":
+            if (now - self.last_failure_time) > self.reset_timeout:
+                self.state = "HALF_OPEN"
+                return True
+            return False
+        return True
+
+    def record_success(self):
+        self.failures = 0
+        self.state = "CLOSED"
+        self.daily_count += 1
+
+    def record_failure(self, error: Exception = None):
+        self.failures += 1
+        self.last_failure_time = time.time()
+        err_msg = str(error).lower() if error else ""
+        is_quota = "429" in err_msg or "quota" in err_msg or "resourceexhausted" in err_msg or "rate limit" in err_msg
+        if self.failures >= self.failure_threshold or is_quota:
+            self.state = "OPEN"
+
+    def reset(self):
+        self.failures = 0
+        self.last_failure_time = 0.0
+        self.state = "CLOSED"
+        self.daily_count = 0
+
+
+gemini_circuit_breaker = GeminiCircuitBreaker()
+
+
 def _get_gemini_api_key():
     key = os.getenv("GEMINI_API_KEY")
     if not key:
@@ -30,6 +90,8 @@ def _get_gemini_api_key():
             return None
     except Exception:
         pass
+    if not gemini_circuit_breaker.allow_request():
+        return None
     return key
 
 
@@ -260,9 +322,11 @@ def analyze_complaint_text(description: str) -> dict:
         parsed["ai_available"] = True
         parsed["confidence_type"] = "model_reported"
         parsed["analyzed_at"] = datetime.utcnow()
+        gemini_circuit_breaker.record_success()
         log_ai_call("classification", "gemini", True, parsed.get("confidence", 0.9), dur)
         return parsed
     except Exception as e:
+        gemini_circuit_breaker.record_failure(e)
         print(f"[AI Service] Gemini error: {e}. Falling back to rules.")
         log_ai_call("classification", "gemini", False, 0.0, 0.0, str(e))
         res = _rule_based_fallback(description)
@@ -338,9 +402,11 @@ def analyze_complaint_image(image_path: str) -> dict:
             "image_detections": [issue_type],
             "analyzed_at": datetime.utcnow()
         }
+        gemini_circuit_breaker.record_success()
         log_ai_call("image_classification", "gemini", True, confidence, dur)
         return result
     except Exception as e:
+        gemini_circuit_breaker.record_failure(e)
         log_ai_call("image_classification", "gemini", False, 0.0, 0.0, str(e))
         return {
             "available": False,

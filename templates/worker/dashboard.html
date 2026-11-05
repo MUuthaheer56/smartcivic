@@ -8,75 +8,106 @@
         gap: 2rem;
         margin-top: 1rem;
     }
-    @media (max-width: 900px) {
+
+    @media (max-width: 960px) {
         .worker-grid {
             grid-template-columns: 1fr;
         }
     }
+
     .panel-header {
-        font-family: var(--font-display);
+        font-family: var(--font-heading, serif);
         font-weight: 700;
-        font-size: 1.25rem;
-        margin-bottom: 1.25rem;
+        font-size: 1.3rem;
+        margin-bottom: 1.5rem;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.65rem;
+        color: var(--sc-text);
     }
+
     .jobs-panel {
-        padding: 2rem;
+        padding: 2.25rem 2rem;
+        background: var(--sc-card);
+        border: 1px solid var(--sc-card-border);
+        border-top: 3px solid var(--royal-purple-700, #6d28d9);
+        border-radius: var(--radius-lg, 16px);
+        box-shadow: var(--shadow-md);
     }
+
     .map-panel {
-        padding: 2rem;
+        padding: 2.25rem 2rem;
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 1.25rem;
+        background: var(--sc-card);
+        border: 1px solid var(--sc-card-border);
+        border-top: 3px solid var(--royal-gold-500, #c9a227);
+        border-radius: var(--radius-lg, 16px);
+        box-shadow: var(--shadow-md);
     }
+
     #workerMap {
-        height: 350px;
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
+        height: 380px;
+        border-radius: var(--radius-md, 12px);
+        border: 1px solid var(--sc-card-border);
+        box-shadow: var(--shadow-sm);
         z-index: 10;
     }
+
     .job-card {
-        padding: 1.25rem;
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
+        padding: 1.4rem;
+        background: var(--sc-surface);
+        border: 1px solid var(--sc-card-border);
+        border-radius: var(--radius-md, 12px);
         margin-bottom: 1rem;
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 0.85rem;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
+
+    .job-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
     .job-card.active {
-        border-color: var(--primary);
-        background: rgba(59, 130, 246, 0.05);
+        border-color: var(--royal-gold-500);
+        background: rgba(201, 162, 39, 0.08);
+        box-shadow: 0 0 0 1px var(--royal-gold-500);
     }
+
     .detail-overlay {
         position: fixed;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        width: 500px;
+        width: 520px;
         max-width: 95vw;
-        background: rgba(15, 23, 42, 0.98);
-        border: 1px solid var(--border-color);
-        padding: 2rem;
-        border-radius: 16px;
+        background: var(--sc-card);
+        border: 1px solid var(--sc-card-border);
+        border-top: 3px solid var(--royal-gold-500);
+        padding: 2.25rem;
+        border-radius: var(--radius-xl, 20px);
         z-index: 2000;
         display: none;
         flex-direction: column;
-        gap: 1rem;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+        gap: 1.25rem;
+        box-shadow: var(--shadow-xl);
         max-height: 90vh;
         overflow-y: auto;
     }
+
     .backdrop {
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
-        background: rgba(0,0,0,0.7);
+        background: rgba(11, 20, 55, 0.78);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         z-index: 1999;
         display: none;
     }
@@ -84,17 +115,23 @@
 {% endblock %}
 
 {% block content %}
-<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+<div class="page-header"
+    style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
     <div>
-        <h1 style="font-family: var(--font-display); font-weight: 800; font-size: 2.2rem; margin-bottom: 0.25rem;">Field Crew Dispatch</h1>
-        <p style="color: var(--text-muted)">Manage assigned maintenance orders and optimize fuel routing</p>
+        <div
+            style="display: inline-flex; align-items: center; gap: 0.5rem; color: #e7c76a; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.35rem;">
+            <i class="fa-solid fa-truck-fast"></i> Field Operations
+        </div>
+        <h1>Field Crew Dispatch</h1>
+        <p>Manage assigned maintenance orders, compute OSRM road routes, and capture resolution evidence</p>
     </div>
 </div>
 
 <div class="worker-grid">
     <!-- Left Column: Jobs List -->
     <div class="glass-panel jobs-panel">
-        <h3 class="panel-header"><i class="fa-solid fa-route" style="color: var(--primary)"></i> Optimized Task Sequence</h3>
+        <h3 class="panel-header"><i class="fa-solid fa-route" style="color: var(--primary)"></i> Optimized Task Sequence
+        </h3>
         <div id="jobsList">
             <!-- Populated dynamically -->
         </div>
@@ -102,7 +139,8 @@
 
     <!-- Right Column: Navigation Map -->
     <div class="glass-panel map-panel">
-        <h3 class="panel-header"><i class="fa-solid fa-map" style="color: var(--critical)"></i> Driving Directions Route</h3>
+        <h3 class="panel-header"><i class="fa-solid fa-map" style="color: var(--critical)"></i> Driving Directions Route
+        </h3>
         <div id="workerMap"></div>
         <div id="routeSummary" style="font-size: 0.9rem; color: var(--text-muted);">
             Select a job and click [Navigate] to compute fuel-optimal routes.
@@ -115,18 +153,20 @@
 
 <!-- Job Detail Modal -->
 <div class="detail-overlay" id="jobDetailModal">
-    <h3 style="font-family: var(--font-display); font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;" id="modalTitle">
+    <h3 style="font-family: var(--font-display); font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;"
+        id="modalTitle">
         Job Detail
     </h3>
     <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.95rem;" id="modalBody">
         <!-- Loaded dynamically -->
     </div>
-    
+
     <div id="actionArea" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
         <!-- Dynamic start / resolution forms -->
     </div>
-    
-    <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">
+
+    <div
+        style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">
         <button class="btn btn-secondary" onclick="closeJobDetail()">Close</button>
     </div>
 </div>
@@ -135,10 +175,10 @@
 {% block scripts %}
 <script src="/static/js/worker.js"></script>
 <script>
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/js/sw.js')
-        .then(reg => console.log('SW registered', reg.scope))
-        .catch(err => console.warn('SW registration failed', err));
-}
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/js/sw.js')
+            .then(reg => console.log('SW registered', reg.scope))
+            .catch(err => console.warn('SW registration failed', err));
+    }
 </script>
 {% endblock %}

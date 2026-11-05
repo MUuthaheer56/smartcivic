@@ -8,13 +8,13 @@
 <section class="live-map-page" aria-labelledby="liveMapTitle">
     <div class="live-map-toolbar">
         <div>
-            <p class="map-eyebrow"><i class="fa-solid fa-satellite-dish"></i> Public civic view</p>
-            <h1 id="liveMapTitle">Live issue map</h1>
-            <p class="map-intro">See active civic reports near you and use your current location to orient the map.</p>
+            <p class="map-eyebrow"><i class="fa-solid fa-satellite-dish" style="color: var(--accent-gold);"></i> JURISDICTION MONITOR &bull; PUBLIC VIEW</p>
+            <h1 id="liveMapTitle" style="font-family: var(--font-display); font-size: 2.1rem; font-weight: 700; color: var(--text-main); letter-spacing: -0.02em;">Live Civic Cartography</h1>
+            <p class="map-intro" style="color: var(--text-muted); font-size: 0.95rem;">Real-time geospatial visualization of community dispatches, public infrastructure status, and municipal incident triage.</p>
         </div>
         <div class="live-map-actions">
             <button type="button" class="btn btn-secondary" id="locateMapButton">
-                <i class="fa-solid fa-location-crosshairs"></i> Use my location
+                <i class="fa-solid fa-location-crosshairs" style="color: var(--accent-gold);"></i> Use my location
             </button>
             <button type="button" class="btn btn-primary" id="refreshMapButton">
                 <i class="fa-solid fa-arrows-rotate"></i> Refresh map
@@ -26,17 +26,17 @@
         <aside class="live-map-panel glass-panel" aria-live="polite">
             <div class="live-map-panel-header">
                 <div>
-                    <span class="panel-label">Active reports</span>
-                    <strong id="mapIssueCount">Loading...</strong>
+                    <span class="panel-label">ACTIVE JURISDICTION INCIDENTS</span>
+                    <strong id="mapIssueCount" style="font-family: var(--font-display); font-size: 1.4rem; color: var(--accent-gold);">Loading...</strong>
                 </div>
-                <span class="live-indicator"><span></span> Live</span>
+                <span class="live-indicator"><span style="background: var(--jewel-emerald); box-shadow: 0 0 10px var(--jewel-emerald);"></span> Live Triage</span>
             </div>
-            <p id="mapStatus" class="map-status">Loading the latest public reports...</p>
+            <p id="mapStatus" class="map-status">Synchronizing live municipal telemetry...</p>
             <div id="mapIssueList" class="live-map-list"></div>
         </aside>
         <div class="live-map-canvas-wrap">
             <div id="liveMap" class="live-map-canvas" role="application" aria-label="Map showing active civic reports"></div>
-            <div class="map-location-note" id="locationNote"><i class="fa-solid fa-circle-info"></i> Location is requested only when you select “Use my location”.</div>
+            <div class="map-location-note" id="locationNote"><i class="fa-solid fa-shield-halved" style="color: var(--accent-gold); margin-right: 0.35rem;"></i> Telemetry notice: Coordinate tracking is engaged only upon choosing “Use my location”.</div>
         </div>
     </div>
 </section>

@@ -22,10 +22,14 @@ function showToast(message, type = 'info', duration = 3500) {
     toast.innerHTML = `
         <div class="toast-content">
             <i class="fa-solid ${iconClass} toast-icon"></i>
-            <span class="toast-message">${message}</span>
+            <span class="toast-message"></span>
         </div>
         <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
     `;
+    const msgSpan = toast.querySelector('.toast-message');
+    if (msgSpan) {
+        msgSpan.textContent = message;
+    }
 
     container.appendChild(toast);
     

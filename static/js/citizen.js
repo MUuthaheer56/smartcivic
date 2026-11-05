@@ -289,9 +289,9 @@ async function submitIssue(e) {
             el.style.display = 'block';
             el.textContent = msg;
             const colors = {
-                info: { bg: '#e7f3ff', color: '#004085' },
-                success: { bg: '#d4edda', color: '#155724' },
-                error: { bg: '#f8d7da', color: '#721c24' },
+                info: { bg: 'rgba(47, 91, 216, 0.12)', color: '#2f5bd8' },
+                success: { bg: 'rgba(15, 157, 107, 0.12)', color: '#0f9d6b' },
+                error: { bg: 'rgba(209, 38, 74, 0.12)', color: '#d1264a' },
             };
             const c = colors[type] || colors.info;
             el.style.background = c.bg;
@@ -421,27 +421,28 @@ function renderCitizenIssues() {
         else if (sev === 'high') badgeClass = 'badge-high';
         else if (sev === 'low') badgeClass = 'badge-low';
 
+        const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
         const card = document.createElement("div");
         card.className = "issue-card";
         card.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-                <strong style="font-size: 0.95rem; color: var(--sc-text);">${issue.title}</strong>
+                <strong style="font-size: 0.95rem; color: var(--sc-text);">${esc(issue.title)}</strong>
                 <div style="display: flex; gap: 0.35rem;">
-                    <span class="badge ${badgeClass}">${issue.severity}</span>
-                    <span class="badge badge-status">${issue.status}</span>
+                    <span class="badge ${badgeClass}">${esc(issue.severity)}</span>
+                    <span class="badge badge-status">${esc(issue.status)}</span>
                 </div>
             </div>
-            <div style="font-size: 0.85rem; color: var(--sc-muted);">${issue.description}</div>
+            <div style="font-size: 0.85rem; color: var(--sc-muted);">${esc(issue.description)}</div>
             <div style="font-size: 0.82rem; color: var(--sc-muted); display: flex; align-items: center; gap: 0.4rem;">
                 <i class="fa-solid fa-location-dot" style="color: var(--sc-primary)"></i>
-                ${issue.address || 'Address not specified'}
+                ${esc(issue.address || 'Address not specified')}
             </div>
             ${isVerification ? `
                 <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                    <button onclick="verifyResolution('${issue._id}', true)" class="btn btn-primary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;">
+                    <button onclick="verifyResolution('${encodeURIComponent(issue._id)}', true)" class="btn btn-primary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;">
                         <i class="fa-solid fa-thumbs-up"></i> Fixed
                     </button>
-                    <button onclick="verifyResolution('${issue._id}', false)" class="btn btn-secondary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem; border-color: var(--sc-critical-border); color: var(--sc-critical-text);">
+                    <button onclick="verifyResolution('${encodeURIComponent(issue._id)}', false)" class="btn btn-secondary" style="flex: 1; padding: 0.4rem; font-size: 0.8rem; border-color: var(--sc-critical-border); color: var(--sc-critical-text);">
                         <i class="fa-solid fa-rotate-left"></i> Reopen
                     </button>
                 </div>
@@ -528,27 +529,30 @@ async function loadPublicIssues() {
             const lat = coords[1];
             const lng = coords[0];
 
-            let markerColor = '#38bdf8';
-            if (issue.severity === 'critical') markerColor = '#ef4444';
-            else if (issue.severity === 'high') markerColor = '#f59e0b';
+            let markerColor = '#2f5bd8';
+            if (issue.severity === 'critical') markerColor = '#d1264a';
+            else if (issue.severity === 'high') markerColor = '#e0701a';
+            else if (issue.severity === 'medium') markerColor = '#d99a1a';
+            else if (issue.severity === 'low') markerColor = '#0f9d6b';
 
             const cMarker = L.circleMarker([lat, lng], {
                 radius: 8 + Math.min(issue.confirmation_count || 0, 10),
-                color: markerColor,
+                color: '#c9a227',
+                weight: 1.5,
                 fillColor: markerColor,
-                fillOpacity: 0.5
+                fillOpacity: 0.75
             }).addTo(map);
 
             cMarker.bindPopup(`
-                <div style="font-family: 'Plus Jakarta Sans', sans-serif;">
-                    <h4 style="margin:0 0 5px 0; color: #1e293b;">${(issue.category || '').toUpperCase()}</h4>
-                    <p style="margin:0; font-size:0.8rem; color:#64748b;">Status: <strong>${issue.status}</strong></p>
-                    <p style="margin:0 0 8px 0; font-size:0.8rem; color:#64748b;">
+                <div style="font-family: 'Plus Jakarta Sans', sans-serif; padding: 4px;">
+                    <h4 style="margin:0 0 5px 0; color: #0b1437; font-family: 'Playfair Display', serif; font-weight:700;">${(issue.category || '').toUpperCase()}</h4>
+                    <p style="margin:0; font-size:0.8rem; color: #5b5a72;">Status: <strong>${issue.status}</strong></p>
+                    <p style="margin:0 0 8px 0; font-size:0.8rem; color: #5b5a72;">
                         Confirmations: <strong>${issue.confirmation_count || 0}</strong>
                     </p>
                     <button onclick="confirmPublicIssue('${issue._id}')" class="btn btn-primary"
-                            style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
-                        <i class="fa-solid fa-eye"></i> I see this too
+                            style="padding: 0.35rem 0.75rem; font-size: 0.78rem;">
+                        <i class="fa-solid fa-eye" style="color: var(--accent-gold);"></i> I see this too
                     </button>
                 </div>
             `);
@@ -626,24 +630,25 @@ function showDuplicateSuggestionCard(sourceIssueId, candidate) {
     const existing = document.getElementById("duplicate-suggestion-card");
     if (existing) existing.remove();
 
+    const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
     const card = document.createElement("div");
     card.id = "duplicate-suggestion-card";
-    card.style.cssText = "background:#fff3cd; border:1px solid #ffeeba; border-radius:8px; padding:15px; margin-top:15px;";
+    card.style.cssText = "background: rgba(201, 162, 39, 0.12); border: 1px solid var(--accent-gold, #c9a227); border-radius: var(--radius-md, 12px); padding: 1.25rem; margin-top: 1rem; box-shadow: var(--shadow-sm);";
     card.innerHTML = `
-        <h5 style="color:#856404; margin-bottom:8px; font-size:1rem;"><i class="fa fa-info-circle"></i> Similar report nearby. Same problem?</h5>
-        <p style="margin-bottom:8px; color:#533f03; font-size:0.9rem;">
-            A similar issue was found <strong>${candidate.distance_meters}m away</strong> (${Math.round(candidate.score * 100)}% match):<br>
-            <em>"${candidate.candidate_title}"</em>
+        <h5 style="color: var(--accent-gold-dark, #a47e0f); font-family: var(--font-display); font-weight: 700; margin-bottom: 8px; font-size: 1.05rem;"><i class="fa fa-circle-exclamation"></i> Similar report nearby. Same problem?</h5>
+        <p style="margin-bottom: 8px; color: var(--text-secondary); font-size: 0.9rem;">
+            A similar issue was found <strong>${Number(candidate.distance_meters || 0)}m away</strong> (${Math.round((candidate.score || 0) * 100)}% match):<br>
+            <em>"${esc(candidate.candidate_title)}"</em>
         </p>
         <div style="display:flex; gap:10px; align-items:center;">
-            <button class="btn btn-sm btn-primary" id="btn-support-duplicate" style="background:#0d6efd; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">
-                <i class="fa fa-thumbs-up"></i> Yes, support this existing report
+            <button class="btn btn-sm btn-primary" id="btn-support-duplicate" style="padding: 6px 14px; font-weight: 600;">
+                <i class="fa fa-thumbs-up" style="color: var(--accent-gold);"></i> Yes, support this existing report
             </button>
-            <button class="btn btn-sm btn-outline-secondary" id="btn-reject-duplicate" style="background:#f8f9fa; border:1px solid #ccc; padding:6px 12px; border-radius:4px; cursor:pointer;">
+            <button class="btn btn-sm btn-secondary" id="btn-reject-duplicate" style="padding: 6px 14px; font-weight: 600;">
                 No, this is different
             </button>
         </div>
-        <div id="duplicate-feedback-msg" style="display:none; margin-top:8px; font-weight:600; color:#155724; font-size:0.9rem;"></div>
+        <div id="duplicate-feedback-msg" style="display:none; margin-top:8px; font-weight:600; color: var(--jewel-emerald, #0f9d6b); font-size:0.9rem;"></div>
     `;
 
     container.appendChild(card);
