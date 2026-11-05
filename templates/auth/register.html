@@ -70,20 +70,20 @@
     <form id="registerForm" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
-            <label class="form-label">Full Name</label>
+            <label class="form-label" for="name">Full Name</label>
             <input type="text" id="name" name="name" class="form-control" placeholder="John Doe" required>
         </div>
         <div class="form-group">
-            <label class="form-label">Email Address</label>
+            <label class="form-label" for="email">Email Address</label>
             <input type="email" id="email" name="email" class="form-control" placeholder="name@domain.com" required>
         </div>
         <div class="form-group">
-            <label class="form-label">Password</label>
+            <label class="form-label" for="password">Password</label>
             <input type="password" id="password" name="password" class="form-control" placeholder="Min. 6 characters"
                 required>
         </div>
         <div class="form-group">
-            <label class="form-label">Role</label>
+            <label class="form-label" for="role">Role</label>
             <select id="role" name="role" class="form-control" onchange="toggleSkills()" required>
                 <option value="citizen">Citizen (Resident)</option>
                 <option value="officer">Officer (Administrator)</option>
@@ -91,21 +91,21 @@
             </select>
         </div>
         <div class="form-group">
-            <label class="form-label">Ward / Zone Area</label>
+            <label class="form-label" for="ward">Ward / Zone Area</label>
             <input type="text" id="ward" name="ward" class="form-control" placeholder="Ward 1, TC Palya, etc." required>
         </div>
         <div class="form-group" id="docGroup">
-            <label class="form-label">Verification Document (ID / Utility Bill - JPG, PNG, PDF)</label>
+            <label class="form-label" for="verification_doc">Verification Document (ID / Utility Bill - JPG, PNG, PDF)</label>
             <input type="file" id="verification_doc" name="verification_doc" class="form-control"
                 accept=".jpg,.jpeg,.png,.pdf" required>
         </div>
         <div class="form-group" id="inviteCodeGroup" style="display: none;">
-            <label class="form-label">Admin Invite Code (Required for Officers / Workers)</label>
+            <label class="form-label" for="inviteCode">Admin Invite Code (Required for Officers / Workers)</label>
             <input type="text" id="inviteCode" name="invite_code" class="form-control"
                 placeholder="Enter the configured staff invite code" autocomplete="off">
         </div>
         <div class="form-group" id="skillsGroup" style="display: none;">
-            <label class="form-label">Skills (comma-separated list)</label>
+            <label class="form-label" for="skills">Skills (comma-separated list)</label>
             <input type="text" id="skills" name="skills" class="form-control"
                 placeholder="road_repair, electrical, sanitation, drainage">
         </div>

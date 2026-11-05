@@ -1136,12 +1136,9 @@ def resolve_issue(id):
         
     notes = request.form.get("notes", "Resolved by field worker.")
     
-    if 'image' not in request.files:
-        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "After resolution photo required."}}), 400
-        
-    file = request.files['image']
+    file = request.files.get('after_image') or request.files.get('image')
     if not file or not file.filename:
-        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Invalid photo upload file."}}), 400
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "After resolution photo required."}}), 400
         
     valid, err = validate_image_file(file)
     if not valid:
@@ -1608,16 +1605,15 @@ def submit_resolution_proof(id):
         notes = request.form.get("notes") or request.form.get("resolution_notes") or "Repaired successfully."
         
         after_img_url = "/static/uploads/issues/after_default.jpg"
-        if 'after_image' in request.files:
-            file = request.files['after_image']
-            if file and file.filename:
-                upload_dir = current_app.config.get("RESOLUTION_FOLDER", os.path.join(current_app.root_path, "uploads", "resolution"))
-                os.makedirs(upload_dir, exist_ok=True)
-                ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'jpg'
-                filename = f"{uuid.uuid4().hex}.{ext}"
-                filepath = os.path.join(upload_dir, filename)
-                file.save(filepath)
-                after_img_url = f"/files/resolution/{filename}"
+        file = request.files.get('after_image') or request.files.get('image')
+        if file and file.filename:
+            upload_dir = current_app.config.get("RESOLUTION_FOLDER", os.path.join(current_app.root_path, "uploads", "resolution"))
+            os.makedirs(upload_dir, exist_ok=True)
+            ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'jpg'
+            filename = f"{uuid.uuid4().hex}.{ext}"
+            filepath = os.path.join(upload_dir, filename)
+            file.save(filepath)
+            after_img_url = f"/files/resolution/{filename}"
                 
         now = datetime.utcnow()
         resolution_data = {

@@ -46,7 +46,7 @@ export default function App() {
   const [userRole, setUserRole] = useState('citizen');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [serverUrl, setServerUrl] = useState('http://10.30.128.225:5000/api');
+  const [serverUrl, setServerUrl] = useState(process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:5000/api');
 
   // App state
   const [tasks, setTasks] = useState([]);

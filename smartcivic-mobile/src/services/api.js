@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
 // Set default API base URL using laptop IPv4 network address
-export const DEFAULT_API_URL = 'http://10.30.128.225:5000/api';
+export const DEFAULT_API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:5000/api';
 
 const api = axios.create({
   baseURL: DEFAULT_API_URL,

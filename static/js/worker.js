@@ -253,6 +253,14 @@ async function startJob(issueId) {
 async function submitResolution(e, issueId) {
     e.preventDefault();
 
+    const submitBtn = e.target.querySelector('button[type="submit"]') || document.querySelector('#resolutionForm button[type="submit"]');
+    if (submitBtn && submitBtn.disabled) return;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.dataset.originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+    }
+
     const formData = new FormData();
     formData.append("notes", document.getElementById("notes").value);
 
@@ -277,5 +285,10 @@ async function submitResolution(e, issueId) {
         }
     } catch (err) {
         showToast("Server communication error.", "danger");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.dataset.originalText || 'Submit Resolution';
+        }
     }
 }

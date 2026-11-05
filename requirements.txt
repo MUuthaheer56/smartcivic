@@ -9,30 +9,20 @@
 #
 # CVE remediations applied:
 #   flask          3.0.0  → 3.1.3    (PYSEC-2026-2151 — request-smuggling via malformed Transfer-Encoding)
-#   pymongo        4.6.1  → 4.6.3    (PYSEC-2026-1826 — null pointer deref + BSON parsing DoS)
-#   pyjwt          2.8.0  → 2.15.0   (PYSEC-2025-183, 2026-120, -175..-179, -4140..-4141, -4144..-4149 —
-#                                     multiple critical: key confusion, algorithm-confusion bypass,
-#                                     JWKS cache poisoning, HMAC-with-RSA-key forgery)
-#   requests       2.31.0 → 2.33.0   (PYSEC-2026-1872 / -1873 / -2275 — HTTP request smuggling via
-#                                     Transfer-Encoding, content-length mismatch, header-injection via Cookie)
-#   python-dotenv  1.0.0  → 1.2.2    (PYSEC-2026-2270 — .env parser regex DoS on malformed quoted values)
-#   gunicorn       21.2.0 → 22.0.0   (PYSEC-2026-1433 / -1434 — STARTTLS stripping + request
-#                                     desync behind TLS-terminating proxies)
-#   eventlet       0.35.1 → 0.40.3   (PYSEC-2026-1307 / -1350 / -2472 — wsgi.input read-after-end
-#                                     uninitialized memory + GreenPipe socket leak + ws._socket
-#                                     proxy bypass)
-#   Pillow         10.2.0 → 12.3.0   (PYSEC-2026-165, -2253..-2257, -2874, -3451..-3454, -3493..-3496 —
-#                                     ImageFont/PIL/PSD/TGA/HDR/WebP/TIFF heap/buffer overflows,
-#                                     CVE-2026 class remote code evaluation via malicious TIFF,
-#                                     DoS via zero-size structures)
-#   waitress       2.1.2  → 3.0.1    (PYSEC-2024-210 / -211 — LF-only header splitting bypass
-#                                     + Content-Length header confusion)
+#   pymongo        4.6.1  → 4.18.3   (PYSEC-2026-1826, 4294..4297, CVE-2026-106435)
+#   pyjwt          2.8.0  → 2.15.1   (PYSEC-2025-183, 2026-120, -175..-179, -4140..-4141, -4144..-4149)
+#   requests       2.31.0 → 2.33.0   (PYSEC-2026-1872 / -1873 / -2275)
+#   python-dotenv  1.0.0  → 1.2.2    (PYSEC-2026-2270)
+#   gunicorn       21.2.0 → 22.0.0   (PYSEC-2026-1433 / -1434)
+#   eventlet       0.35.1 → 0.40.3   (PYSEC-2026-1307 / -1350 / -2472)
+#   Pillow         10.2.0 → 12.3.0   (Highest Python 3.10 compatible release; pinned and hardened)
+#   waitress       2.1.2  → 3.0.1    (PYSEC-2024-210 / -211)
 # ──────────────────────────────────────────────────────────────────────────────
 flask==3.1.3
 flask-socketio==5.3.6
 flask-limiter==4.1.1
-pymongo==4.6.3
-PyJWT==2.15.0
+pymongo==4.18.3
+PyJWT==2.15.1
 bcrypt==4.1.2
 marshmallow==4.3.1
 APScheduler==3.10.4

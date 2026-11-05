@@ -98,7 +98,10 @@ def compute_dhash(img: Image.Image) -> str:
     Resizes image to 9x8 grayscale, compares adjacent columns.
     """
     gray = img.convert("L").resize((9, 8), Image.Resampling.LANCZOS)
-    pixels = list(gray.getdata())
+    if hasattr(gray, "get_flattened_data"):
+        pixels = list(gray.get_flattened_data())
+    else:
+        pixels = list(gray.getdata())
     diff = []
     for row in range(8):
         for col in range(8):

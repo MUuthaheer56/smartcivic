@@ -147,15 +147,149 @@ function locateMe() {
     tryDetectLocation();
 }
 
+// CTVE state — stored so the upload/confirm functions can access it
+let _ctveComplaintId = null;
+let _ctveData = null;
+
+function severityLabel(score) {
+    if (typeof score === 'string') return score;
+    if (score >= 0.85) return 'Critical';
+    if (score >= 0.60) return 'High';
+    if (score >= 0.35) return 'Medium';
+    return 'Low';
+}
+
+/**
+ * Call this INSTEAD of showing the normal success message
+ * when the complaint submission response has ctve_triggered=true.
+ *
+ * @param {string} complaintId  - ID of the just-created complaint
+ * @param {object} ctveData     - {ctve_message, signals: {text_severity, image_severity}}
+ */
+function showCtveModal(complaintId, ctveData) {
+    _ctveComplaintId = complaintId;
+    _ctveData = ctveData;
+
+    // Fill in the dynamic message
+    const msgEl = document.getElementById('ctve-message-text');
+    if (msgEl) msgEl.textContent = ctveData.ctve_message || 'Please clarify the evidence.';
+
+    // Show evidence comparison row if image was present
+    const ts = ctveData.signals?.text_severity;
+    const is = ctveData.signals?.image_severity;
+    if (ts !== null && ts !== undefined && is !== null && is !== undefined) {
+        const row = document.getElementById('ctve-evidence-row');
+        if (row) row.style.display = 'flex';
+        const tsEl = document.getElementById('ctve-text-severity');
+        const isEl = document.getElementById('ctve-image-severity');
+        if (tsEl) tsEl.textContent = severityLabel(ts);
+        if (isEl) isEl.textContent = severityLabel(is);
+    }
+
+    // Show modal
+    const modal = document.getElementById('ctve-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+async function handleCtvePhotoUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    setCtveStatus('Uploading photo…', 'info');
+
+    const formData = new FormData();
+    formData.append('photo', file);
+    formData.append('complaint_id', _ctveComplaintId);
+    formData.append('ctve_response', 'photo_uploaded');
+
+    try {
+        const authFetch = (window.SmartCivicAuth && typeof window.SmartCivicAuth.fetch === 'function')
+            ? window.SmartCivicAuth.fetch.bind(window.SmartCivicAuth)
+            : fetch;
+        const res = await authFetch(
+            `/api/issues/${_ctveComplaintId}/ctve-response`,
+            { method: 'POST', body: formData }
+        );
+        const data = await res.json();
+        if (res.ok) {
+            setCtveStatus('Photo received — your complaint has been updated.', 'success');
+            setTimeout(() => { window.location.href = '/citizen/dashboard'; }, 1800);
+        } else {
+            setCtveStatus(data.error || 'Upload failed. Please try again.', 'error');
+        }
+    } catch {
+        setCtveStatus('Network error. Please try again.', 'error');
+    }
+}
+
+async function confirmCtveOriginal() {
+    setCtveStatus('Confirming…', 'info');
+
+    try {
+        const authFetch = (window.SmartCivicAuth && typeof window.SmartCivicAuth.fetch === 'function')
+            ? window.SmartCivicAuth.fetch.bind(window.SmartCivicAuth)
+            : fetch;
+        const res = await authFetch(
+            `/api/issues/${_ctveComplaintId}/ctve-response`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ctve_response: 'description_confirmed', complaint_id: _ctveComplaintId }),
+            }
+        );
+        const data = await res.json();
+        if (res.ok) {
+            setCtveStatus('Confirmed — your complaint has been queued for officer review.', 'success');
+            setTimeout(() => { window.location.href = '/citizen/dashboard'; }, 1800);
+        } else {
+            setCtveStatus(data.error || 'Error. Please try again.', 'error');
+        }
+    } catch {
+        setCtveStatus('Network error. Please try again.', 'error');
+    }
+}
+
+function setCtveStatus(msg, type) {
+    const el = document.getElementById('ctve-status');
+    if (!el) return;
+    el.style.display = 'block';
+    el.textContent = msg;
+    const colors = {
+        info: { bg: 'rgba(47, 91, 216, 0.12)', color: '#2f5bd8' },
+        success: { bg: 'rgba(15, 157, 107, 0.12)', color: '#0f9d6b' },
+        error: { bg: 'rgba(209, 38, 74, 0.12)', color: '#d1264a' },
+    };
+    const c = colors[type] || colors.info;
+    el.style.background = c.bg;
+    el.style.color = c.color;
+}
+
+// Make CTVE functions globally available on window for inline event handlers
+window.handleCtvePhotoUpload = handleCtvePhotoUpload;
+window.confirmCtveOriginal = confirmCtveOriginal;
+window.showCtveModal = showCtveModal;
+
 /** Submit new complaint */
 async function submitIssue(e) {
     e.preventDefault();
+
+    const submitBtn = e.target.querySelector('button[type="submit"]') || document.querySelector('#reportForm button[type="submit"]');
+    if (submitBtn && submitBtn.disabled) return;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.dataset.originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+    }
 
     const lat = document.getElementById("lat")?.value;
     const lng = document.getElementById("lng")?.value;
 
     if (!lat || !lng) {
         showToast("Please set a location on the map first.", "warning");
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.dataset.originalText || 'Submit';
+        }
         return;
     }
 
@@ -180,123 +314,6 @@ async function submitIssue(e) {
             body: formData
         });
         const data = await res.json();
-
-        // CTVE state — stored so the upload/confirm functions can access it
-        let _ctveComplaintId = null;
-        let _ctveData = null;
-
-        /**
-         * Call this INSTEAD of showing the normal success message
-         * when the complaint submission response has ctve_triggered=true.
-         *
-         * @param {string} complaintId  - ID of the just-created complaint
-         * @param {object} ctveData     - {ctve_message, signals: {text_severity, image_severity}}
-         */
-        function showCtveModal(complaintId, ctveData) {
-            _ctveComplaintId = complaintId;
-            _ctveData = ctveData;
-
-            // Fill in the dynamic message
-            const msgEl = document.getElementById('ctve-message-text');
-            if (msgEl) msgEl.textContent = ctveData.ctve_message || 'Please clarify the evidence.';
-
-            // Show evidence comparison row if image was present
-            const ts = ctveData.signals?.text_severity;
-            const is = ctveData.signals?.image_severity;
-            if (ts !== null && ts !== undefined && is !== null && is !== undefined) {
-                const row = document.getElementById('ctve-evidence-row');
-                if (row) row.style.display = 'flex';
-                const tsEl = document.getElementById('ctve-text-severity');
-                const isEl = document.getElementById('ctve-image-severity');
-                if (tsEl) tsEl.textContent = severityLabel(ts);
-                if (isEl) isEl.textContent = severityLabel(is);
-            }
-
-            // Show modal
-            const modal = document.getElementById('ctve-modal');
-            if (modal) modal.style.display = 'flex';
-        }
-
-        function severityLabel(score) {
-            if (typeof score === 'string') return score;
-            if (score >= 0.85) return 'Critical';
-            if (score >= 0.60) return 'High';
-            if (score >= 0.35) return 'Medium';
-            return 'Low';
-        }
-
-        async function handleCtvePhotoUpload(input) {
-            if (!input.files || !input.files[0]) return;
-            const file = input.files[0];
-
-            setCtveStatus('Uploading photo…', 'info');
-
-            const formData = new FormData();
-            formData.append('photo', file);
-            formData.append('complaint_id', _ctveComplaintId);
-            formData.append('ctve_response', 'photo_uploaded');
-
-            try {
-                const authFetch = (window.SmartCivicAuth && typeof window.SmartCivicAuth.fetch === 'function')
-                    ? window.SmartCivicAuth.fetch.bind(window.SmartCivicAuth)
-                    : fetch;
-                const res = await authFetch(
-                    `/api/issues/${_ctveComplaintId}/ctve-response`,
-                    { method: 'POST', body: formData }
-                );
-                const data = await res.json();
-                if (res.ok) {
-                    setCtveStatus('Photo received — your complaint has been updated.', 'success');
-                    setTimeout(() => { window.location.href = '/citizen/dashboard'; }, 1800);
-                } else {
-                    setCtveStatus(data.error || 'Upload failed. Please try again.', 'error');
-                }
-            } catch {
-                setCtveStatus('Network error. Please try again.', 'error');
-            }
-        }
-
-        async function confirmCtveOriginal() {
-            setCtveStatus('Confirming…', 'info');
-
-            try {
-                const authFetch = (window.SmartCivicAuth && typeof window.SmartCivicAuth.fetch === 'function')
-                    ? window.SmartCivicAuth.fetch.bind(window.SmartCivicAuth)
-                    : fetch;
-                const res = await authFetch(
-                    `/api/issues/${_ctveComplaintId}/ctve-response`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ctve_response: 'description_confirmed', complaint_id: _ctveComplaintId }),
-                    }
-                );
-                const data = await res.json();
-                if (res.ok) {
-                    setCtveStatus('Confirmed — your complaint has been queued for officer review.', 'success');
-                    setTimeout(() => { window.location.href = '/citizen/dashboard'; }, 1800);
-                } else {
-                    setCtveStatus(data.error || 'Error. Please try again.', 'error');
-                }
-            } catch {
-                setCtveStatus('Network error. Please try again.', 'error');
-            }
-        }
-
-        function setCtveStatus(msg, type) {
-            const el = document.getElementById('ctve-status');
-            if (!el) return;
-            el.style.display = 'block';
-            el.textContent = msg;
-            const colors = {
-                info: { bg: 'rgba(47, 91, 216, 0.12)', color: '#2f5bd8' },
-                success: { bg: 'rgba(15, 157, 107, 0.12)', color: '#0f9d6b' },
-                error: { bg: 'rgba(209, 38, 74, 0.12)', color: '#d1264a' },
-            };
-            const c = colors[type] || colors.info;
-            el.style.background = c.bg;
-            el.style.color = c.color;
-        }
 
         if (data.success) {
             const issueId = data.issue_id || (data.data && data.data._id) || (data.data && data.data.issue_id);
@@ -371,6 +388,11 @@ async function submitIssue(e) {
     } catch (err) {
         console.error(err);
         showToast("Server communication error.", "danger");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.dataset.originalText || 'Submit';
+        }
     }
 }
 
