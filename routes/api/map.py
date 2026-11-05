@@ -25,6 +25,8 @@ def get_map_issues():
         # A citizen can see public issue pins in the system
         pass
         
+    # Cap map query footprint to prevent unbounded payloads (DB-06)
+    limit = min(int(request.args.get("limit", 250)), 500)
     issues = list(db.issues.find(query, {
         "title": 1,
         "category": 1,
@@ -34,7 +36,7 @@ def get_map_issues():
         "location": 1,
         "ward": 1,
         "confirmation_count": 1
-    }))
+    }).sort("created_at", -1).limit(limit))
     
     from utils.serializers import serialize_public_issue
     return jsonify({"success": True, "data": [serialize_public_issue(i) for i in issues]}), 200

@@ -762,19 +762,26 @@ def add_community_confirmation(issue_id, citizen_id, note: str = None) -> int:
         raise ValueError("Citizen has already confirmed this issue.")
         
     now = datetime.utcnow()
+    cit_oid = ObjectId(citizen_id) if ObjectId.is_valid(str(citizen_id)) else citizen_id
     new_confirm = {
-        "citizen_id": ObjectId(citizen_id),
+        "citizen_id": cit_oid,
         "confirmed_at": now,
         "note": note.strip() if note else ""
     }
     
-    db.issues.update_one(
-        {"_id": ObjectId(issue_id)},
+    # Atomic conditional update preventing parallel confirmation race conditions (DB-09)
+    res = db.issues.update_one(
+        {
+            "_id": ObjectId(issue_id),
+            "community_confirmations.citizen_id": {"$ne": cit_oid}
+        },
         {
             "$push": {"community_confirmations": new_confirm},
             "$inc": {"confirmation_count": 1}
         }
     )
+    if res.modified_count == 0:
+        raise ValueError("Citizen has already confirmed this issue.")
     
     # Recalculate from the evidence-aware method, preserving source identity.
     updated = db.issues.find_one({"_id": ObjectId(issue_id)})

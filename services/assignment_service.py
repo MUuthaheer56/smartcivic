@@ -158,9 +158,12 @@ def assign_worker(issue_id, worker_id, officer_id) -> dict:
     assign_doc = create_assignment_doc(str(issue["_id"]), str(worker_id), str(officer_id))
     db.assignments.insert_one(assign_doc)
     
-    # 2. Update issue worker ref, assignment dict, assignment_history, and status
-    db.issues.update_one(
-        {"_id": issue["_id"]},
+    # 2. Update issue worker ref, assignment dict, assignment_history, and status atomically
+    issue_update = db.issues.update_one(
+        {
+            "_id": issue["_id"],
+            "worker_id": {"$in": [None, ""]}
+        },
         {"$set": {
             "worker_id": ObjectId(worker_id) if ObjectId.is_valid(worker_id) else worker_id,
             "officer_id": ObjectId(officer_id) if ObjectId.is_valid(officer_id) else officer_id,
@@ -169,6 +172,12 @@ def assign_worker(issue_id, worker_id, officer_id) -> dict:
             "assignment_history": assignment_entry
         }}
     )
+    if issue_update.modified_count == 0:
+        # Rollback worker active load if issue was already concurrently assigned
+        if worker:
+            db.users.update_one({"_id": w_target_id}, {"$inc": {"active_assignments": -1}})
+        raise ValueError("Issue is already assigned to another worker.")
+
     update_status(str(issue["_id"]), "assigned", officer_id, reason=f"Assigned to worker {worker.get('name') if worker else 'Worker'}.")
         
     # 4. Log audit & send notifications

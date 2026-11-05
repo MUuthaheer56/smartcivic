@@ -68,6 +68,7 @@ def run_backup():
                 print(f"[Backup] Skip rotating file {file}: {parse_err}")
                 
     print("[Backup] Backup sweep completed successfully.")
+    return zip_path
 
 def run_restore(backup_file_name: str):
     """
@@ -119,6 +120,14 @@ def run_restore(backup_file_name: str):
         os.remove(os.path.join(extracted_dir, file))
     os.rmdir(extracted_dir)
     
+    # Recreate all indexes after restoration to prevent index loss (DB-01)
+    try:
+        from setup_indexes import create_indexes
+        print("[Restore] Recreating production database indexes...")
+        create_indexes(mongo_uri=mongo_uri)
+    except Exception as e:
+        print(f"[Restore] Warning: Failed to recreate indexes automatically: {e}")
+
     print("[Restore] Database restoration successfully completed.")
     return True
 

@@ -810,7 +810,8 @@ def list_issues():
     for idx, iss in enumerate(serialized_issues):
         raw_doc = raw_issues[idx]
         imgs = raw_doc.get("images") or []
-        first_url = raw_doc.get("image", {}).get("url") or (imgs[0].get("url") if imgs else None)
+        img_val = raw_doc.get("image")
+        first_url = (img_val.get("url") if isinstance(img_val, dict) else (img_val if isinstance(img_val, str) else None)) or (imgs[0].get("url") if imgs and isinstance(imgs[0], dict) else (imgs[0] if imgs and isinstance(imgs[0], str) else None))
         
         ai_conf = raw_doc.get("ai_prediction", {}).get("confidence") or raw_doc.get("ai_analysis", {}).get("confidence") or 0.85
         

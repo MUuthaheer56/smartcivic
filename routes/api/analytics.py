@@ -54,16 +54,22 @@ def get_by_ward_analytics():
         pipeline.insert(0, {"$match": {"ward": officer_ward}})
         
     results = list(db.issues.aggregate(pipeline))
-    
+
+    # Batch fetch ward scores to eliminate N+1 queries (DB-08)
+    ward_names = [r["_id"] for r in results if r.get("_id")]
+    scores_by_ward = {}
+    if ward_names:
+        for sdoc in db.ward_scores.find({"ward": {"$in": ward_names}}):
+            scores_by_ward[sdoc.get("ward")] = sdoc.get("score", 100)
+
     from services.briefing_service import calculate_ward_health_score
     data = []
     for r in results:
         w_name = r["_id"]
         if not w_name:
             continue
-        score_doc = db.ward_scores.find_one({"ward": w_name})
-        if score_doc:
-            score = score_doc.get("score", 100)
+        if w_name in scores_by_ward:
+            score = scores_by_ward[w_name]
         else:
             try:
                 score = calculate_ward_health_score(w_name)

@@ -42,6 +42,13 @@ def run_escalation_check():
 
         if now > deadline:
             current_level = complaint.get("escalation_level", 0)
+            last_escalated = complaint.get("last_escalated_at")
+
+            # FLOW-07: Spacing interval between escalation levels (minimum 24h between L1->L2 and L2->L3)
+            if last_escalated and isinstance(last_escalated, datetime):
+                if (now - last_escalated) < timedelta(hours=24):
+                    continue
+
             if current_level < 3:
                 new_level = current_level + 1
                 complaint_id = str(complaint["_id"])
@@ -55,7 +62,8 @@ def run_escalation_check():
                     {
                         "$set": {
                             "escalation_level": new_level,
-                            "sla_status": "breached"
+                            "sla_status": "breached",
+                            "last_escalated_at": now
                         },
                         "$push": {
                             "status_history": {
