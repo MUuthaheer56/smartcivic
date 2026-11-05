@@ -12,7 +12,7 @@ analytics_api_bp = Blueprint('analytics_api', __name__)
 
 @analytics_api_bp.route('/api/analytics/overview', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_overview_analytics():
     query = {}
     officer_ward = g.current_user.get("ward")
@@ -40,7 +40,7 @@ def get_overview_analytics():
 
 @analytics_api_bp.route('/api/analytics/by-ward', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_by_ward_analytics():
     # MongoDB aggregation
     pipeline = [
@@ -79,7 +79,7 @@ def get_by_ward_analytics():
 
 @analytics_api_bp.route('/api/analytics/by-department', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_by_department_analytics():
     pipeline = [
         {
@@ -167,7 +167,7 @@ def get_department_performance():
 
 @analytics_api_bp.route('/api/analytics/sla', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_sla_analytics():
     officer_ward = g.current_user.get("ward")
     ward = None if officer_ward == "all" else officer_ward
@@ -176,7 +176,7 @@ def get_sla_analytics():
 
 @analytics_api_bp.route('/api/officer/briefing', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_officer_briefing():
     from services.briefing_service import get_cached_briefing, regenerate_briefing
     
@@ -259,7 +259,7 @@ def get_public_stats():
 
 @analytics_api_bp.route('/api/analytics/recurring', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def list_recurring_hotspots():
     query = {"is_recurring": True}
     officer_ward = g.current_user.get("ward")
@@ -292,7 +292,7 @@ def list_recurring_hotspots():
 
 @analytics_api_bp.route('/api/analytics/ai-performance', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_ai_performance():
     from services.ai_evaluation_service import get_accuracy_stats
     days = int(request.args.get("days", 30))
@@ -302,7 +302,7 @@ def get_ai_performance():
 
 @analytics_api_bp.route('/api/analytics/ai-calibration', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_ai_calibration():
     from services.ai_evaluation_service import get_confidence_calibration
     task = request.args.get("task", "classification")
@@ -311,7 +311,7 @@ def get_ai_calibration():
 
 @analytics_api_bp.route('/api/analytics/infrastructure', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_infrastructure_analytics():
     from services.infrastructure_service import get_infrastructure_health_overview
     
@@ -336,7 +336,7 @@ def get_infrastructure_analytics():
 
 @analytics_api_bp.route('/api/analytics/simulate/worker-addition', methods=['POST'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def post_simulate_worker_addition():
     from services.simulation_service import simulate_worker_addition
     data = request.get_json() or {}
@@ -354,7 +354,7 @@ def post_simulate_worker_addition():
 
 @analytics_api_bp.route('/api/analytics/simulate/priority-shift', methods=['POST'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def post_simulate_priority_shift():
     from services.simulation_service import simulate_category_priority_shift
     data = request.get_json() or {}
@@ -365,7 +365,7 @@ def post_simulate_priority_shift():
 
 @analytics_api_bp.route('/api/analytics/weekly-report', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_weekly_report():
     from services.report_service import get_or_create_weekly_report
     week_offset = int(request.args.get("week_offset", 0))
@@ -375,7 +375,7 @@ def get_weekly_report():
 
 @analytics_api_bp.route('/api/analytics/weekly-report/pdf', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_weekly_report_pdf():
     from services.report_service import get_or_create_weekly_report, build_pdf_report
     from flask import send_file
@@ -394,7 +394,7 @@ def get_weekly_report_pdf():
 
 @analytics_api_bp.route('/api/admin/health', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_admin_health():
     from services.health_service import get_system_health
     health = get_system_health()
@@ -416,7 +416,7 @@ from app import limiter
 
 @analytics_api_bp.route('/api/analytics/ask', methods=['POST'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 @limiter.limit("20 per hour")
 def post_analytics_ask():
     from services.ai_service import parse_search_query, answer_analytics_question

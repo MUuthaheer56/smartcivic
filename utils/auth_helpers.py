@@ -105,7 +105,7 @@ def verified_required(f):
 
         role = user.get("role", "citizen")
         is_verified = user.get("verified", False)
-        v_status = user.get("verification_status", "pending")
+        v_status = user.get("verification_status") or ("approved" if is_verified else "pending")
         if role in ["citizen", "resident", "worker"] and (not is_verified or v_status in ["pending", "rejected"]):
             return jsonify({
                 "error": "Account not verified (pending verification)",
@@ -126,4 +126,48 @@ def officer_required(f):
         from routes.auth import require_auth, require_role
         return require_auth(require_role('officer', 'admin')(f))(*args, **kwargs)
     return decorated
+
+def authorize_issue_access(user, issue):
+    """
+    Authorizes access to a complaint/issue.
+    Permitted:
+      - admin: full access
+      - owner (resident/citizen): must match issue.citizen_id or issue.user_id
+      - ward officer: officer's ward matches issue ward (or officer ward is 'all')
+      - assigned worker: worker matches issue.assigned_worker_id or issue.assigned_to
+    Returns (True, None) if authorized, or (False, (error_dict, status_code)).
+    """
+    if not user:
+        return False, ({"success": False, "error": {"code": "UNAUTHORIZED", "message": "Authentication required."}}, 401)
+
+    role = user.get("role", "citizen")
+    user_id = str(user.get("_id") or user.get("user_id") or "")
+
+    if role == "admin":
+        return True, None
+
+    # Ward Officer check
+    if role == "officer":
+        off_ward = str(user.get("ward_id") or user.get("ward") or "").strip().lower().replace(" ", "").replace("_", "")
+        iss_ward = str(issue.get("ward_id") or issue.get("ward") or "").strip().lower().replace(" ", "").replace("_", "")
+        if off_ward in ["all", "*"] or off_ward == iss_ward:
+            return True, None
+        return False, ({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to your assigned ward."}}, 403)
+
+    # Worker check
+    if role == "worker":
+        assigned_id = str(issue.get("assigned_worker_id") or issue.get("assigned_to") or issue.get("worker_id") or "")
+        if user_id and user_id == assigned_id:
+            return True, None
+        return False, ({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to assigned worker."}}, 403)
+
+    # Citizen/Resident check
+    if role in ["citizen", "resident"]:
+        owner_id = str(issue.get("citizen_id") or issue.get("user_id") or issue.get("reporter_id") or "")
+        if user_id and user_id == owner_id:
+            return True, None
+        return False, ({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to issue owner."}}, 403)
+
+    return False, ({"success": False, "error": {"code": "FORBIDDEN", "message": "Unauthorized role for issue access."}}, 403)
+
 

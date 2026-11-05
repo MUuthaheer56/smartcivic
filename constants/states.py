@@ -76,7 +76,7 @@ STATUS_ALIASES = {
 
 # Canonical Legal State Transitions Matrix
 LEGAL_TRANSITIONS = {
-    "submitted":             ["under_review", "ai_reviewed", "officer_reviewed", "assigned", "rejected", "duplicate", "closed", "cancelled"],
+    "submitted":             ["under_review", "ai_reviewed", "officer_reviewed", "assigned", "rejected", "duplicate", "cancelled"],
     "ai_reviewed":           ["under_review", "officer_reviewed", "verified", "assigned", "rejected", "duplicate"],
     "under_review":          ["verified", "officer_reviewed", "assigned", "rejected", "duplicate"],
     "officer_reviewed":      ["verified", "assigned", "rejected", "duplicate"],
@@ -98,14 +98,14 @@ LEGAL_TRANSITIONS = {
 # Role-Based Permissions Transition Matrix
 ROLE_TRANSITIONS = {
     "citizen": {
-        "submitted": ["cancelled", "closed"],
+        "submitted": ["cancelled"],
         "citizen_verification": ["closed", "reopened"],
         "resolved": ["closed", "reopened"],
         "work_completed": ["closed", "reopened"],
         "closed": ["reopened"]
     },
     "resident": {
-        "submitted": ["cancelled", "closed"],
+        "submitted": ["cancelled"],
         "citizen_verification": ["closed", "reopened"],
         "resolved": ["closed", "reopened"],
         "work_completed": ["closed", "reopened"],

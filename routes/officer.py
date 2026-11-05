@@ -6,6 +6,7 @@ from functools import wraps
 import jwt
 from bson import ObjectId
 from app import db
+from routes.auth import require_auth, require_role
 
 officer_bp = Blueprint('officer', __name__)
 
@@ -13,28 +14,33 @@ def require_officer_page(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         user = getattr(g, "current_user", None)
-        if not user and session.get("user_id"):
+        if user:
+            if user.get("role") not in ["officer", "admin"]:
+                return redirect("/login")
+            return f(*args, **kwargs)
+
+        if session.get("user_id"):
             u_id = session.get("user_id")
             if ObjectId.is_valid(u_id):
                 user = db.users.find_one({"_id": ObjectId(u_id), "role": {"$in": ["officer", "admin"]}})
-                g.current_user = user
+                if user:
+                    g.current_user = user
+                    return f(*args, **kwargs)
 
-        if not user:
-            token = request.cookies.get("access_token")
-            if token:
-                secret = current_app.config.get("JWT_SECRET") or current_app.config.get("JWT_SECRET_KEY")
-                try:
-                    payload = jwt.decode(token, secret, algorithms=["HS256"])
-                    user_id = payload.get("user_id") or payload.get("sub")
-                    user = db.users.find_one({"_id": ObjectId(user_id), "role": {"$in": ["officer", "admin"]}})
-                    if user:
-                        g.current_user = user
-                except Exception:
-                    pass
+        token = request.cookies.get("access_token")
+        if token:
+            secret = current_app.config.get("JWT_SECRET") or current_app.config.get("JWT_SECRET_KEY")
+            try:
+                payload = jwt.decode(token, secret, algorithms=["HS256"])
+                user_id = payload.get("user_id") or payload.get("sub")
+                user = db.users.find_one({"_id": ObjectId(user_id), "role": {"$in": ["officer", "admin"]}})
+                if user:
+                    g.current_user = user
+                    return f(*args, **kwargs)
+            except Exception:
+                pass
 
-        if not user:
-            return redirect("/login")
-        return f(*args, **kwargs)
+        return redirect("/login")
     return decorated
 
 @officer_bp.route('/officer/dashboard')
@@ -102,15 +108,10 @@ def admin_dashboard():
 
 @officer_bp.route('/api/officer/assign', methods=['POST'])
 @officer_bp.route('/officer/assign', methods=['POST'])
+@require_auth
+@require_role('officer', 'admin')
 def assign_task():
-    user = getattr(g, "current_user", None)
-    if not user and session.get("user_id"):
-        u_id = session.get("user_id")
-        if ObjectId.is_valid(u_id):
-            user = db.users.find_one({"_id": ObjectId(u_id), "role": {"$in": ["officer", "admin"]}})
-
-    if not user:
-        return jsonify({"error": "Unauthorized"}), 403
+    user = g.current_user
 
     data = request.get_json(silent=True) or request.form.to_dict()
     issue_id = data.get("issue_id")

@@ -610,8 +610,8 @@ def update_status(issue_id, new_status: str, actor_id, reason: str = None, actor
         raise ValueError("Unauthorized status transition for citizen role.")
 
     # Validate transition
-    if not check_transition(old_status, new_status):
-        raise ValueError(f"Illegal status transition from {old_status} to {new_status}")
+    if not check_transition(old_status, new_status, role=actor_role):
+        raise ValueError(f"Illegal status transition from {old_status} to {new_status} for role {actor_role}")
             
     now = datetime.utcnow()
     status_entry = {

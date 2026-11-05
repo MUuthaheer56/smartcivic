@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from config import Config
 from app import db, limiter
 from routes.auth import require_auth, require_role
-from utils.auth_helpers import verified_required
+from utils.auth_helpers import verified_required, authorize_issue_access
 from models.issue import IssueCreateSchema, CATEGORIES, SEVERITIES, DEPARTMENTS, normalize_priority
 from services import complaint_service, assignment_service, verification_service, sla_service
 from services.audit_service import log_audit
@@ -392,6 +392,7 @@ def get_duplicate_suggestions(id):
 
 @issues_api_bp.route('/api/issues/<id>/duplicate-confirm', methods=['POST'])
 @require_auth
+@verified_required
 def confirm_duplicate_link(id):
     """
     Citizen or officer confirms that issue <id> is a duplicate of target_issue_id.
@@ -457,19 +458,9 @@ def get_issue(id):
         if not issue:
             return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
             
-        user_role = g.current_user.get("role")
-        if user_role in ["resident", "citizen"] and str(issue.get("citizen_id")) != str(g.current_user["_id"]):
-            return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to your own issues."}}), 403
-            
-        if user_role == "officer" and g.current_user.get("ward") not in ["all", "ALL", "*"]:
-            user_ward_raw = (g.current_user.get("ward") or "").strip().lower()
-            issue_ward_raw = (issue.get("ward") or "").strip().lower()
-            user_ward_id = (g.current_user.get("ward_id") or user_ward_raw).strip().lower()
-            issue_ward_id = (issue.get("ward_id") or issue_ward_raw).strip().lower()
-            ward_match = (user_ward_id == issue_ward_id) or (user_ward_raw == issue_ward_raw) or (user_ward_id in ["all", "*"])
-            if not ward_match:
-                return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to your assigned ward."}}), 403
-
+        authorized, auth_err = authorize_issue_access(g.current_user, issue)
+        if not authorized:
+            return jsonify(auth_err[0]), auth_err[1]
             
         issue_data = serialize(issue)
         ai_prediction = issue.get("ai_prediction") or issue.get("ai_analysis", {}).get("ai_prediction", {})
@@ -710,7 +701,8 @@ def ctve_response(issue_id):
 
 @issues_api_bp.route('/api/issues/<id>/citizen-verify', methods=['POST'])
 @require_auth
-@require_role('citizen')
+@verified_required
+@require_role('citizen', 'resident')
 def citizen_verify_issue(id):
     parsed_id = parse_object_id(id)
     if not parsed_id:
@@ -842,7 +834,7 @@ def list_issues():
 
 @issues_api_bp.route('/api/issues/<id>/review', methods=['POST'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def review_issue(id):
     parsed_id = parse_object_id(id)
     if not parsed_id:
@@ -851,6 +843,10 @@ def review_issue(id):
     issue = db.issues.find_one({"_id": parsed_id})
     if not issue:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
+        
+    authorized, auth_err = authorize_issue_access(g.current_user, issue)
+    if not authorized:
+        return jsonify(auth_err[0]), auth_err[1]
         
     data = request.get_json() or {}
     category = data.get("category")
@@ -962,7 +958,7 @@ def review_issue(id):
 
 @issues_api_bp.route('/api/issues/<id>/priority', methods=['POST'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def override_issue_priority(id):
     parsed_id = parse_object_id(id)
     if not parsed_id:
@@ -971,6 +967,10 @@ def override_issue_priority(id):
     issue = db.issues.find_one({"_id": parsed_id})
     if not issue:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
+        
+    authorized, auth_err = authorize_issue_access(g.current_user, issue)
+    if not authorized:
+        return jsonify(auth_err[0]), auth_err[1]
     officer_ward = g.current_user.get("ward")
     if officer_ward not in [None, "all", "ALL", "*"] and officer_ward != issue.get("ward"):
         return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to your assigned ward."}}), 403
@@ -1012,7 +1012,7 @@ def override_issue_priority(id):
 
 @issues_api_bp.route('/api/issues/<id>/assign', methods=['POST'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def assign_issue(id):
     parsed_id = parse_object_id(id)
     if not parsed_id:
@@ -1034,7 +1034,7 @@ def assign_issue(id):
 
 @issues_api_bp.route('/api/issues/<id>/officer-verify', methods=['POST'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def officer_verify_issue(id):
     parsed_id = parse_object_id(id)
     if not parsed_id:
@@ -1077,6 +1077,10 @@ def start_work(id):
     if not issue:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
         
+    authorized, auth_err = authorize_issue_access(g.current_user, issue)
+    if not authorized:
+        return jsonify(auth_err[0]), auth_err[1]
+        
     if str(issue.get("worker_id")) != str(g.current_user["_id"]):
         return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Job not assigned to you."}}), 403
         
@@ -1098,6 +1102,10 @@ def resolve_issue(id):
     issue = db.issues.find_one({"_id": parsed_id})
     if not issue:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
+        
+    authorized, auth_err = authorize_issue_access(g.current_user, issue)
+    if not authorized:
+        return jsonify(auth_err[0]), auth_err[1]
         
     if str(issue.get("worker_id")) != str(g.current_user["_id"]):
         return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Job not assigned to you."}}), 403
@@ -1234,7 +1242,8 @@ def declare_issue_emergency(id):
 
 @issues_api_bp.route('/api/issues/<id>/confirm', methods=['POST'])
 @require_auth
-@require_role('citizen')
+@verified_required
+@require_role('citizen', 'resident')
 def confirm_issue(id):
     parsed_id = parse_object_id(id)
     if not parsed_id:
@@ -1265,7 +1274,8 @@ def confirm_issue(id):
 
 @issues_api_bp.route('/api/issues/<id>/feedback', methods=['POST'])
 @require_auth
-@require_role('citizen')
+@verified_required
+@require_role('citizen', 'resident')
 def post_issue_feedback(id):
     parsed_id = parse_object_id(id)
     if not parsed_id:
@@ -1299,7 +1309,7 @@ def post_issue_feedback(id):
 
 @issues_api_bp.route('/api/issues/<id>/audit-log', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_issue_audit_log(id):
     parsed_id = parse_object_id(id)
     if not parsed_id:
@@ -1331,7 +1341,7 @@ def get_issue_audit_log(id):
 
 @issues_api_bp.route('/api/issues/<id>/reject', methods=['POST'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def reject_issue(id):
     parsed_id = parse_object_id(id)
     if not parsed_id:
@@ -1340,6 +1350,10 @@ def reject_issue(id):
     issue = db.issues.find_one({"_id": parsed_id})
     if not issue:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
+        
+    authorized, auth_err = authorize_issue_access(g.current_user, issue)
+    if not authorized:
+        return jsonify(auth_err[0]), auth_err[1]
 
     # Only reject if in a rejectable state
     if issue.get("status") not in ("submitted", "ai_reviewed", "officer_reviewed"):
@@ -1372,13 +1386,19 @@ def update_issue_status_route(id):
             issue = db.issues.find_one({"issue_id": id})
         if not issue:
             return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Issue not found."}}), 404
+
+        authorized, auth_err = authorize_issue_access(g.current_user, issue)
+        if not authorized:
+            return jsonify(auth_err[0]), auth_err[1]
             
         data = request.get_json() or {}
         new_status = data.get("status")
         if not new_status:
             return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "status parameter required."}}), 422
             
-        updated_issue = complaint_service.update_status(str(issue["_id"]), new_status, str(g.current_user["_id"]))
+        updated_issue = complaint_service.update_status(
+            str(issue["_id"]), new_status, str(g.current_user["_id"]), actor_role=g.current_user.get("role")
+        )
         return jsonify({"success": True, "message": f"Status updated to {new_status}.", "data": serialize(updated_issue)}), 200
     except ValueError as e:
         return jsonify({"success": False, "error": {"code": "ILLEGAL_TRANSITION", "message": str(e)}}), 422
@@ -1389,7 +1409,7 @@ def update_issue_status_route(id):
 
 @issues_api_bp.route('/api/issues/<id>/classification', methods=['PATCH', 'POST'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def update_issue_classification(id):
     try:
         issue = None
@@ -1472,7 +1492,7 @@ def update_issue_classification(id):
 
 @issues_api_bp.route('/api/issues/<id>/recommendations', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_issue_worker_recommendations(id):
     try:
         issue = None
@@ -1517,7 +1537,7 @@ def get_issue_worker_recommendations(id):
 @issues_api_bp.route('/api/issues/<id>/assignment', methods=['POST'])
 @issues_api_bp.route('/api/issues/<id>/assign', methods=['POST'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def assign_issue_route(id):
     try:
         issue = None
@@ -1674,6 +1694,7 @@ def submit_clarification(id):
 @issues_api_bp.route('/api/issues/<id>/support', methods=['POST'])
 @issues_api_bp.route('/api/complaints/<id>/support', methods=['POST'])
 @require_auth
+@verified_required
 def support_complaint(id):
     user = g.current_user
     user_id = str(user["_id"])
@@ -1682,6 +1703,11 @@ def support_complaint(id):
     complaint = db.issues.find_one({"_id": issue_oid}) if issue_oid else db.issues.find_one({"issue_id": id})
     if not complaint:
         return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "Complaint not found."}}), 404
+
+    # Prevent self-support
+    reporter_id = str(complaint.get("citizen_id") or complaint.get("user_id") or complaint.get("reporter_id") or "")
+    if reporter_id and reporter_id == user_id:
+        return jsonify({"success": False, "error": {"code": "SELF_SUPPORT_FORBIDDEN", "message": "You cannot support your own complaint."}}), 400
 
     # Prevent duplicate support
     existing = any(str(s.get("user_id")) == user_id for s in complaint.get("supporters", []))

@@ -3,7 +3,7 @@ SmartCivic — Authentication & Authorization Service
 Implements user registration, password verification, token issuance, and role checking.
 """
 from app import db
-from routes.auth import hash_password, check_password, generate_tokens, decode_token
+from routes.auth import hash_password, check_password, generate_tokens, decode_token, validate_password_strength
 from bson import ObjectId
 from datetime import datetime
 
@@ -21,6 +21,10 @@ def register_user(email: str, password: str, role: str, name: str) -> dict:
     if existing:
         raise ValueError("User with this email already exists.")
         
+    valid_pw, pw_err = validate_password_strength(password)
+    if not valid_pw:
+        raise ValueError(pw_err)
+
     pwd_hash = hash_password(password)
     user_doc = {
         "_id": ObjectId(),

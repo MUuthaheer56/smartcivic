@@ -14,7 +14,7 @@ workers_api_bp = Blueprint('workers_api', __name__)
 
 @workers_api_bp.route('/api/workers/recommend', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def recommend_workers():
     issue_id = request.args.get("issue_id")
     if not issue_id:
@@ -37,7 +37,7 @@ def recommend_workers():
 
 @workers_api_bp.route('/api/workers', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def list_workers():
     # Filter by ward if officer belongs to a specific ward
     query = {"role": "worker"}

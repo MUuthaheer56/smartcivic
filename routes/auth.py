@@ -17,15 +17,48 @@ import uuid
 
 auth_bp = Blueprint('auth', __name__)
 
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, InvalidHashError
+
+_hasher = PasswordHasher(time_cost=2, memory_cost=65536, parallelism=1)
 
 def hash_password(plain_text: str) -> str:
-    return bcrypt.hashpw(plain_text.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    return _hasher.hash(plain_text)
+
+def check_password_and_needs_rehash(plain_text: str, hashed: str) -> tuple:
+    if not plain_text or not hashed:
+        return False, False
+
+    if str(hashed).startswith("$argon2"):
+        try:
+            _hasher.verify(hashed, plain_text)
+            return True, _hasher.check_needs_rehash(hashed)
+        except (VerifyMismatchError, InvalidHashError):
+            return False, False
+        except Exception:
+            return False, False
+
+    if str(hashed).startswith("$2"):
+        try:
+            matches = bcrypt.checkpw(plain_text.encode('utf-8'), hashed.encode('utf-8'))
+            return matches, True
+        except Exception:
+            return False, False
+
+    return False, False
 
 def check_password(plain_text: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(plain_text.encode('utf-8'), hashed.encode('utf-8'))
-    except Exception:
-        return False
+    matches, _ = check_password_and_needs_rehash(plain_text, hashed)
+    return matches
+
+def validate_password_strength(password: str) -> tuple:
+    if not password or len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not any(c.isalpha() for c in password):
+        return False, "Password must contain at least one letter."
+    if not any(c.isdigit() for c in password):
+        return False, "Password must contain at least one digit."
+    return True, ""
 
 def generate_tokens(user_id: str, role: str, ward: str):
     secret = (current_app.config.get("JWT_SECRET_KEY") or current_app.config.get("JWT_SECRET")) if current_app else os.getenv("JWT_SECRET_KEY", os.getenv("JWT_SECRET", "default_jwt_secret_smartcivic"))
@@ -161,6 +194,10 @@ def register():
     if db.users.find_one({"email": email}):
         return jsonify({"success": False, "error": {"code": "ALREADY_EXISTS", "message": "Email already registered."}}), 409
         
+    valid_pw, pw_err = validate_password_strength(data.get("password", ""))
+    if not valid_pw:
+        return jsonify({"success": False, "error": {"code": "WEAK_PASSWORD", "message": pw_err}}), 400
+
     pwd_hash = hash_password(data["password"])
     user_doc = create_user_doc(
         name=data["name"],
@@ -247,28 +284,31 @@ def login():
     if user:
         locked_until = user.get("locked_until")
         if locked_until and locked_until > now:
-            msg = "Account temporarily locked. Please try again in 15 minutes."
+            remaining_mins = max(1, int((locked_until - now).total_seconds() / 60))
+            msg = f"Account temporarily locked. Please try again in {remaining_mins} minutes."
             if request.form:
                 flash(msg, "danger")
                 return render_template('auth/login.html'), 403
             return jsonify({"success": False, "error": {"code": "LOCKED", "message": msg}}), 403
             
-    if not user or not check_password(pw, user.get("password_hash", "")):
+    valid_pwd, needs_rehash = check_password_and_needs_rehash(pw, user.get("password_hash", "")) if user else (False, False)
+    if not user or not valid_pwd:
         from services.logger_service import log_security_event
         if user:
             failed_count = user.get("failed_logins", 0) + 1
-            if failed_count >= 10:
-                lock_time = now + timedelta(minutes=15)
-                db.users.update_one({"_id": user["_id"]}, {"$set": {"failed_logins": 0, "locked_until": lock_time}})
+            if failed_count >= 5:
+                lock_duration = 5 if failed_count < 10 else (15 if failed_count < 15 else 60)
+                lock_time = now + timedelta(minutes=lock_duration)
+                db.users.update_one({"_id": user["_id"]}, {"$set": {"failed_logins": failed_count, "locked_until": lock_time}})
                 from models.audit_log import create_audit_log_doc
                 db.audit_logs.insert_one(create_audit_log_doc(
                     entity_type="user",
                     entity_id=user["_id"],
                     actor_id=user["_id"],
                     action="ACCOUNT_LOCKOUT",
-                    reason="Account locked due to 10 consecutive failed login attempts."
+                    reason=f"Account locked for {lock_duration} minutes due to {failed_count} consecutive failed login attempts."
                 ))
-                log_security_event("account_locked", str(user["_id"]), request.remote_addr, {"email": email})
+                log_security_event("account_locked", str(user["_id"]), request.remote_addr, {"email": email, "failed_count": failed_count})
             else:
                 db.users.update_one({"_id": user["_id"]}, {"$set": {"failed_logins": failed_count}})
                 log_security_event("failed_login", str(user["_id"]), request.remote_addr, {"email": email, "attempt": failed_count})
@@ -298,6 +338,10 @@ def login():
             "error": {"code": "ACCOUNT_REJECTED", "message": msg},
             "rejection_reason": rejection_reason
         }), 403
+
+    if needs_rehash:
+        new_hash = hash_password(pw)
+        db.users.update_one({"_id": user["_id"]}, {"$set": {"password_hash": new_hash}})
 
     db.users.update_one({"_id": user["_id"]}, {"$set": {"failed_logins": 0, "locked_until": None, "last_login": datetime.utcnow()}})
     from services.logger_service import log_security_event
