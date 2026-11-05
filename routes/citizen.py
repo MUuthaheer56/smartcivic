@@ -20,9 +20,11 @@ def require_citizen_page(f):
         try:
             payload = jwt.decode(token, secret, algorithms=["HS256"])
             user_id = payload.get("user_id")
-            user = db.users.find_one({"_id": ObjectId(user_id), "role": "citizen"})
-            if not user:
+            user = db.users.find_one({"_id": ObjectId(user_id)})
+            if not user or user.get("role") not in ["citizen", "resident"]:
                 return redirect("/login")
+            if user.get("status") == "rejected" or user.get("verification_status") == "rejected" or not user.get("verified"):
+                return redirect("/citizen/verify-ward")
             g.current_user = user
         except Exception:
             return redirect("/login")

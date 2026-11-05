@@ -287,6 +287,18 @@ def login():
             return render_template('auth/login.html'), 403
         return jsonify({"error": msg, "message": msg}), 403
 
+    if user.get("status") == "rejected" or user.get("verification_status") == "rejected":
+        rejection_reason = user.get("rejection_reason") or "Application rejected by municipal authority."
+        msg = f"Account registration rejected: {rejection_reason}"
+        if request.form:
+            flash(msg, "danger")
+            return render_template('auth/login.html'), 403
+        return jsonify({
+            "success": False,
+            "error": {"code": "ACCOUNT_REJECTED", "message": msg},
+            "rejection_reason": rejection_reason
+        }), 403
+
     db.users.update_one({"_id": user["_id"]}, {"$set": {"failed_logins": 0, "locked_until": None, "last_login": datetime.utcnow()}})
     from services.logger_service import log_security_event
     log_security_event("login", str(user["_id"]), request.remote_addr)
@@ -454,41 +466,44 @@ def verify_ward():
     if not ward:
         ward = db.ward_registry.find_one({"area_code": area_code})
     if not ward:
-        ward_id = area_code.lower().replace(" ", "_")
-        ward_name = area_code
-    else:
-        ward_id = ward.get("ward_id", "ward_1")
-        ward_name = ward.get("ward_name", user.get("ward", "Ward 1"))
+        if request.form:
+            flash("Invalid municipal area/ward code.", "danger")
+            return render_template('auth/verify_ward.html'), 400
+        return jsonify({"success": False, "error": {"code": "INVALID_WARD_CODE", "message": "Unknown municipal area code."}}), 400
 
-    # Valid municipal ward code verification transitions account to active/verified
+    ward_id = ward.get("ward_id", "ward_01")
+    ward_name = ward.get("ward_name", user.get("ward", "Ward 1"))
+
+    # Record the ward verification request for authority review WITHOUT auto-approving
     db.users.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": {
-            "verified": True,
-            "verification_status": "approved",
-            "status": "active",
+            "verified": False,
+            "verification_status": "pending",
+            "status": "pending_verification",
             "ward": ward_name,
             "ward_id": ward_id,
             "area_code": area_code,
             "verification_method": "area_code",
-            "verified_at": datetime.utcnow(),
+            "requested_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }}
     )
     
-    session['verified'] = True
+    session['verified'] = False
     session['ward'] = ward_name
 
     if request.form:
-        flash('Ward verified successfully!', 'success')
-        return redirect(url_for('citizen.dashboard'))
+        flash('Ward verification request submitted. Awaiting municipal officer review.', 'info')
+        return redirect(url_for('citizen.verify_ward_page'))
 
     return jsonify({
         "success": True,
-        "message": "Ward verified successfully!",
+        "message": "Ward verification request submitted. Awaiting municipal authority review.",
         "ward_id": ward_id,
         "ward_name": ward_name,
-        "verified": True
+        "verified": False,
+        "verification_status": "pending"
     }), 200
 
 @auth_bp.route('/verification-status', methods=['GET'])
@@ -501,7 +516,8 @@ def verification_status():
         "status": user.get("status", "pending_verification"),
         "ward_id": user.get("ward_id"),
         "tier": user.get("tier", "reporter"),
-        "civic_score": user.get("civic_score", 0)
+        "civic_score": user.get("civic_score", 0),
+        "rejection_reason": user.get("rejection_reason")
     }), 200
 
 @auth_bp.route('/users/pending', methods=['GET'])
@@ -555,37 +571,102 @@ def manual_verify_user(user_id):
     if current.get("role") not in ["admin", "officer"]:
         return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Admin/Officer access required."}}), 403
 
+    try:
+        target_oid = ObjectId(user_id)
+    except Exception:
+        return jsonify({"success": False, "error": {"code": "INVALID_ID", "message": "Invalid user ID format."}}), 400
+
+    target_user = db.users.find_one({"_id": target_oid})
+    if not target_user:
+        return jsonify({"success": False, "error": {"code": "NOT_FOUND", "message": "User not found."}}), 404
+
+    # Enforce ward jurisdiction for officers
+    if current.get("role") == "officer":
+        off_ward = str(current.get("ward_id") or current.get("ward") or "").lower().replace(" ", "").replace("_", "")
+        tgt_ward = str(target_user.get("ward_id") or target_user.get("ward") or "").lower().replace(" ", "").replace("_", "")
+        if off_ward != "all" and off_ward != tgt_ward:
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "CROSS_WARD_FORBIDDEN",
+                    "message": f"Officer jurisdiction is limited to their assigned ward ({current.get('ward')})."
+                }
+            }), 403
+
     data = request.get_json(silent=True) or {}
     action = str(data.get("action", "approve")).lower()
     status_choice = str(data.get("status", "approved")).lower()
-    reason = data.get("reason", "Verification rejected by officer")
 
     if request.path.endswith('/reject') or action == "reject" or status_choice == "rejected":
+        raw_reason = str(data.get("reason", "")).strip()
+        if not raw_reason or len(raw_reason) < 10:
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "INVALID_REASON",
+                    "message": "Rejection requires a specific justification of at least 10 characters."
+                }
+            }), 400
+
+        # Idempotency check
+        if target_user.get("verification_status") == "rejected" and target_user.get("rejection_reason") == raw_reason:
+            return jsonify({"success": True, "message": "User is already rejected with this reason.", "already_rejected": True}), 200
+
         db.users.update_one(
-            {"_id": ObjectId(user_id)},
+            {"_id": target_oid},
             {"$set": {
                 "verified": False,
                 "verification_status": "rejected",
                 "status": "rejected",
-                "rejection_reason": reason,
+                "rejection_reason": raw_reason,
+                "rejected_by": str(current["_id"]),
+                "rejected_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }}
         )
+        db.audit_logs.insert_one({
+            "target_user_id": str(target_oid),
+            "actor_id": str(current["_id"]),
+            "actor_role": current.get("role"),
+            "action": "resident_verification_rejected",
+            "ward": target_user.get("ward"),
+            "ward_id": target_user.get("ward_id"),
+            "reason": raw_reason,
+            "timestamp": datetime.utcnow()
+        })
         return jsonify({"success": True, "message": "User verification rejected by admin/officer."}), 200
 
-    ward_id = data.get("ward_id", "ward_1")
+    # Idempotency check for approval
+    if target_user.get("verified") is True and target_user.get("verification_status") == "approved":
+        return jsonify({"success": True, "message": "User is already verified.", "already_verified": True}), 200
+
+    # Preserve resident's registered ward (officer cannot overwrite)
+    resident_ward_id = target_user.get("ward_id", "ward_01")
+    resident_ward_name = target_user.get("ward", "Ward 1")
+
     db.users.update_one(
-        {"_id": ObjectId(user_id)},
+        {"_id": target_oid},
         {"$set": {
             "verified": True,
             "verification_status": "approved",
             "status": "active",
-            "ward_id": ward_id,
+            "ward_id": resident_ward_id,
+            "ward": resident_ward_name,
             "verification_method": "admin_manual",
+            "verified_by": str(current["_id"]),
             "verified_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }}
     )
+    db.audit_logs.insert_one({
+        "target_user_id": str(target_oid),
+        "actor_id": str(current["_id"]),
+        "actor_role": current.get("role"),
+        "action": "resident_verification_approved",
+        "ward": resident_ward_name,
+        "ward_id": resident_ward_id,
+        "timestamp": datetime.utcnow()
+    })
     return jsonify({"success": True, "message": "User verified successfully by admin/officer"}), 200
 
 
