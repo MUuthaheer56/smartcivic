@@ -124,3 +124,4 @@ With Phase 2 verified and closed, the next phase per `SMARTCIVIC_FIX_PLAN.md` is
 - Verification document Fernet encryption at rest.
 - Field whitelisting serializers (`public_issue`, `citizen_issue`, `officer_issue`) to eliminate raw document leakage.
 - PII scrubbing before Gemini API calls.
+
