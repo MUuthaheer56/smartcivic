@@ -8,27 +8,42 @@ from services.ai_service import analyze_text as call_gemini_ai
 
 SERVICE_CLASSES = [
     "water", "electricity", "roads", "flooding", "trees",
-    "solid_waste", "public_health", "animals", "traffic",
+    "solid_waste", "sanitation", "drainage", "public_health", "animals", "traffic",
     "illegal_construction", "parks_lakes", "transport",
     "general_civic", "gas_environment", "medical_emergency",
     "fire_emergency", "crime_safety", "multi_issue", "unknown_other",
-    "food_safety", "road"
+    "food_safety", "road", "noise"
 ]
 
 EMERGENCY_PATTERNS = [
-    (r'\bfire\b',           r'\b(no|out|old|was|yesterday|extinguished)\b'),
-    (r'\baccident\b',       r'\bno accident\b|\baccident.{0,20}(ago|yesterday)\b'),
-    (r'\bunconscious\b',    None),
-    (r'\bnot breathing\b',  None),
-    (r'\bgas leak\b',       r'\bno gas leak\b'),
-    (r'\btrapped\b',        r'\b(not|no longer) trapped\b'),
-    (r'\bbleeding\b',       r'\b(minor|small|no) bleeding\b'),
-    (r'\bdying\b',          None),
-    (r'\bhelp me\b',        None),
-    (r'\blive wire\b',      r'\bno live wire\b'),
-    (r'\belectric shock\b', None),
-    (r'\bbeesi\b',          None),
-    (r'\bagni\b',           None),
+    # Fire & Explosion
+    (r'\bfire\b',                 r'\b(no|out|old|was|yesterday|extinguished)\b'),
+    (r'\bexplosion\b|\bblast\b',  r'\bno explosion\b'),
+    (r'\bagni\b|\bbanka\b',       None),  # Kannada/Indic fire
+
+    # Vehicular & Structural Accidents
+    (r'\baccident\b',             r'\bno accident\b|\baccident.{0,20}(ago|yesterday)\b'),
+    (r'\bcollapsed?\b|\bcrater\b|\bsinkhole\b', r'\bno collapse\b'),
+    (r'\btrapped\b',              r'\b(not|no longer) trapped\b'),
+
+    # Medical & Life Hazards
+    (r'\bunconscious\b',          None),
+    (r'\bnot breathing\b',        None),
+    (r'\bheart attack\b|\bcardiac\b', None),
+    (r'\bbleeding\b',             r'\b(minor|small|no) bleeding\b'),
+    (r'\bdying\b',                None),
+    (r'\bhelp me\b|\bsave us\b',  None),
+    (r'\bdrown(ed|ing)?\b',       None),
+
+    # Electrical, Gas & Chemical Dangers
+    (r'\bgas leak\b|\bchlorine\b|\bchemical leak\b|\btoxic fumes?\b', r'\bno gas leak\b'),
+    (r'\blive wire\b|\bsparking wire\b|\bwire sparking\b|\bsparking\b', r'\bno (live )?wire\b'),
+    (r'\belectric shock\b|\belectrocute?d?\b', None),
+    (r'\bbeesi\b',                None),
+
+    # Vernacular (Kannada & Hinglish) Emergencies
+    (r'ತುರ್ತು|ಅಪಘಾತ|ಬೆಂಕಿ|ವಿದ್ಯುತ್ ಆಘಾತ|ಉಸಿರಾಟ', None), # Emergency, accident, fire, electric shock, breathing
+    (r'\bmadad\b|\bjan bachao\b|\bkhatra\b|\baag lag\b', None), # Hinglish danger/fire/help
 ]
 
 def pattern_emergency_check(text: str) -> bool:

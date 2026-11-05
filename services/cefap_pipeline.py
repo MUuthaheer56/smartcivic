@@ -158,7 +158,10 @@ def _reliability(text_severity_score, text_confidence, image_evidence):
         else:
             ctve_msg = None
 
-    E = max(0.01, min(c_avg * (1.0 - disagreement), 1.0))
+    # AI-06: Disagreement damping to prevent perverse priority collapse from P0 to P3.
+    # Disagreement multiplier is floored at 0.50 so photos cannot destroy evidence credibility.
+    effective_disagreement = min(disagreement, 0.50)
+    E = max(0.01, min(c_avg * (1.0 - effective_disagreement), 1.0))
     return {
         "E": E, "disagreement": disagreement,
         "ctve_triggered": ctve, "ctve_message": ctve_msg,

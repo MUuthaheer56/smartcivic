@@ -129,8 +129,12 @@ def _generate_content_with_model_fallback(client, contents, preferred_model: str
             return response, name
 
         except Exception as e:
-            err_msg = str(e)
-            if any(term in err_msg.lower() for term in ["404", "429", "not found", "no longer available", "quota", "resourceexhausted", "rate"]):
+            err_msg = str(e).lower()
+            # AI-05: If rate-limited (429 / quota exceeded), fail fast immediately to avoid 3-8s timeout penalties across candidates
+            if any(term in err_msg for term in ["429", "quota", "resourceexhausted", "rate limit"]):
+                gemini_circuit_breaker.record_failure(e)
+                raise e
+            if any(term in err_msg for term in ["404", "not found", "no longer available"]):
                 last_err = e
                 continue
             raise e
@@ -217,12 +221,21 @@ def _rule_based_fallback(description: str) -> dict:
             
     department = CATEGORY_TO_DEPT.get(category, "roads")
     
+    # AI-07: Compute calibrated confidence based on keyword match strength and text richness
+    matched_count = sum(1 for word in ["wire", "spark", "water", "pipe", "garbage", "drain", "sewage", "pothole", "road"] if word in text)
+    base_conf = 0.60
+    if category != "other":
+        base_conf += min(matched_count * 0.10, 0.25)
+    if len(text.strip()) > 30:
+        base_conf += 0.05
+    computed_conf = round(min(base_conf, 0.95), 2)
+
     return {
         "category": category,
         "type": issue_type,
         "severity": severity,
         "department": department,
-        "confidence": 0.75,
+        "confidence": computed_conf,
         "confidence_type": "heuristic",
         "provider": "rule_based",
         "ai_available": False
@@ -685,11 +698,55 @@ def detect_and_translate(text: str) -> dict:
     elif has_telugu:
         lang = "telugu"
         
+    # Indic vernacular keyword glossary for offline translation fallback (AI-03)
+    INDIC_GLOSSARY = {
+        # Kannada
+        "ಗುಂಡಿ": "pothole road damage",
+        "ರಸ್ತೆ": "road",
+        "ನೀರು": "water supply",
+        "ಕಸ": "garbage solid waste",
+        "ವಿದ್ಯುತ್": "electricity power",
+        "ದೀಪ": "street light",
+        "ಚರಂಡಿ": "drainage sewage",
+        "ಸಂಚಾರ": "traffic",
+        "ಬೆಂಕಿ": "fire emergency",
+        "ಅಪಘಾತ": "accident emergency",
+        "ತುರ್ತು": "emergency immediate",
+        # Hindi
+        "गड्ढा": "pothole road damage",
+        "सड़क": "road",
+        "पानी": "water supply",
+        "कचरा": "garbage solid waste",
+        "बिजली": "electricity power",
+        "नाली": "drainage sewage",
+        "आग": "fire emergency",
+        "दुर्घटना": "accident emergency",
+        # Tamil
+        "குழி": "pothole road damage",
+        "சாலை": "road",
+        "தண்ணீர்": "water supply",
+        "குப்பை": "garbage solid waste",
+        "மின்சாரம்": "electricity power",
+        # Telugu
+        "గుంత": "pothole road damage",
+        "రోడ్డు": "road",
+        "నీరు": "water supply",
+        "చెత్త": "garbage solid waste",
+        "విద్యుత్": "electricity power",
+    }
+
+    translated_terms = []
+    for term, eng in INDIC_GLOSSARY.items():
+        if term in text:
+            translated_terms.append(eng)
+
+    translated = f"{text} ({' '.join(translated_terms)})" if translated_terms else text
+
     return {
         "original_text": text,
         "detected_language": lang,
-        "translated_text": text,
-        "confidence": 0.50
+        "translated_text": translated,
+        "confidence": 0.70 if translated_terms else 0.50
     }
 
 def generate_officer_briefing(stats: dict) -> str:
