@@ -241,18 +241,35 @@ def register():
             doc_ext = doc_file.filename.rsplit('.', 1)[-1].lower() if '.' in doc_file.filename else ''
             if doc_ext not in {'jpg', 'jpeg', 'png', 'webp', 'pdf'}:
                 return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Unsupported file type for verification document. Allowed: JPG, PNG, WEBP, PDF."}}), 400
-            
+
+            raw_bytes = doc_file.read()
+            doc_file.seek(0)
+            if not raw_bytes:
+                return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Uploaded verification document is empty."}}), 400
+
             if doc_ext == 'pdf':
-                header = doc_file.read(10)
-                doc_file.seek(0)
-                if not header.startswith(b'%PDF-'):
+                if not raw_bytes.startswith(b'%PDF-'):
                     return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Invalid PDF document content."}}), 400
+                content_to_save = raw_bytes
+            else:
+                try:
+                    from PIL import Image
+                    import io
+                    img = Image.open(io.BytesIO(raw_bytes))
+                    img.verify()
+                    content_to_save = raw_bytes
+                except Exception:
+                    return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Corrupt or invalid image verification document."}}), 400
+
+            from utils.crypto_utils import encrypt_bytes
+            encrypted_payload = encrypt_bytes(content_to_save)
 
             upload_dir = current_app.config.get("VERIFICATION_FOLDER", os.path.join(current_app.root_path, "uploads", "verification_docs"))
             os.makedirs(upload_dir, exist_ok=True)
             doc_name = f"{uuid.uuid4().hex}.{doc_ext}"
             saved_path = os.path.join(upload_dir, doc_name)
-            doc_file.save(saved_path)
+            with open(saved_path, "wb") as f_out:
+                f_out.write(encrypted_payload)
             user_doc["verification_doc"] = f"/files/verification_docs/{doc_name}"
 
     try:

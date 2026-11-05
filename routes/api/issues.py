@@ -147,16 +147,30 @@ def create_issue():
         "provided": location_provided,
     }
     
+    is_anon = payload.get("is_anonymous") in [True, "true", "True", "1", 1]
     try:
         issue = complaint_service.create_complaint(
-            citizen_id=str(g.current_user["_id"]),
+            citizen_id=None if is_anon else str(g.current_user["_id"]),
             title=title,
             description=description,
             location=location,
             images=images,
             category=category,
-            issue_type=issue_type
+            issue_type=issue_type,
+            is_anonymous=is_anon
         )
+
+        if is_anon:
+            import hmac
+            import hashlib
+            user_id_str = str(g.current_user["_id"])
+            secret_key = current_app.config.get("SECRET_KEY", "default-salt").encode("utf-8")
+            reporter_hash = hmac.new(secret_key, user_id_str.encode("utf-8"), hashlib.sha256).hexdigest()
+            db.anonymous_reporters.insert_one({
+                "issue_id": issue["_id"],
+                "reporter_hash": reporter_hash,
+                "created_at": datetime.utcnow()
+            })
         
         if images:
             old_filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], images[0]["filename"])
@@ -257,7 +271,8 @@ def create_issue():
             "recurrence": issue.get("recurrence") or (cefap_doc.get("recurrence") if cefap_doc else None),
             "sla_risk": issue.get("sla_risk") or (cefap_doc.get("sla_risk") if cefap_doc else None),
         }
-        res_data = serialize(issue)
+        from utils.serializers import serialize_citizen_issue
+        res_data = serialize_citizen_issue(issue, user_id=str(g.current_user["_id"]))
         res_data["signals"] = signals
         return jsonify({
             "success": True,
@@ -463,7 +478,14 @@ def get_issue(id):
         if not authorized:
             return jsonify(auth_err[0]), auth_err[1]
             
-        issue_data = serialize(issue)
+        role = g.current_user.get("role")
+        user_id = str(g.current_user["_id"])
+        if role in ["officer", "admin"]:
+            from utils.serializers import serialize_officer_issue
+            issue_data = serialize_officer_issue(issue)
+        else:
+            from utils.serializers import serialize_citizen_issue
+            issue_data = serialize_citizen_issue(issue, user_id=user_id)
         ai_prediction = issue.get("ai_prediction") or issue.get("ai_analysis", {}).get("ai_prediction", {})
         op_classification = issue.get("operational_classification") or {
             "issue_type": issue.get("type"),

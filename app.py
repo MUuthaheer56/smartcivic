@@ -7,7 +7,7 @@ import sys
 import jwt
 from datetime import datetime
 from bson import ObjectId
-from flask import Flask, render_template, request, redirect, g, jsonify, current_app, send_from_directory, abort
+from flask import Flask, render_template, request, redirect, g, jsonify, current_app, send_from_directory, abort, Response
 from pymongo import MongoClient
 from flask_socketio import SocketIO, emit, join_room
 from flask_limiter import Limiter
@@ -256,10 +256,32 @@ def create_app():
             abort(403)
 
         target_dir = os.path.join(Config.PRIVATE_UPLOAD_DIR, kind)
-        if not os.path.exists(os.path.join(target_dir, filename)):
+        full_path = os.path.join(target_dir, filename)
+        if not os.path.exists(full_path):
             abort(404)
 
-        return send_from_directory(target_dir, filename)
+        if kind in ["docs", "verification_docs"]:
+            with open(full_path, "rb") as f_in:
+                raw_bytes = f_in.read()
+            from utils.crypto_utils import decrypt_verification_file
+            data = decrypt_verification_file(raw_bytes)
+            ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+            mimetypes = {
+                "pdf": "application/pdf",
+                "jpg": "image/jpeg",
+                "jpeg": "image/jpeg",
+                "png": "image/png",
+                "webp": "image/webp"
+            }
+            resp = Response(data, mimetype=mimetypes.get(ext, "application/octet-stream"))
+            resp.headers["X-Content-Type-Options"] = "nosniff"
+            if ext == "pdf":
+                resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return resp
+
+        resp = send_from_directory(target_dir, filename)
+        resp.headers["X-Content-Type-Options"] = "nosniff"
+        return resp
 
     # Legacy and general page routes
     @app.route('/login')

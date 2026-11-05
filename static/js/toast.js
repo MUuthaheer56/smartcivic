@@ -13,7 +13,7 @@ function showToast(message, type = 'info', duration = 3500) {
 
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    
+
     let iconClass = 'fa-circle-info';
     if (type === 'success') iconClass = 'fa-circle-check';
     if (type === 'warning' || type === 'alert') iconClass = 'fa-triangle-exclamation';
@@ -32,7 +32,7 @@ function showToast(message, type = 'info', duration = 3500) {
     }
 
     container.appendChild(toast);
-    
+
     setTimeout(() => toast.classList.add('show'), 10);
 
     setTimeout(() => {

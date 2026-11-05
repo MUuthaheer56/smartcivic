@@ -118,7 +118,12 @@ def can_view_file(db, user_id, role, kind, filename: str) -> bool:
             return False
             
         if role == "officer":
-            return True
+            officer = db.users.find_one({"_id": ObjectId(user_id_str)}) if ObjectId.is_valid(user_id_str) else None
+            off_ward = str(officer.get("ward_id") or officer.get("ward") or "").lower().replace(" ", "").replace("_", "") if officer else ""
+            user_ward = str(user.get("ward_id") or user.get("ward") or "").lower().replace(" ", "").replace("_", "")
+            if off_ward in ["all", "*"] or (off_ward and off_ward == user_ward):
+                return True
+            return False
         return str(user.get("_id")) == user_id_str
 
     elif kind in ["issues", "resolution"]:

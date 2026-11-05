@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 from bson import ObjectId
 import json
+import re
 from services.logger_service import log_ai_call
 from config import Config
 
@@ -273,12 +274,19 @@ def analyze_image_with_gemini(image_path: str) -> dict:
 
 def sanitize_gemini_prompt(text: str, max_chars: int = 2000) -> str:
     """
-    Enforces input length limits and prompt-injection escaping for Gemini calls.
+    Enforces input length limits, PII redaction, and prompt-injection escaping for Gemini calls (Plan 3.5).
+    Scrubs phone numbers and emails to protect citizen privacy before external dispatch.
     Prevents token bloat, delimiter breakout, and adversarial system override instructions.
     """
     if not text:
         return ""
     cleaned = str(text)[:max_chars].strip()
+
+    # Scrub PII: emails and phone numbers before model dispatch
+    cleaned = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[REDACTED_EMAIL]', cleaned)
+    cleaned = re.sub(r'(\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b', '[REDACTED_PHONE]', cleaned)
+    cleaned = re.sub(r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b', '[REDACTED_PHONE]', cleaned)
+
     # Strip markdown code fences to prevent delimiter hijacking
     cleaned = cleaned.replace("```", "'''")
     # Neutralize prompt injection markers

@@ -50,6 +50,12 @@ def list_workers():
         "created_at": 0,
         "last_login": 0
     }))
+    from utils.serializers import mask_phone_number
+    for w in workers:
+        if "phone" in w:
+            w["phone"] = mask_phone_number(w["phone"])
+        if "phone_number" in w:
+            w["phone_number"] = mask_phone_number(w["phone_number"])
     return jsonify({"success": True, "data": serialize(workers)}), 200
 
 

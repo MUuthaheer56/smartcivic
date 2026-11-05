@@ -159,7 +159,7 @@ def recalculate_cluster_centroid(cluster_id, db):
     )
 
 
-def create_complaint(citizen_id, title: str, description: str, location: dict, images: list = None, category: str = None, issue_type: str = None) -> dict:
+def create_complaint(citizen_id, title: str, description: str, location: dict, images: list = None, category: str = None, issue_type: str = None, is_anonymous: bool = False) -> dict:
     """
     Spawns and populates an Issue document with text/image analysis, duplicate scans, and SLA.
     """
@@ -200,6 +200,10 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         
     issue_id = ObjectId()
     issue_doc["_id"] = issue_id
+
+    if is_anonymous:
+        issue_doc["citizen_id"] = None
+        issue_doc["is_anonymous"] = True
     
     # 3. Analyze text and image independently before fusing the predictions.
     ai_text = ai_service.analyze_complaint_text(description)
@@ -562,17 +566,18 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         logger.warning(f"[Complaint Service] log_ai_decision warning: {log_err}")
     
     # Increment Citizen Reports Submitted Count
-    db.users.update_one(
-        {"_id": ObjectId(citizen_id)},
-        {"$inc": {"reports_submitted": 1}}
-    )
-    
-    # Audit log & notifications
-    log_audit("issue", issue_id, citizen_id, "CREATE", reason="Citizen complaint created.")
-    log_audit("issue", issue_id, None, "AI_REVIEW", reason=f"AI automated parsing completed. Provider: {ai_analysis['provider']}")
-    
-    send(COMPLAINT_CREATED, str(citizen_id), str(issue_id))
-    send(AI_ANALYSIS_COMPLETED, str(citizen_id), str(issue_id))
+    if citizen_id:
+        db.users.update_one(
+            {"_id": ObjectId(citizen_id)},
+            {"$inc": {"reports_submitted": 1}}
+        )
+        log_audit("issue", issue_id, citizen_id, "CREATE", reason="Citizen complaint created.")
+        log_audit("issue", issue_id, None, "AI_REVIEW", reason=f"AI automated parsing completed. Provider: {ai_analysis['provider']}")
+        send(COMPLAINT_CREATED, str(citizen_id), str(issue_id))
+        send(AI_ANALYSIS_COMPLETED, str(citizen_id), str(issue_id))
+    else:
+        log_audit("issue", issue_id, None, "CREATE", reason="Anonymous complaint created.")
+        log_audit("issue", issue_id, None, "AI_REVIEW", reason=f"AI automated parsing completed. Provider: {ai_analysis['provider']}")
     
     # Run recurrence hotspot detection if not marked as duplicate
     if not duplicate_of:

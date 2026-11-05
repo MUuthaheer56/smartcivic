@@ -36,7 +36,8 @@ def get_map_issues():
         "confirmation_count": 1
     }))
     
-    return jsonify({"success": True, "data": serialize(issues)}), 200
+    from utils.serializers import serialize_public_issue
+    return jsonify({"success": True, "data": [serialize_public_issue(i) for i in issues]}), 200
 
 @map_api_bp.route('/api/map/clusters', methods=['GET'])
 @require_auth
@@ -195,7 +196,8 @@ def get_public_map():
         "ward": 1,
         "confirmation_count": 1
     }))
-    return jsonify({"success": True, "data": serialize(issues)}), 200
+    from utils.serializers import serialize_public_issue
+    return jsonify({"success": True, "data": [serialize_public_issue(i) for i in issues]}), 200
 
 @map_api_bp.route('/api/map/hotspots', methods=['GET'])
 @require_auth

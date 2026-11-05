@@ -58,19 +58,19 @@ ENV GUNICORN_WORKERS=1 \
 # Flask factory + background jobs (SLA sweeps, AI briefings, backups, etc.).
 CMD ["sh", "-c", \
     "exec gunicorn \
-        --workers ${GUNICORN_WORKERS} \
-        --threads ${GUNICORN_THREADS} \
-        --timeout ${GUNICORN_TIMEOUT} \
-        --graceful-timeout 30 \
-        --keep-alive 5 \
-        --bind 0.0.0.0:${PORT:-5000} \
-        --forwarded-allow-ips='${FORWARDED_ALLOW_IPS:-127.0.0.1}' \
-        --proxy-protocol \
-        --access-logfile - \
-        --error-logfile - \
-        --log-level info \
-        --capture-output \
-        wsgi:app"]
+    --workers ${GUNICORN_WORKERS} \
+    --threads ${GUNICORN_THREADS} \
+    --timeout ${GUNICORN_TIMEOUT} \
+    --graceful-timeout 30 \
+    --keep-alive 5 \
+    --bind 0.0.0.0:${PORT:-5000} \
+    --forwarded-allow-ips='${FORWARDED_ALLOW_IPS:-127.0.0.1}' \
+    --proxy-protocol \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info \
+    --capture-output \
+    wsgi:app"]
 
 # Healthcheck uses the /api/health endpoint the app already exposes.  This
 # causes Docker / ECS / ECS Fargate / Kubernetes to restart the container if

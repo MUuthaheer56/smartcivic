@@ -14,7 +14,7 @@ function startLocationTracking() {
     const sendLocation = (pos) => {
         fetch('/api/workers/me/location', {
             method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 lat: pos.coords.latitude,
                 lng: pos.coords.longitude
@@ -22,10 +22,10 @@ function startLocationTracking() {
         }).catch(err => console.error("Location update failed", err));
     };
     // Initial
-    navigator.geolocation.getCurrentPosition(sendLocation, err => console.warn(err), {enableHighAccuracy: true});
+    navigator.geolocation.getCurrentPosition(sendLocation, err => console.warn(err), { enableHighAccuracy: true });
     // Poll every 3 minutes
     setInterval(() => {
-        navigator.geolocation.getCurrentPosition(sendLocation, () => {}, {enableHighAccuracy: true, maximumAge: 60000});
+        navigator.geolocation.getCurrentPosition(sendLocation, () => { }, { enableHighAccuracy: true, maximumAge: 60000 });
     }, 180000);
 }
 
@@ -37,11 +37,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function initMap() {
     map = L.map('workerMap').setView([12.9716, 77.5946], 13);
-    
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
-    
+
     markerLayer.addTo(map);
 }
 
@@ -49,22 +49,22 @@ async function loadMyJobs() {
     try {
         const res = await fetch("/api/worker/jobs");
         const data = await res.json();
-        
+
         if (data.success) {
             const listEl = document.getElementById("jobsList");
             listEl.innerHTML = "";
-            
+
             if (data.data.length === 0) {
                 listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 2rem;">No active maintenance orders assigned.</div>`;
                 return;
             }
-            
+
             // Set current worker ID
             currentWorkerId = data.data[0].worker_id;
-            
+
             data.data.forEach((job, index) => {
                 const isActiveJob = job.status === "work_started";
-                
+
                 const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
                 const card = document.createElement("div");
                 card.className = `job-card ${isActiveJob ? 'active' : ''}`;
@@ -88,7 +88,7 @@ async function loadMyJobs() {
                 `;
                 listEl.appendChild(card);
             });
-            
+
             // Draw optimized daily itinerary route path
             drawItineraryRoute();
         }
@@ -99,27 +99,27 @@ async function loadMyJobs() {
 
 async function drawItineraryRoute() {
     if (!currentWorkerId) return;
-    
+
     try {
         const res = await fetch(`/api/map/route?worker_id=${currentWorkerId}`);
         const data = await res.json();
-        
+
         if (data.success && data.data.length > 0) {
             markerLayer.clearLayers();
             if (routeLine) map.removeLayer(routeLine);
-            
+
             const latlngs = [];
             const summary = document.getElementById("routeSummary");
             let totalDist = 0;
             let totalTime = 0;
-            
+
             data.data.forEach((stop, index) => {
                 const coords = stop.coords;
                 latlngs.push(...stop.polyline);
-                
+
                 totalDist += stop.distance_km;
                 totalTime += stop.duration_minutes;
-                
+
                 // Add marker
                 const marker = L.marker([coords[0], coords[1]], {
                     icon: L.divIcon({
@@ -130,11 +130,11 @@ async function drawItineraryRoute() {
                 });
                 markerLayer.addLayer(marker);
             });
-            
+
             // Draw polyline route
             routeLine = L.polyline(latlngs, { color: 'var(--primary)', weight: 5, opacity: 0.8 }).addTo(map);
             map.fitBounds(routeLine.getBounds());
-            
+
             summary.innerHTML = `
                 <div><strong>Daily Dispatch Route Metrics:</strong></div>
                 <div><i class="fa-solid fa-road"></i> Total Drive Distance: ${totalDist.toFixed(1)} km</div>
@@ -166,23 +166,23 @@ async function openJobDetail(issueId) {
     const body = document.getElementById("modalBody");
     const title = document.getElementById("modalTitle");
     const actionArea = document.getElementById("actionArea");
-    
+
     body.innerHTML = `<div style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading job details...</div>`;
     actionArea.innerHTML = "";
-    
+
     backdrop.style.display = "block";
     modal.style.display = "flex";
-    
+
     try {
         const res = await fetch(`/api/issues/${issueId}`);
         const data = await res.json();
-        
+
         if (data.success) {
             const issue = data.data;
             title.innerText = issue.title;
-            
+
             const beforeImg = issue.images.find(img => img.type === "before");
-            
+
             body.innerHTML = `
                 <div><strong>Description:</strong> ${issue.description}</div>
                 <div><strong>Address:</strong> ${issue.address}</div>
@@ -196,7 +196,7 @@ async function openJobDetail(issueId) {
                     </div>
                 ` : ''}
             `;
-            
+
             // Dynamic actions based on job status
             if (issue.status === "assigned") {
                 actionArea.innerHTML = `
@@ -252,22 +252,22 @@ async function startJob(issueId) {
 
 async function submitResolution(e, issueId) {
     e.preventDefault();
-    
+
     const formData = new FormData();
     formData.append("notes", document.getElementById("notes").value);
-    
+
     const imgFile = document.getElementById("afterImage").files[0];
     if (imgFile) {
         formData.append("image", imgFile);
     }
-    
+
     try {
         const res = await fetch(`/api/issues/${issueId}/resolve`, {
             method: "POST",
             body: formData
         });
         const data = await res.json();
-        
+
         if (data.success) {
             showToast("Resolution submitted! AI status: " + data.data.status, "success");
             closeJobDetail();

@@ -6,6 +6,9 @@ import os
 import uuid
 from PIL import Image, ImageOps
 
+# Decompression bomb mitigation (Plan 3.1)
+Image.MAX_IMAGE_PIXELS = 10_000_000
+
 ALLOWED_EXT = {"jpg", "jpeg", "png", "webp"}
 ALLOWED_FMT = {"JPEG", "PNG", "WEBP"}
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
@@ -91,6 +94,10 @@ def save_image(file_storage, upload_dir: str = "uploads/issues") -> str:
         os.makedirs(upload_dir, exist_ok=True)
         fname = f"{uuid.uuid4().hex}.{fmt.lower()}"
         filepath = os.path.join(upload_dir, fname)
+
+        # Strip all metadata/EXIF/ICC profiles before persisting
+        img.info.pop("exif", None)
+        img.info.pop("icc_profile", None)
 
         # Save re-encoded image without EXIF/metadata
         img.save(filepath, format=fmt)
