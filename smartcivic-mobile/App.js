@@ -21,13 +21,33 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import api from './src/services/api';
 
+const ROYAL_THEME = {
+  bg: '#0a0f2c',           // Royal Navy background
+  surface: '#121a45',      // Royal Surface
+  surfaceAlt: '#1a2360',   // Royal Card surface
+  border: 'rgba(231, 227, 240, 0.14)',
+  borderAccent: '#c9a227', // Imperial Gold
+  primary: '#6d28d9',      // Royal Purple brand
+  primaryDark: '#4c1d95',
+  secondary: '#3730a3',    // Royal Indigo
+  gold: '#c9a227',         // Imperial Gold accent
+  goldLight: '#e7c76a',
+  text: '#f3f1ff',         // Royal light text
+  textMuted: '#9ba1b8',
+  textSecondary: '#cbd5e1',
+  ruby: '#d1264a',         // Critical/Logout badge
+  emerald: '#0f9d6b',      // Resolved / Success / Nav
+  amber: '#d99a1a',        // Warning
+  sapphire: '#2f5bd8',     // Info / Action
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState('citizen');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [serverUrl, setServerUrl] = useState('http://10.30.128.225:5000/api');
-  
+
   // App state
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -92,7 +112,7 @@ export default function App() {
       if (response.data.success || response.data.token) {
         const token = response.data.token || response.data.access_token;
         const role = response.data.role || 'citizen';
-        
+
         await SecureStore.setItemAsync('user_token', token);
         await SecureStore.setItemAsync('user_role', role);
 
@@ -113,7 +133,7 @@ export default function App() {
     try {
       await SecureStore.deleteItemAsync('user_token');
       await SecureStore.deleteItemAsync('user_role');
-    } catch (e) {}
+    } catch (e) { }
     setIsAuthenticated(false);
     setTasks([]);
   };
@@ -123,7 +143,7 @@ export default function App() {
       if (!silent) setLoading(true);
       const endpoint = userRole === 'worker' ? '/workers/assigned-tasks' : '/issues';
       const response = await api.get(endpoint);
-      
+
       const taskList = response.data.tasks || response.data.data || response.data.issues || [];
       setTasks(taskList);
     } catch (error) {
@@ -247,7 +267,7 @@ export default function App() {
         setLoading(true);
         const location = await Location.getCurrentPositionAsync({});
         const photo = result.assets[0];
-        
+
         const formData = new FormData();
         const filename = photo.uri.split('/').pop() || 'resolution.jpg';
         formData.append('after_image', {
@@ -278,11 +298,11 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <SafeAreaView style={styles.darkContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+        <StatusBar barStyle="light-content" backgroundColor={ROYAL_THEME.bg} />
         <ScrollView contentContainerStyle={styles.loginContent}>
           <Text style={styles.brandTitle}>SmartCivic v2</Text>
           <Text style={styles.brandSubtitle}>Standalone Mobile App Client</Text>
-          
+
           <View style={styles.card}>
             <Text style={styles.inputLabel}>Backend API Server Endpoint</Text>
             <TextInput
@@ -329,8 +349,8 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.darkContainer}>
-      <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
-      
+      <StatusBar barStyle="light-content" backgroundColor={ROYAL_THEME.bg} />
+
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -367,7 +387,7 @@ export default function App() {
         <ScrollView style={styles.scrollForm}>
           <View style={styles.card}>
             <Text style={styles.cardHeaderTitle}>File New Civic Grievance</Text>
-            
+
             <Text style={styles.inputLabel}>Issue Title</Text>
             <TextInput
               style={styles.input}
@@ -417,7 +437,7 @@ export default function App() {
         <FlatList
           data={tasks}
           keyExtractor={(item, index) => item.id || item.issue_id || item._id || index.toString()}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#38BDF8" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ROYAL_THEME.gold} />}
           renderItem={({ item }) => {
             const lat = item.location?.latitude || item.location?.coordinates?.[1] || 12.9716;
             const lng = item.location?.longitude || item.location?.coordinates?.[0] || 77.5946;
@@ -463,43 +483,43 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  darkContainer: { flex: 1, backgroundColor: '#0F172A', paddingHorizontal: 16 },
+  darkContainer: { flex: 1, backgroundColor: ROYAL_THEME.bg, paddingHorizontal: 16 },
   loginContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: 40 },
-  brandTitle: { fontSize: 32, fontWeight: '800', color: '#38BDF8', textAlign: 'center' },
-  brandSubtitle: { fontSize: 14, color: '#94A3B8', textAlign: 'center', marginBottom: 24 },
-  card: { backgroundColor: '#1E293B', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#334155' },
-  cardHeaderTitle: { fontSize: 20, fontWeight: '700', color: '#F8FAFC', marginBottom: 16 },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: '#CBD5E1', marginBottom: 6, marginTop: 12 },
-  input: { backgroundColor: '#0F172A', color: '#F8FAFC', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#475569', fontSize: 15 },
-  primaryButton: { backgroundColor: '#0284C7', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 20 },
+  brandTitle: { fontSize: 32, fontWeight: '800', color: ROYAL_THEME.gold, textAlign: 'center', letterSpacing: -0.5 },
+  brandSubtitle: { fontSize: 13, color: ROYAL_THEME.textMuted, textAlign: 'center', marginBottom: 24, textTransform: 'uppercase', letterSpacing: 1.5 },
+  card: { backgroundColor: ROYAL_THEME.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: ROYAL_THEME.border, borderTopWidth: 3, borderTopColor: ROYAL_THEME.gold },
+  cardHeaderTitle: { fontSize: 20, fontWeight: '700', color: ROYAL_THEME.text, marginBottom: 16 },
+  inputLabel: { fontSize: 12, fontWeight: '700', color: ROYAL_THEME.goldLight, marginBottom: 6, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  input: { backgroundColor: ROYAL_THEME.bg, color: ROYAL_THEME.text, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(201, 162, 39, 0.25)', fontSize: 15 },
+  primaryButton: { backgroundColor: ROYAL_THEME.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 20, borderWidth: 1, borderColor: ROYAL_THEME.gold },
   buttonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
-  secondaryButton: { backgroundColor: '#334155', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 16 },
-  secondaryButtonText: { color: '#38BDF8', fontWeight: '600' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#334155' },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#F8FAFC' },
-  headerSubtitle: { fontSize: 12, color: '#38BDF8', fontWeight: '600' },
-  logoutBadge: { backgroundColor: '#EF4444', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  secondaryButton: { backgroundColor: ROYAL_THEME.surfaceAlt, paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 16, borderWidth: 1, borderColor: 'rgba(201, 162, 39, 0.3)' },
+  secondaryButtonText: { color: ROYAL_THEME.goldLight, fontWeight: '600' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(201, 162, 39, 0.25)' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: ROYAL_THEME.text },
+  headerSubtitle: { fontSize: 12, color: ROYAL_THEME.gold, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  logoutBadge: { backgroundColor: ROYAL_THEME.ruby, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   logoutText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  tabContainer: { flexDirection: 'row', backgroundColor: '#1E293B', borderRadius: 12, padding: 4, marginVertical: 12 },
+  tabContainer: { flexDirection: 'row', backgroundColor: ROYAL_THEME.surface, borderRadius: 12, padding: 4, marginVertical: 12, borderWidth: 1, borderColor: ROYAL_THEME.border },
   tabButton: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
-  tabActive: { backgroundColor: '#0284C7' },
-  tabText: { color: '#94A3B8', fontWeight: '600' },
+  tabActive: { backgroundColor: ROYAL_THEME.primary, borderWidth: 1, borderColor: ROYAL_THEME.gold },
+  tabText: { color: ROYAL_THEME.textMuted, fontWeight: '600' },
   tabTextActive: { color: '#FFF' },
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
-  catChip: { backgroundColor: '#0F172A', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#475569' },
-  catChipActive: { backgroundColor: '#0284C7', borderColor: '#38BDF8' },
-  catText: { color: '#94A3B8', fontSize: 11, fontWeight: '600' },
-  catTextActive: { color: '#FFF' },
-  taskCard: { backgroundColor: '#1E293B', borderRadius: 12, padding: 16, marginVertical: 8, borderWidth: 1, borderColor: '#334155' },
+  catChip: { backgroundColor: ROYAL_THEME.surfaceAlt, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: ROYAL_THEME.border },
+  catChipActive: { backgroundColor: ROYAL_THEME.primary, borderColor: ROYAL_THEME.gold },
+  catText: { color: ROYAL_THEME.textMuted, fontSize: 11, fontWeight: '600' },
+  catTextActive: { color: ROYAL_THEME.goldLight },
+  taskCard: { backgroundColor: ROYAL_THEME.surface, borderRadius: 12, padding: 16, marginVertical: 8, borderWidth: 1, borderColor: ROYAL_THEME.border, borderLeftWidth: 3, borderLeftColor: ROYAL_THEME.gold },
   taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  categoryTitle: { fontSize: 18, fontWeight: '800', color: '#38BDF8' },
-  badgePriority: { backgroundColor: '#DC2626', color: '#FFF', fontSize: 10, fontWeight: '800', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, overflow: 'hidden' },
-  textLine: { color: '#CBD5E1', fontSize: 14, marginBottom: 4 },
-  boldText: { fontWeight: '700', color: '#F8FAFC' },
-  statusHighlight: { color: '#38BDF8', fontWeight: '700' },
-  navButton: { backgroundColor: '#16A34A', paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 10 },
-  resolveButton: { backgroundColor: '#0284C7', paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 8 },
+  categoryTitle: { fontSize: 18, fontWeight: '800', color: ROYAL_THEME.goldLight },
+  badgePriority: { backgroundColor: ROYAL_THEME.ruby, color: '#FFF', fontSize: 10, fontWeight: '800', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, overflow: 'hidden' },
+  textLine: { color: ROYAL_THEME.textSecondary, fontSize: 14, marginBottom: 4 },
+  boldText: { fontWeight: '700', color: ROYAL_THEME.text },
+  statusHighlight: { color: ROYAL_THEME.gold, fontWeight: '700' },
+  navButton: { backgroundColor: ROYAL_THEME.emerald, paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 10 },
+  resolveButton: { backgroundColor: ROYAL_THEME.primary, paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 8, borderWidth: 1, borderColor: ROYAL_THEME.gold },
   scrollForm: { flex: 1, marginTop: 8 },
   emptyContainer: { alignItems: 'center', marginTop: 60 },
-  emptyText: { color: '#64748B', fontSize: 15 }
+  emptyText: { color: ROYAL_THEME.textMuted, fontSize: 15 }
 });
