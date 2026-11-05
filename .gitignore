@@ -14,6 +14,12 @@ __pycache__/
 # Uploaded/generated files
 static/uploads/
 uploads/
+security/
+*.uri
+logs/
+*.log
+.coverage
+htmlcov/
 
 # IDE
 .vscode/
