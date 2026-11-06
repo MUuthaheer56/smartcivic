@@ -1,115 +1,118 @@
 {
-  "benchmark": "emergency_holdout_eval",
+  "benchmark_name": "Emergency Detection Development Benchmark",
+  "status": "development benchmark, tuned on, NOT a holdout",
+  "note": "This suite was used during active development heuristics tuning. It is NOT an untouched holdout set. Do not tune anything further on any external holdout file added by evaluators.",
   "holdout_csv_present": false,
-  "holdout_python_suite": "audit_tmp/bench_emergency.py",
-  "suite_sha256": "1f6fcc5b9ab48008faed92d31d9f9b6cfe0649bac8b9004e59cac4cf1890d37b",
+  "suite_file": "audit_tmp/bench_emergency.py",
   "total_cases": 20,
+  "emergency_cases_count": 17,
+  "benign_cases_count": 3,
   "true_positives": 17,
   "false_positives": 0,
   "true_negatives": 3,
   "false_negatives": 0,
-  "emergency_recall": 1.0,
-  "emergency_precision": 1.0,
+  "development_recall": 1.0,
+  "development_precision": 1.0,
   "cases": [
     {
       "text": "Gas cylinder blast at bakery with severe fire",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Major vehicle accident car crashed into divider with severe bleeding",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Pedestrian hit by truck bleeding on road",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "House on fire with people trapped inside",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Live high voltage wire sparking violently in puddle",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Man collapsed on sidewalk unconscious and not breathing",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Old man had a severe heart attack on bus stand",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Toddler fell into open storm drain and is drowning",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Labourer electrocuted by loose underground cable",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Chemical factory chlorine gas leak spreading to houses",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Trench collapsed at construction site workers trapped",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Massive crater sinkhole collapsed entire road junction",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
-      "text": "\u0cb0\u0cb8\u0ccd\u0ca4\u0cc6\u0caf\u0cb2\u0ccd\u0cb2\u0cbf \u0cad\u0cc0\u0c95\u0cb0 \u0c85\u0caa\u0c98\u0cbe\u0ca4 \u0cb0\u0c95\u0ccd\u0ca4\u0cb8\u0ccd\u0cb0\u0cbe\u0cb5\u0cb5\u0cbe\u0c97\u0cc1\u0ca4\u0ccd\u0ca4\u0cbf\u0ca6\u0cc6",
-      "ground_truth": true,
-      "prediction": true
+      "text": "ರಸ್ತೆಯಲ್ಲಿ ಭೀಕರ ಅಪಘಾತ ರಕ್ತಸ್ರಾವವಾಗುತ್ತಿದೆ",
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
-      "text": "\u0cae\u0ca8\u0cc6\u0caf\u0cb2\u0ccd\u0cb2\u0cbf \u0cac\u0cc6\u0c82\u0c95\u0cbf \u0cb9\u0cca\u0ca4\u0ccd\u0ca4\u0cbf\u0c95\u0cca\u0c82\u0ca1\u0cbf\u0ca6\u0cc6 \u0c9c\u0ca8 \u0cb8\u0cbf\u0cb2\u0cc1\u0c95\u0cbf\u0ca6\u0ccd\u0ca6\u0cbe\u0cb0\u0cc6",
-      "ground_truth": true,
-      "prediction": true
+      "text": "ಮನೆಯಲ್ಲಿ ಬೆಂಕಿ ಹೊತ್ತಿಕೊಂಡಿದೆ ಜನ ಸಿಲುಕಿದ್ದಾರೆ",
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
-      "text": "\u0c95\u0c9f\u0ccd\u0c9f\u0ca1\u0ca6\u0cb2\u0ccd\u0cb2\u0cbf \u0cb8\u0cbf\u0cb2\u0cbf\u0c82\u0ca1\u0cb0\u0ccd \u0cac\u0ccd\u0cb2\u0cbe\u0cb8\u0ccd\u0c9f\u0ccd \u0c86\u0c97\u0cbf\u0ca6\u0cc6 \u0ca4\u0cc1\u0cb0\u0ccd\u0ca4\u0cc1 \u0cb8\u0cb9\u0cbe\u0caf \u0cac\u0cc7\u0c95\u0cc1",
-      "ground_truth": true,
-      "prediction": true
+      "text": "ಕಟ್ಟಡದಲ್ಲಿ ಸಿಲಿಂಡರ್ ಬ್ಲಾಸ್ಟ್ ಆಗಿದೆ ತುರ್ತು ಸಹಾಯ ಬೇಕು",
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Basti me aag lag gayi hai bahut bada khatra hai",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Gas leak ho gaya hai log behosh ho rahe hain madad karo",
-      "ground_truth": true,
-      "prediction": true
+      "ground_truth_emergency": true,
+      "prediction_emergency": true
     },
     {
       "text": "Just a small pothole on 4th cross",
-      "ground_truth": false,
-      "prediction": false
+      "ground_truth_emergency": false,
+      "prediction_emergency": false
     },
     {
       "text": "Old extinguished fire from yesterday garbage pile",
-      "ground_truth": false,
-      "prediction": false
+      "ground_truth_emergency": false,
+      "prediction_emergency": false
     },
     {
       "text": "No accident reported here street light is dim",
-      "ground_truth": false,
-      "prediction": false
+      "ground_truth_emergency": false,
+      "prediction_emergency": false
     }
   ]
 }

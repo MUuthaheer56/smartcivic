@@ -8,6 +8,15 @@
     416,
     416
   ],
+  "dataset_yaml": {
+    "path": "ml/datasets/work/data.yaml",
+    "nc": 3,
+    "class_ids_and_names": {
+      "0": "Crack",
+      "1": "Pothole",
+      "2": "Surface Erosion"
+    }
+  },
   "classes": [
     "Crack",
     "Pothole",
@@ -16,37 +25,75 @@
   "model_path": "ml/models/road_damage_v1.onnx",
   "model_sha256": "07d9464095daad753d2b66f02e11a08a8b13537b77920f7692603bdefef11b08",
   "model_size_bytes": 12678126,
+  "test_dataset_stats": {
+    "test_images_total": 159,
+    "positive_defect_images": 159,
+    "clean_road_negative_images": 0,
+    "clean_road_false_alarm_note": "No clean-road negative images exist in the frozen test split; all 159 images contain positive ground-truth bounding boxes."
+  },
+  "hardware": {
+    "cpu_model": "12th Gen Intel(R) Core(TM) i5-1235U (10 cores, 12 logical processors)",
+    "ram_total_bytes": 8245329920,
+    "ram_total_gb": 7.68
+  },
   "cpu_latency_ms": {
-    "mean": 15.91,
-    "p95": 17.42
+    "mean": 16.56,
+    "p95": 18.43
   },
   "overall_metrics": {
-    "mAP50": 0.3999,
-    "mAP50_95": 0.1756,
-    "precision": 0.4188,
-    "recall": 0.4265
+    "fresh_run_onnx_direct": {
+      "mAP50": 0.3962
+    },
+    "historical_report_ultralytics_val": {
+      "mAP50": 0.3999,
+      "mAP50_95": 0.1756,
+      "precision": 0.4188,
+      "recall": 0.4265
+    }
   },
   "per_class_metrics": {
-    "D40": {
-      "name": "Pothole",
-      "precision": 0.416,
-      "recall": 0.495,
-      "mAP50": 0.449,
-      "mAP50_95": 0.153
+    "fresh_run_onnx_direct": {
+      "Crack": {
+        "n_ground_truth": 74,
+        "ap50": 0.2188,
+        "precision_at_025": 0.75,
+        "recall_at_025": 0.0811
+      },
+      "Pothole": {
+        "n_ground_truth": 105,
+        "ap50": 0.4266,
+        "precision_at_025": 0.7209,
+        "recall_at_025": 0.2952
+      },
+      "Surface Erosion": {
+        "n_ground_truth": 61,
+        "ap50": 0.5432,
+        "precision_at_025": 0.7778,
+        "recall_at_025": 0.5738
+      }
     },
-    "D00": {
-      "name": "Crack",
-      "precision": 0.362,
-      "recall": 0.243,
-      "mAP50": 0.23,
-      "mAP50_95": 0.064
-    },
-    "D20": {
-      "name": "Surface Erosion",
-      "precision": 0.478,
-      "recall": 0.541,
-      "mAP50": 0.521,
-      "mAP50_95": 0.309
+    "historical_report_ultralytics_val": {
+      "D40": {
+        "name": "Pothole",
+        "precision": 0.416,
+        "recall": 0.495,
+        "mAP50": 0.449,
+        "mAP50_95": 0.153
+      },
+      "D00": {
+        "name": "Crack",
+        "precision": 0.362,
+        "recall": 0.243,
+        "mAP50": 0.23,
+        "mAP50_95": 0.064
+      },
+      "D20": {
+        "name": "Surface Erosion",
+        "precision": 0.478,
+        "recall": 0.541,
+        "mAP50": 0.52,
+        "mAP50_95": 0.31
+      }
     }
   }
 }

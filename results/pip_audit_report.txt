@@ -1,0 +1,111 @@
+Name            Version   ID                  Fix Versions
+--------------- --------- ------------------- ------------
+anyio           4.14.0    PYSEC-2026-4025     4.14.2
+anyio           4.14.0    PYSEC-2026-4023     4.14.2
+anyio           4.14.0    PYSEC-2026-4024     4.14.2
+brotli          1.2.0     PYSEC-2026-4322     1.2.1
+brotli          1.2.0     PYSEC-2026-4322     1.2.1
+certifi         2026.7.22 PYSEC-2026-4320     2026.10.18
+certifi         2026.7.22 PYSEC-2026-4320     2026.10.18
+chromadb        1.5.9     PYSEC-2026-311
+chromadb        1.5.9     PYSEC-2026-311
+chromadb        1.5.9     PYSEC-2026-3814
+chromadb        1.5.9     PYSEC-2026-3815
+chromadb        1.5.9     PYSEC-2026-3813
+cryptography    49.0.0    PYSEC-2026-3552     50.0.0
+cryptography    49.0.0    PYSEC-2026-3552     50.0.0
+deep-translator 1.11.4    PYSEC-2022-252
+dnspython       2.8.0     CVE-2026-114605     2.9.0
+filelock        3.29.7    CVE-2026-112940     4.2.1
+filelock        3.29.7    CVE-2026-112913     4.2.1
+filelock        3.29.7    CVE-2026-112907     4.2.1
+filelock        3.29.7    CVE-2026-112936     4.0.9
+filelock        3.29.7    CVE-2026-112910     4.2.1
+filelock        3.29.7    CVE-2026-112909     4.2.1
+filelock        3.29.7    CVE-2026-112939     4.2.1
+filelock        3.29.7    CVE-2026-112915     4.2.1
+filelock        3.29.7    CVE-2026-112935     4.2.1
+httplib2        0.31.2    PYSEC-2026-3444     0.32.0
+httplib2        0.31.2    PYSEC-2026-3444     0.32.0
+mcp             1.28.0    PYSEC-2026-3483     1.28.1
+mcp             1.28.0    PYSEC-2026-3483     1.28.1
+mcp             1.28.0    CVE-2026-59951      1.30.0,2.2.0
+mcp             1.28.0    CVE-2026-116685     1.30.0,2.2.0
+mcp             1.28.0    CVE-2026-116684     1.30.0,2.2.0
+mcp             1.28.0    CVE-2026-116686     1.30.0,2.2.0
+multidict       6.7.1     PYSEC-2026-4244     6.9.1
+nltk            3.10.3    PYSEC-2026-3740     3.10.4
+oauthlib        4.0.0     CVE-2026-49272      4.0.1
+pdfminer-six    20231228  PYSEC-2026-1762     20251107
+pdfminer-six    20231228  PYSEC-2026-1761     20251230
+pdfminer-six    20231228  PYSEC-2026-1762     20251107
+pdfminer-six    20231228  PYSEC-2026-1761     20251230
+pillow          12.3.0    PYSEC-2026-4327     13.0.0
+pillow          12.3.0    PYSEC-2026-4328     13.0.0
+pillow          12.3.0    PYSEC-2026-4326     13.0.0
+pillow          12.3.0    PYSEC-2026-4339     13.0.0
+pillow          12.3.0    PYSEC-2026-4340     13.0.0
+pillow          12.3.0    PYSEC-2026-4343     13.0.0
+pillow          12.3.0    PYSEC-2026-4334     13.0.0
+pillow          12.3.0    PYSEC-2026-4337     13.0.0
+pillow          12.3.0    PYSEC-2026-4341     13.0.0
+pillow          12.3.0    PYSEC-2026-4330     13.0.0
+pillow          12.3.0    PYSEC-2026-4338     13.0.0
+pillow          12.3.0    PYSEC-2026-4335     13.0.0
+pillow          12.3.0    PYSEC-2026-4336     13.0.0
+pillow          12.3.0    PYSEC-2026-4331     13.0.0
+pillow          12.3.0    PYSEC-2026-4332     13.0.0
+pillow          12.3.0    PYSEC-2026-4329     13.0.0
+pillow          12.3.0    PYSEC-2026-4333     13.0.0
+pillow          12.3.0    PYSEC-2026-4342     13.0.0
+pillow          12.3.0    CVE-2026-112895     13.0.0
+pillow          12.3.0    CVE-2026-112400     13.0.0
+pillow          12.3.0    CVE-2026-112897     13.0.0
+pillow          12.3.0    CVE-2026-112395     13.0.0
+pillow          12.3.0    CVE-2026-112404     13.0.0
+pillow          12.3.0    CVE-2026-112899     13.0.0
+pillow          12.3.0    CVE-2026-112900     13.0.0
+pillow          12.3.0    CVE-2026-112893     13.0.0
+pillow          12.3.0    CVE-2026-112891     13.0.0
+pillow          12.3.0    CVE-2026-112390     13.0.0
+pillow          12.3.0    CVE-2026-112401     13.0.0
+pillow          12.3.0    CVE-2026-112391     13.0.0
+pillow          12.3.0    CVE-2026-112894     13.0.0
+pillow          12.3.0    CVE-2026-112406     13.0.0
+pillow          12.3.0    CVE-2026-112399     13.0.0
+pillow          12.3.0    CVE-2026-112892     13.0.0
+pillow          12.3.0    CVE-2026-112393     13.0.0
+pillow          12.3.0    CVE-2026-96638      13.0.0
+pillow          12.3.0    CVE-2026-96640      13.0.0
+pillow          12.3.0    CVE-2026-96778      13.0.0
+pillow          12.3.0    GHSA-78g4-xqwv-q3g8 13.0.0
+pyasn1          0.6.3     PYSEC-2026-3456     0.6.4
+pyasn1          0.6.3     PYSEC-2026-3457     0.6.4
+pyasn1          0.6.3     PYSEC-2026-3456     0.6.4
+pyasn1          0.6.3     PYSEC-2026-3457     0.6.4
+pyasn1          0.6.3     PYSEC-2026-3455     0.6.4
+pyasn1          0.6.3     PYSEC-2026-3455     0.6.4
+pyasn1          0.6.3     CVE-2026-119196     0.6.5
+pyasn1          0.6.3     CVE-2026-119194     0.6.5
+pyasn1          0.6.3     CVE-2026-119197     0.6.5
+pyasn1          0.6.3     CVE-2026-119195     0.6.5
+pypdf2          2.12.1    PYSEC-2026-1835     3.9.0
+setuptools      84.0.0    GHSA-xmj3-9gf7-h52w 84.1.0
+transformers    4.57.6    PYSEC-2025-217
+transformers    4.57.6    PYSEC-2026-2288     5.0.0rc3
+transformers    4.57.6    PYSEC-2026-2289     5.3.0
+transformers    4.57.6    PYSEC-2026-2290
+transformers    4.57.6    PYSEC-2026-2288     5.0.0
+transformers    4.57.6    PYSEC-2026-2289     5.3.0
+transformers    4.57.6    PYSEC-2026-2290     5.5.0
+transformers    4.57.6    PYSEC-2026-3929     5.10.0
+transformers    4.57.6    PYSEC-2026-4174
+werkzeug        3.1.8     PYSEC-2026-4312     3.1.9
+
+Name           Skip Reason
+-------------- -----------------------------------------------------------------------------
+agent-reach    Dependency not found on PyPI and could not be audited: agent-reach (1.5.0)
+digital-empire Dependency not found on PyPI and could not be audited: digital-empire (1.0.0)
+
+--- STDERR ---
+Found 101 known vulnerabilities in 20 packages

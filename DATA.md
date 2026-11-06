@@ -29,3 +29,4 @@ SmartCivic uses curated and structured civic datasets for multi-modal complaint 
 ## Data Ethics and Privacy Compliance
 - **No Personally Identifiable Information (PII):** Test datasets and synthetic benchmark files contain zero real resident contact numbers or physical addresses.
 - **Upload Hardening:** Uploaded images have all EXIF metadata (including hardware serials and exact GPS timestamps) stripped upon ingestion prior to secure disk persistence.
+

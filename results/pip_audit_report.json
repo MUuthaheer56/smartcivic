@@ -1,0 +1,67 @@
+Traceback (most recent call last):
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\urllib3\connectionpool.py", line 793, in urlopen
+    response = self._make_request(
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\urllib3\connectionpool.py", line 540, in _make_request
+    response = conn.getresponse()
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\urllib3\connection.py", line 638, in getresponse
+    httplib_response = super().getresponse()
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\http\client.py", line 1375, in getresponse
+    response.begin()
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\http\client.py", line 318, in begin
+    version, status, reason = self._read_status()
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\http\client.py", line 287, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\requests\adapters.py", line 645, in send
+    resp = conn.urlopen(
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\urllib3\connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\urllib3\util\retry.py", line 510, in increment
+    raise reraise(type(error), error, _stacktrace)
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\urllib3\util\util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\urllib3\connectionpool.py", line 793, in urlopen
+    response = self._make_request(
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\urllib3\connectionpool.py", line 540, in _make_request
+    response = conn.getresponse()
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\urllib3\connection.py", line 638, in getresponse
+    httplib_response = super().getresponse()
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\http\client.py", line 1375, in getresponse
+    response.begin()
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\http\client.py", line 318, in begin
+    version, status, reason = self._read_status()
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\http\client.py", line 287, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\Scripts\pip-audit.exe\__main__.py", line 5, in <module>
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\pip_audit\_cli.py", line 554, in audit
+    for spec, vulns in auditor.audit(source):
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\pip_audit\_audit.py", line 68, in audit
+    for dep, vulns in self._service.query_all(specs):
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\pip_audit\_service\interface.py", line 180, in query_all
+    yield self.query(spec)
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\pip_audit\_service\pypi.py", line 64, in query
+    response: requests.Response = self.session.get(url=url, timeout=self.timeout)
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\requests\sessions.py", line 605, in get
+    return self.request("GET", url, **kwargs)
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\requests\sessions.py", line 592, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\requests\sessions.py", line 706, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\cachecontrol\adapter.py", line 76, in send
+    resp = super().send(request, stream, timeout, verify, cert, proxies)
+  File "C:\Users\Muthaheer\AppData\Local\Programs\Python\Python310\lib\site-packages\requests\adapters.py", line 660, in send
+    raise ConnectionError(err, request=request)
+requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))

@@ -40,3 +40,4 @@ Evaluated across 159 held-out test images (`ml/datasets/work/test/images/`):
 - **Intended Purpose:** Rapid, local, privacy-preserving visual detection of road defects in civic complaints without external cloud transmission.
 - **Out of Scope:** Structural engineering assessments, autonomous vehicle navigation, or high-speed traffic enforcement.
 - **Safety Interlocks:** Predictions are fused through CEFAP with text analysis and corroborative community evidence. Visual detections alone never trigger automatic dispatch without officer verification.
+
