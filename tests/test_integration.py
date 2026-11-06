@@ -19,11 +19,22 @@ class SmartCivicIntegrationTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        os.environ["SECRET_KEY"] = "test_secret_key_12345"
-        os.environ["JWT_SECRET"] = "test_jwt_secret_67890"
+        cls.old_secret = os.environ.get("SECRET_KEY")
+        cls.old_jwt = os.environ.get("JWT_SECRET")
         cls.app = create_app()
         cls.app.config["TESTING"] = True
         cls.client = cls.app.test_client()
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.old_secret is not None:
+            os.environ["SECRET_KEY"] = cls.old_secret
+        else:
+            os.environ.pop("SECRET_KEY", None)
+        if cls.old_jwt is not None:
+            os.environ["JWT_SECRET"] = cls.old_jwt
+        else:
+            os.environ.pop("JWT_SECRET", None)
 
     def test_health_check(self):
         res = self.client.get('/api/health')

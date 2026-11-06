@@ -6,12 +6,20 @@ from app import create_app, db
 
 @pytest.fixture
 def test_app():
-    os.environ["JWT_SECRET"] = "test_arch_fixes_jwt_secret_12345"
-    os.environ["JWT_SECRET_KEY"] = "test_arch_fixes_jwt_secret_12345"
+    old_secret = os.environ.get("JWT_SECRET")
+    old_key = os.environ.get("JWT_SECRET_KEY")
     app = create_app()
     app.config["TESTING"] = True
     with app.app_context():
         yield app
+    if old_secret is not None:
+        os.environ["JWT_SECRET"] = old_secret
+    else:
+        os.environ.pop("JWT_SECRET", None)
+    if old_key is not None:
+        os.environ["JWT_SECRET_KEY"] = old_key
+    else:
+        os.environ.pop("JWT_SECRET_KEY", None)
 
 def test_verification_state_inconsistencies(test_app):
     from services.verification_service import submit_resolution, officer_verify, citizen_verify

@@ -6,18 +6,33 @@ from utils.security import generate_tokens
 
 @pytest.fixture
 def client():
-    os.environ["JWT_SECRET"] = "test_security_suite_jwt_secret_12345"
-    os.environ["JWT_SECRET_KEY"] = "test_security_suite_jwt_secret_12345"
+    old_jwt_secret = os.environ.get("JWT_SECRET")
+    old_jwt_key = os.environ.get("JWT_SECRET_KEY")
+    old_invite = os.environ.get("ADMIN_INVITE_CODE")
+
     os.environ["ADMIN_INVITE_CODE"] = "SMARTCIVIC-ADMIN-TEST"
     app = create_app()
     app.config["TESTING"] = True
     from app import limiter
     limiter.enabled = False
-    app.config["JWT_SECRET"] = "test_security_suite_jwt_secret_12345"
-    app.config["JWT_SECRET_KEY"] = "test_security_suite_jwt_secret_12345"
     app.config["ADMIN_INVITE_CODE"] = "SMARTCIVIC-ADMIN-TEST"
     with app.test_client() as client:
         yield client
+
+    if old_jwt_secret is not None:
+        os.environ["JWT_SECRET"] = old_jwt_secret
+    else:
+        os.environ.pop("JWT_SECRET", None)
+
+    if old_jwt_key is not None:
+        os.environ["JWT_SECRET_KEY"] = old_jwt_key
+    else:
+        os.environ.pop("JWT_SECRET_KEY", None)
+
+    if old_invite is not None:
+        os.environ["ADMIN_INVITE_CODE"] = old_invite
+    else:
+        os.environ.pop("ADMIN_INVITE_CODE", None)
 
 def test_staff_registration_blocked_without_code(client):
     response = client.post('/api/auth/register', json={

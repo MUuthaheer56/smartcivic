@@ -165,6 +165,8 @@ def _normalize_category(value: str) -> str:
         "streetlight": "electricity",
         "street_lighting": "electricity",
         "water_supply": "water",
+        "storm_drainage": "drainage",
+        "drain": "drainage",
         "sewer": "drainage"
     }
     return aliases.get(value, value) if value in ALLOWED_CATEGORIES or value in aliases else "other"
@@ -331,30 +333,32 @@ def analyze_complaint_text(description: str) -> dict:
     clean_desc = sanitize_gemini_prompt(description)
 
     if _is_local_ai_mode():
-        # 1. Primary: Local text classifier
-        try:
-            from services.ai.local_text import predict_local_text
-            loc_res = predict_local_text(clean_desc)
-            loc_val = loc_res.get("value", {})
-            if loc_val.get("available"):
-                service_raw = loc_val.get("service", "other")
-                cat = _normalize_category(service_raw)
-                dept = CATEGORY_TO_DEPT.get(cat, "roads")
-                sev = "critical" if loc_val.get("emergency") else _rule_based_fallback(clean_desc).get("severity", "medium")
-                return {
-                    "category": cat,
-                    "type": loc_val.get("issue_type") or "other",
-                    "severity": sev,
-                    "department": dept,
-                    "confidence": float(loc_val.get("confidence", 0.8)),
-                    "confidence_type": "model_reported",
-                    "provider": "local_text",
-                    "model": "text_classifier_v1.joblib",
-                    "ai_available": True,
-                    "analyzed_at": datetime.utcnow()
-                }
-        except Exception as e:
-            print(f"[AI Service] Local text classifier failed, using rule fallback: {e}")
+        # Check feature flag or model availability
+        if getattr(Config, "AI_LOCAL_TEXT_ENABLED", False):
+            # 1. Primary: Local text classifier
+            try:
+                from services.ai.local_text import predict_local_text
+                loc_res = predict_local_text(clean_desc)
+                loc_val = loc_res.get("value", {})
+                if loc_val.get("available"):
+                    service_raw = loc_val.get("service", "other")
+                    cat = _normalize_category(service_raw)
+                    dept = CATEGORY_TO_DEPT.get(cat, "roads")
+                    sev = "critical" if loc_val.get("emergency") else _rule_based_fallback(clean_desc).get("severity", "medium")
+                    return {
+                        "category": cat,
+                        "type": loc_val.get("issue_type") or "other",
+                        "severity": sev,
+                        "department": dept,
+                        "confidence": float(loc_val.get("confidence", 0.8)),
+                        "confidence_type": "model_reported",
+                        "provider": "local_text",
+                        "model": "text_classifier_v1.joblib",
+                        "ai_available": True,
+                        "analyzed_at": datetime.utcnow()
+                    }
+            except Exception as e:
+                print(f"[AI Service] Local text classifier failed, using rule fallback: {e}")
 
         # 2. Secondary: Rule-based fallback with Kannada/Hinglish glossary
         res = _rule_based_fallback(clean_desc)
@@ -415,6 +419,19 @@ def analyze_complaint_image(image_path: str) -> dict:
     Never calls Gemini in local mode.
     """
     if _is_local_ai_mode():
+        if not getattr(Config, "AI_LOCAL_DETECTOR_ENABLED", False):
+            return {
+                "available": False,
+                "status": "unavailable",
+                "provider": "local_yolo",
+                "model": "road_damage_v1.onnx",
+                "reason": "Road defect detector disabled by configuration.",
+                "detected_issues": [],
+                "image_detections": [],
+                "detected_features": [],
+                "hazards": [],
+                "analyzed_at": datetime.utcnow()
+            }
         if not image_path or not os.path.exists(image_path):
             return {
                 "available": False,
