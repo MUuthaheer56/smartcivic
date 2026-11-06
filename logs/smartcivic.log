@@ -10592,3 +10592,52 @@
 {"timestamp": "2026-11-04T11:40:28.502737", "log_type": "notification", "event": "sla_breached", "recipient_id": "6aead4a2d86f8ff891192aa9", "delivery_status": "delivered", "error": null}
 {"timestamp": "2026-11-04T11:40:28.504735", "log_type": "notification", "event": "sla_breached", "recipient_id": "6aead4a3d86f8ff891192ac9", "delivery_status": "delivered", "error": null}
 {"timestamp": "2026-11-04T11:40:28.507734", "log_type": "notification", "event": "sla_breached", "recipient_id": "6aead4a3d86f8ff891192ada", "delivery_status": "delivered", "error": null}
+{"timestamp": "2026-11-06T14:30:58.065156", "log_type": "api_request", "method": "GET", "path": "/", "user_id": "anonymous", "status_code": 302, "duration_ms": 0.0}
+{"timestamp": "2026-11-06T14:30:58.113804", "log_type": "api_request", "method": "GET", "path": "/login", "user_id": "anonymous", "status_code": 200, "duration_ms": 24.1}
+{"timestamp": "2026-11-06T14:30:58.566873", "log_type": "api_request", "method": "GET", "path": "/static/js/utils.js", "user_id": "anonymous", "status_code": 304, "duration_ms": 357.9}
+{"timestamp": "2026-11-06T14:30:58.572878", "log_type": "api_request", "method": "GET", "path": "/static/js/i18n.js", "user_id": "anonymous", "status_code": 304, "duration_ms": 2.0}
+{"timestamp": "2026-11-06T14:30:58.572878", "log_type": "api_request", "method": "GET", "path": "/static/vendor/fontawesome/css/all.min.css", "user_id": "anonymous", "status_code": 304, "duration_ms": 363.4}
+{"timestamp": "2026-11-06T14:30:58.580381", "log_type": "api_request", "method": "GET", "path": "/static/vendor/leaflet/leaflet.js", "user_id": "anonymous", "status_code": 304, "duration_ms": 2.5}
+{"timestamp": "2026-11-06T14:30:58.582448", "log_type": "api_request", "method": "GET", "path": "/static/vendor/socket.io/socket.io.min.js", "user_id": "anonymous", "status_code": 304, "duration_ms": 2.1}
+{"timestamp": "2026-11-06T14:30:58.583450", "log_type": "api_request", "method": "GET", "path": "/static/css/main.css", "user_id": "anonymous", "status_code": 304, "duration_ms": 373.0}
+{"timestamp": "2026-11-06T14:30:58.595524", "log_type": "api_request", "method": "GET", "path": "/static/js/filters.js", "user_id": "anonymous", "status_code": 304, "duration_ms": 6.0}
+{"timestamp": "2026-11-06T14:30:58.596524", "log_type": "api_request", "method": "GET", "path": "/static/js/toast.js", "user_id": "anonymous", "status_code": 304, "duration_ms": 3.0}
+{"timestamp": "2026-11-06T14:30:58.597526", "log_type": "api_request", "method": "GET", "path": "/static/vendor/fonts/fonts.css", "user_id": "anonymous", "status_code": 304, "duration_ms": 393.6}
+{"timestamp": "2026-11-06T14:30:58.599522", "log_type": "api_request", "method": "GET", "path": "/static/css/dashboard.css", "user_id": "anonymous", "status_code": 304, "duration_ms": 391.6}
+{"timestamp": "2026-11-06T14:30:58.599522", "log_type": "api_request", "method": "GET", "path": "/static/vendor/leaflet/leaflet.css", "user_id": "anonymous", "status_code": 304, "duration_ms": 391.6}
+{"timestamp": "2026-11-06T14:30:58.616768", "log_type": "api_request", "method": "GET", "path": "/static/js/location.js", "user_id": "anonymous", "status_code": 304, "duration_ms": 1.0}
+{"timestamp": "2026-11-06T14:30:58.719207", "log_type": "api_request", "method": "GET", "path": "/static/vendor/fontawesome/webfonts/fa-solid-900.woff2", "user_id": "anonymous", "status_code": 304, "duration_ms": 1.0}
+{"timestamp": "2026-11-06T14:31:11.893320", "log_type": "security_event", "event_type": "login", "user_id": "6aedda83d915c5a22218da4d", "ip": "127.0.0.1", "details": {}}
+{"timestamp": "2026-11-06T14:31:11.897570", "log_type": "api_request", "method": "POST", "path": "/auth/login", "user_id": "anonymous", "status_code": 200, "duration_ms": 145.5}
+{"timestamp": "2026-11-06T14:31:12.967241", "log_type": "api_request", "method": "GET", "path": "/officer/dashboard", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 36.0}
+{"timestamp": "2026-11-06T14:31:13.021127", "log_type": "api_request", "method": "GET", "path": "/static/vendor/fontawesome/css/all.min.css", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 8.1}
+{"timestamp": "2026-11-06T14:31:13.022128", "log_type": "api_request", "method": "GET", "path": "/static/vendor/fonts/fonts.css", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 13.5}
+{"timestamp": "2026-11-06T14:31:13.023127", "log_type": "api_request", "method": "GET", "path": "/static/css/main.css", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 9.1}
+{"timestamp": "2026-11-06T14:31:13.023127", "log_type": "api_request", "method": "GET", "path": "/static/vendor/leaflet/leaflet.css", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 13.3}
+{"timestamp": "2026-11-06T14:31:13.025137", "log_type": "api_request", "method": "GET", "path": "/static/css/dashboard.css", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 9.0}
+{"timestamp": "2026-11-06T14:31:13.026128", "log_type": "api_request", "method": "GET", "path": "/static/js/utils.js", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 6.0}
+{"timestamp": "2026-11-06T14:31:13.043085", "log_type": "api_request", "method": "GET", "path": "/static/js/i18n.js", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 12.7}
+{"timestamp": "2026-11-06T14:31:13.046208", "log_type": "api_request", "method": "GET", "path": "/static/vendor/leaflet/leaflet.js", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 10.8}
+{"timestamp": "2026-11-06T14:31:13.054072", "log_type": "api_request", "method": "GET", "path": "/static/js/announcements.js", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 13.6}
+{"timestamp": "2026-11-06T14:31:13.064659", "log_type": "api_request", "method": "GET", "path": "/static/vendor/socket.io/socket.io.min.js", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 16.4}
+{"timestamp": "2026-11-06T14:31:13.073055", "log_type": "api_request", "method": "GET", "path": "/static/js/toast.js", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 21.4}
+{"timestamp": "2026-11-06T14:31:13.074581", "log_type": "api_request", "method": "GET", "path": "/static/js/filters.js", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 15.4}
+{"timestamp": "2026-11-06T14:31:13.078411", "log_type": "api_request", "method": "GET", "path": "/static/js/dashboard.js", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 15.0}
+{"timestamp": "2026-11-06T14:31:13.080507", "log_type": "api_request", "method": "GET", "path": "/static/js/location.js", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 9.7}
+{"timestamp": "2026-11-06T14:31:13.093997", "log_type": "api_request", "method": "GET", "path": "/static/vendor/fontawesome/webfonts/fa-solid-900.woff2", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 10.0}
+{"timestamp": "2026-11-06T14:31:13.143349", "log_type": "api_request", "method": "GET", "path": "/api/notifications", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 14.1}
+{"timestamp": "2026-11-06T14:31:13.174611", "log_type": "api_request", "method": "GET", "path": "/api/announcements/active", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 23.3}
+{"timestamp": "2026-11-06T14:31:13.281460", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 112.8}
+{"timestamp": "2026-11-06T14:31:13.297020", "log_type": "api_request", "method": "GET", "path": "/api/officer/briefing", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 116.9}
+{"timestamp": "2026-11-06T14:31:13.322340", "log_type": "api_request", "method": "GET", "path": "/api/analytics/overview", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 160.2}
+{"timestamp": "2026-11-06T14:31:16.262691", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 8.0}
+{"timestamp": "2026-11-06T14:31:16.271144", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 5.0}
+{"timestamp": "2026-11-06T14:31:16.321468", "log_type": "api_request", "method": "GET", "path": "/static/vendor/fonts/webfonts/font_6.ttf", "user_id": "6aedda83d915c5a22218da4d", "status_code": 304, "duration_ms": 2.0}
+{"timestamp": "2026-11-06T14:31:17.170380", "log_type": "api_request", "method": "GET", "path": "/api/workers/recommend", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 5.0}
+{"timestamp": "2026-11-06T14:31:17.952805", "log_type": "notification", "event": "complaint_assigned", "recipient_id": "6aedd096ba71bdfc8a26eadd", "delivery_status": "delivered", "error": null}
+{"timestamp": "2026-11-06T14:31:17.954799", "log_type": "notification", "event": "complaint_assigned", "recipient_id": "6aede3f9710c0241a27fe7f4", "delivery_status": "delivered", "error": null}
+{"timestamp": "2026-11-06T14:31:17.957799", "log_type": "notification", "event": "complaint_assigned", "recipient_id": "6aede3f9710c0241a27fe7f4", "delivery_status": "delivered", "error": null}
+{"timestamp": "2026-11-06T14:31:17.959799", "log_type": "api_request", "method": "POST", "path": "/api/issues/6aedd096ba71bdfc8a26eadf/assign", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 20.0}
+{"timestamp": "2026-11-06T14:31:17.981216", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 8.4}
+{"timestamp": "2026-11-06T14:31:20.172165", "log_type": "api_request", "method": "GET", "path": "/api/auth/users/pending", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 4.0}
+{"timestamp": "2026-11-06T14:31:21.246147", "log_type": "api_request", "method": "POST", "path": "/api/auth/users/6aedda84d915c5a22218da51/verify", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 10.1}
