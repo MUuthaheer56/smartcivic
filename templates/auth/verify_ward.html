@@ -62,9 +62,13 @@
             if (!areaCode) return;
 
             try {
+                const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
                 const res = await fetch('/api/auth/verify-ward', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
                     body: JSON.stringify({ area_code: areaCode })
                 });
 
@@ -75,7 +79,13 @@
                     alertBox.style.background = 'rgba(15, 157, 107, 0.12)';
                     alertBox.style.border = '1px solid var(--jewel-emerald)';
                     alertBox.style.color = 'var(--jewel-emerald)';
-                    alertBox.innerHTML = `<i class="fa-solid fa-circle-check"></i> Ward authenticated. Assigned to <strong>${data.ward_name || data.ward_id}</strong>. Redirecting...`;
+                    alertBox.textContent = '';
+                    const icon = document.createElement('i');
+                    icon.className = 'fa-solid fa-circle-check';
+                    icon.style.marginRight = '0.5rem';
+                    alertBox.appendChild(icon);
+                    const wardName = data.ward_name || data.ward_id || 'Jurisdiction';
+                    alertBox.appendChild(document.createTextNode(`Ward authenticated. Assigned to ${wardName}. Redirecting...`));
 
                     // Update local storage user state
                     try {
@@ -94,7 +104,13 @@
                     alertBox.style.background = 'rgba(209, 38, 74, 0.12)';
                     alertBox.style.border = '1px solid var(--jewel-ruby)';
                     alertBox.style.color = 'var(--jewel-ruby)';
-                    alertBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${data.error || data.message || 'Invalid area code. Please check with your ward officer.'}`;
+                    const errMsg = (data.error && data.error.message) || (typeof data.error === 'string' ? data.error : null) || data.message || 'Invalid area code. Please check with your ward officer.';
+                    alertBox.textContent = '';
+                    const icon = document.createElement('i');
+                    icon.className = 'fa-solid fa-triangle-exclamation';
+                    icon.style.marginRight = '0.5rem';
+                    alertBox.appendChild(icon);
+                    alertBox.appendChild(document.createTextNode(errMsg));
                 }
             } catch (err) {
                 console.error(err);
@@ -102,7 +118,12 @@
                 alertBox.style.background = 'rgba(209, 38, 74, 0.12)';
                 alertBox.style.border = '1px solid var(--jewel-ruby)';
                 alertBox.style.color = 'var(--jewel-ruby)';
-                alertBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Network communication failure. Please re-attempt.';
+                alertBox.textContent = '';
+                const icon = document.createElement('i');
+                icon.className = 'fa-solid fa-triangle-exclamation';
+                icon.style.marginRight = '0.5rem';
+                alertBox.appendChild(icon);
+                alertBox.appendChild(document.createTextNode('Network communication failure. Please re-attempt.'));
             }
         });
     });

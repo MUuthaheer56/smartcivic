@@ -12,6 +12,7 @@ PUBLIC_ENDPOINTS = {
     "transparency_page",
     "live_map_page",
     "health_check",
+    "favicon",
     "static",
     
     # Public APIs & Visualizations

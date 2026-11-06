@@ -57,13 +57,14 @@ SmartCivic is an end-to-end civic issue management platform that automates munic
 
 ---
 
-### 2.2 Three Roles
+### 2.2 Four Roles
 
 | Role | What they can do | What they cannot do |
 |:---|:---|:---|
-| **Resident** | Submit complaints, view own submitted issues, track status history timeline, confirm community issues, submit feedback ratings on closed issues | View other residents' complaints, assign workers, override AI classifications, alter system SLAs |
-| **Officer** | Review all complaints across assigned ward, override AI categories/severities, view worker recommendation scores, assign/unassign workers, view city audit logs & analytics | Submit complaints as a citizen, bypass worker resolution proof requirements |
-| **Worker** | View assigned active tasks with Haversine distances, request OSRM road geometry routes, transition task status (`en_route`, `in_progress`, `resolved`), upload resolution proof photos | View task queues assigned to other workers, self-assign unallocated complaints, modify initial issue locations |
+| **Administrator** | Broadcast verified municipal notices across city channels (`citizen`, `worker`, `both`), retract notices, manage accounts and ward allocations, review citywide audit logs | Bypass worker resolution proof requirements or submit fake complaints |
+| **Resident** | Submit complaints, view own submitted issues, track status history timeline, confirm community issues, submit feedback ratings on closed issues, view & dismiss municipal notices | View other residents' complaints, assign workers, override AI classifications, alter system SLAs, broadcast administrative notices |
+| **Officer** | Review all complaints across assigned ward, override AI categories/severities, view worker recommendation scores, assign/unassign workers, view city audit logs & analytics | Submit complaints as a citizen, bypass worker resolution proof requirements, broadcast city notices without Admin role |
+| **Worker** | View assigned active tasks with Haversine distances, share GPS location during active tasks, request OSRM road geometry routes, transition task status (`en_route`, `in_progress`, `resolved`), upload resolution proof photos, view field notices | View task queues assigned to other workers, self-assign unallocated complaints, modify initial issue locations |
 
 ---
 
@@ -584,6 +585,11 @@ Emits real-time Socket.IO WebSocket push events to targeted user rooms (`user_<i
 | `GET` | `/api/workers/<id>/tasks` | Worker | `worker_service.get_worker_tasks()` | 200 + Assigned tasks list | Worker A can view Worker B's assigned task queue (IDOR flaw). |
 | `POST` | `/api/route` | Worker | `routing_service.get_route()` | 200 + OSRM road geometry | Public API abuse for arbitrary routing calculations. |
 | `POST` | `/api/issues/<id>/resolution` | Worker | `routes/api/issues.py → submit_resolution_proof()` | 200 + Resolution proof data | Unauthorized users can resolve complaints without submitting proof photos. |
+| `POST` | `/api/admin/announcements` | Admin | `routes/api/announcements.py → broadcast_announcement()` | 201 + Announcement data | Non-admins can broadcast arbitrary notices across municipal channels. |
+| `GET` | `/api/announcements/active` | Authenticated | `routes/api/announcements.py → get_active_announcements()` | 200 + Filtered active notices | Unauthorized or unauthenticated notice enumeration. |
+| `POST` | `/api/announcements/<id>/read` | Authenticated | `routes/api/announcements.py → mark_announcement_read()` | 200 + Success message | Unauthenticated users can tamper with notice read state. |
+| `POST` | `/api/admin/announcements/<id>/retract` | Admin | `routes/api/announcements.py → retract_announcement()` | 200 + Success message | Non-admins can retract critical municipal emergency bulletins. |
+| `GET` | `/api/admin/announcements` | Admin | `routes/api/announcements.py → list_admin_announcements()` | 200 + Historical notices & read counts | Unauthorized users can inspect administrative broadcast history. |
 
 ---
 

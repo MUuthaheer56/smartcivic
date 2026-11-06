@@ -269,6 +269,9 @@
             hotspots</button>
         <button class="sidebar-btn" onclick="switchTab('simulation')"><i class="fa-solid fa-flask-vial"></i> What-If
             Simulator</button>
+        {% if user and user.role == 'admin' %}
+        <button class="sidebar-btn" id="btn-tab-announcements" onclick="switchTab('announcements')"><i class="fa-solid fa-bullhorn"></i> Broadcasts</button>
+        {% endif %}
     </div>
 
     <!-- Main Dynamic Content container -->
@@ -495,6 +498,106 @@
                     <div id="prioritySimResult" style="margin-top: 1.25rem; display: none;"></div>
                 </div>
 
+            </div>
+        </div>
+
+        <!-- Announcements Broadcast Panel (Admin only) -->
+        <div class="tab-panel" id="tab-announcements" style="display: none;">
+            <h3 class="panel-header"><i class="fa-solid fa-bullhorn" style="color: var(--primary)"></i> Municipal Broadcast Center</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Broadcast verified administrative notices, safety warnings, and emergency bulletins to citizens and field workers.</p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                <!-- Composer Form -->
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem; color: var(--primary);"><i class="fa-solid fa-pen-to-square"></i> Compose Broadcast</h4>
+                    <form id="announcementComposeForm" onsubmit="handleBroadcastAnnouncement(event)">
+                        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                            <div>
+                                <label style="font-size: 0.85rem; color: var(--text-muted);">Title (max 120 chars)</label>
+                                <input id="annTitle" type="text" maxlength="120" placeholder="e.g. Scheduled Water Pipeline Maintenance" required
+                                    oninput="updateAnnouncementPreview()"
+                                    style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-primary); margin-top: 0.25rem;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.85rem; color: var(--text-muted);">Body (max 1000 chars, plain text)</label>
+                                <textarea id="annBody" rows="4" maxlength="1000" placeholder="Enter notice details clearly. Any HTML tags will be automatically stripped." required
+                                    oninput="updateAnnouncementPreview()"
+                                    style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-primary); margin-top: 0.25rem; font-family: inherit;"></textarea>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                <div>
+                                    <label style="font-size: 0.85rem; color: var(--text-muted);">Severity</label>
+                                    <select id="annSeverity" onchange="updateAnnouncementPreview()"
+                                        style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,1); color: var(--text-primary); margin-top: 0.25rem;">
+                                        <option value="info">Info (Standard)</option>
+                                        <option value="warning">Warning (High Attention)</option>
+                                        <option value="critical">Critical (Immediate Alert)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.85rem; color: var(--text-muted);">Audience</label>
+                                    <select id="annAudience" onchange="updateAnnouncementPreview()"
+                                        style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,1); color: var(--text-primary); margin-top: 0.25rem;">
+                                        <option value="both">Both (Citizens & Workers)</option>
+                                        <option value="citizen">Citizens Only</option>
+                                        <option value="worker">Field Workers Only</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; align-items: center;">
+                                <div>
+                                    <label style="font-size: 0.85rem; color: var(--text-muted);">Duration</label>
+                                    <select id="annDuration"
+                                        style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,1); color: var(--text-primary); margin-top: 0.25rem;">
+                                        <option value="12">12 Hours</option>
+                                        <option value="24" selected>24 Hours</option>
+                                        <option value="48">48 Hours</option>
+                                        <option value="72">3 Days</option>
+                                        <option value="168">7 Days</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.25rem;">
+                                    <input type="checkbox" id="annPinned" onchange="updateAnnouncementPreview()">
+                                    <label for="annPinned" style="font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">Pin to top of feed</label>
+                                </div>
+                            </div>
+                            <div id="annBroadcastStatus" style="display: none; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem;"></div>
+                            <button type="submit" id="btnSubmitBroadcast" class="btn-primary"
+                                style="margin-top: 0.5rem; padding: 0.65rem 1.2rem; border: none; border-radius: 6px; background: var(--primary); color: #fff; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                <i class="fa-solid fa-paper-plane"></i> Broadcast Notice
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Live Preview -->
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem; color: var(--text-muted);"><i class="fa-solid fa-eye"></i> Live Notice Preview</h4>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">This is how recipients will see the dismissible banner at the top of their dashboard:</p>
+                    <div id="announcementPreviewContainer" style="border-radius: 8px; padding: 1rem; border-left: 4px solid var(--primary); background: rgba(255,255,255,0.03);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span id="previewSeverityBadge" style="padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; background: rgba(59, 130, 246, 0.2); color: #60a5fa;">INFO</span>
+                                <strong id="previewTitle" style="font-size: 0.95rem; color: var(--text-primary);">Notice Title</strong>
+                            </div>
+                            <span id="previewAudienceBadge" style="font-size: 0.75rem; color: var(--text-muted);"><i class="fa-solid fa-users"></i> Both</span>
+                        </div>
+                        <p id="previewBody" style="font-size: 0.85rem; color: var(--text-muted); margin: 0; line-height: 1.5;">Notice body content will be shown here.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Broadcast History -->
+            <div class="glass-panel" style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h4 style="color: var(--primary); margin: 0;"><i class="fa-solid fa-clock-rotate-left"></i> Broadcast History</h4>
+                    <button onclick="loadAdminAnnouncements()" class="btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-primary); cursor: pointer;">
+                        <i class="fa-solid fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div id="announcementsHistoryList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">Loading announcements...</p>
+                </div>
             </div>
         </div>
     </div>

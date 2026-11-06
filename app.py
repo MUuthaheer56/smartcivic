@@ -211,6 +211,10 @@ def create_app():
             "timestamp": datetime.utcnow().isoformat(),
             "service": "SmartCivic+"
         }), 200
+
+    @app.route('/favicon.ico', methods=['GET'])
+    def favicon():
+        return ('', 204)
     
     # Register page blueprints
     from routes.auth import auth_bp
@@ -244,8 +248,10 @@ def create_app():
 
     from routes.api.notifications import notifications_api_bp
     from routes.api.graph import graph_bp
+    from routes.api.announcements import announcements_api_bp
     app.register_blueprint(notifications_api_bp)
     app.register_blueprint(graph_bp)
+    app.register_blueprint(announcements_api_bp)
 
     from routes.location import location_bp
     app.register_blueprint(location_bp)

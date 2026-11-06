@@ -62,9 +62,9 @@ def list_workers():
 @workers_api_bp.route('/api/workers/me/location', methods=['PUT'])
 @require_auth
 @require_role('worker')
-@limiter.limit("30 per minute")
+@limiter.limit("6 per minute")
 def update_my_location():
-    """Allow field workers to update their current GPS coordinates."""
+    """Allow field workers to update their current GPS coordinates during active tasks."""
     data = request.get_json() or {}
     lat = data.get("lat")
     lng = data.get("lng")
@@ -81,6 +81,26 @@ def update_my_location():
     # Basic coordinate sanity check
     if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Coordinates out of valid range."}}), 422
+
+    # Verify worker has an active task dispatch
+    worker_id = g.current_user["_id"]
+    w_str_id = str(worker_id)
+    active_task = db.issues.find_one({
+        "$or": [
+            {"worker_id": worker_id},
+            {"worker_id": w_str_id},
+            {"assignment.worker_id": w_str_id}
+        ],
+        "status": {"$in": ["assigned", "in_progress", "work_started", "en_route"]}
+    })
+    if not active_task:
+        return jsonify({
+            "success": False,
+            "error": {
+                "code": "INACTIVE_TASK",
+                "message": "Live location sharing is only permitted during active task dispatches."
+            }
+        }), 403
 
     from datetime import datetime
     db.users.update_one(

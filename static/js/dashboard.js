@@ -47,7 +47,7 @@ function switchTab(tabId) {
     });
 
     // Hide all tab panels
-    const tabPanels = ["tab-overview", "tab-issues-list", "tab-account-approvals", "tab-map-view", "tab-workers-view", "tab-ward-health", "tab-recurring", "tab-simulation"];
+    const tabPanels = ["tab-overview", "tab-issues-list", "tab-account-approvals", "tab-map-view", "tab-workers-view", "tab-ward-health", "tab-recurring", "tab-simulation", "tab-announcements"];
     tabPanels.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = "none";
@@ -85,6 +85,10 @@ function switchTab(tabId) {
     } else if (tabId === "simulation") {
         const el = document.getElementById("tab-simulation");
         if (el) el.style.display = "block";
+    } else if (tabId === "announcements") {
+        const el = document.getElementById("tab-announcements");
+        if (el) el.style.display = "block";
+        loadAdminAnnouncements();
     } else {
         const el = document.getElementById("tab-issues-list");
         if (el) el.style.display = "block";
@@ -1430,6 +1434,249 @@ function renderCefapCard(complaint) {
     // Monsoon flag
     const monsoonFlag = document.getElementById('cefap-monsoon-flag');
     if (monsoonFlag) monsoonFlag.style.display = complaint.monsoon_active ? 'block' : 'none';
+}
+
+// ── Admin Announcement Broadcast Center ──────────────────────────────
+function updateAnnouncementPreview() {
+    const title = (document.getElementById('annTitle')?.value || '').trim() || 'Notice Title';
+    const body = (document.getElementById('annBody')?.value || '').trim() || 'Notice body content will be shown here.';
+    const severity = (document.getElementById('annSeverity')?.value || 'info').toLowerCase();
+    const audience = (document.getElementById('annAudience')?.value || 'both').toLowerCase();
+    const pinned = Boolean(document.getElementById('annPinned')?.checked);
+
+    const titleEl = document.getElementById('previewTitle');
+    const bodyEl = document.getElementById('previewBody');
+    const badgeEl = document.getElementById('previewSeverityBadge');
+    const audEl = document.getElementById('previewAudienceBadge');
+    const container = document.getElementById('announcementPreviewContainer');
+
+    if (titleEl) titleEl.textContent = (pinned ? '📌 ' : '') + title;
+    if (bodyEl) bodyEl.textContent = body;
+
+    const colors = {
+        info: { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa' },
+        warning: { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24' },
+        critical: { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171' }
+    };
+    const c = colors[severity] || colors.info;
+
+    if (badgeEl) {
+        badgeEl.textContent = severity.toUpperCase();
+        badgeEl.style.background = c.bg;
+        badgeEl.style.color = c.text;
+    }
+    if (container) {
+        container.style.borderLeftColor = c.border;
+    }
+    if (audEl) {
+        audEl.textContent = audience === 'both' ? '👥 Both' : (audience === 'citizen' ? '👤 Citizens' : '🛠️ Workers');
+    }
+}
+
+async function handleBroadcastAnnouncement(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const titleInput = document.getElementById('annTitle');
+    const bodyInput = document.getElementById('annBody');
+    const severityInput = document.getElementById('annSeverity');
+    const audienceInput = document.getElementById('annAudience');
+    const durationInput = document.getElementById('annDuration');
+    const pinnedInput = document.getElementById('annPinned');
+    const statusDiv = document.getElementById('annBroadcastStatus');
+    const submitBtn = document.getElementById('btnSubmitBroadcast');
+
+    const title = (titleInput?.value || '').trim();
+    const body = (bodyInput?.value || '').trim();
+    const severity = severityInput?.value || 'info';
+    const audience = audienceInput?.value || 'both';
+    const expiresInHours = parseInt(durationInput?.value || '24', 10);
+    const pinned = Boolean(pinnedInput?.checked);
+
+    if (!title || !body) return;
+
+    const confirmMsg = `Confirm broadcast of this ${severity.toUpperCase()} notice to ${audience.toUpperCase()}?`;
+    if (!window.confirm(confirmMsg)) {
+        return;
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (statusDiv) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = 'rgba(59, 130, 246, 0.1)';
+        statusDiv.style.color = '#60a5fa';
+        statusDiv.textContent = 'Broadcasting notice...';
+    }
+
+    try {
+        const res = await api('/api/admin/announcements', {
+            method: 'POST',
+            body: JSON.stringify({
+                title,
+                body,
+                severity,
+                audience,
+                expires_in_hours: expiresInHours,
+                pinned
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            if (statusDiv) {
+                statusDiv.style.background = 'rgba(16, 185, 129, 0.15)';
+                statusDiv.style.color = '#34d399';
+                statusDiv.textContent = 'Notice broadcast successfully across municipal channels.';
+            }
+            if (titleInput) titleInput.value = '';
+            if (bodyInput) bodyInput.value = '';
+            if (pinnedInput) pinnedInput.checked = false;
+            updateAnnouncementPreview();
+            loadAdminAnnouncements();
+            setTimeout(() => {
+                if (statusDiv) statusDiv.style.display = 'none';
+            }, 4000);
+        } else {
+            throw new Error((data.error && data.error.message) || 'Broadcast failed.');
+        }
+    } catch (err) {
+        if (statusDiv) {
+            statusDiv.style.background = 'rgba(239, 68, 68, 0.15)';
+            statusDiv.style.color = '#f87171';
+            statusDiv.textContent = err.message || 'Broadcast failed.';
+        }
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+async function loadAdminAnnouncements() {
+    const listContainer = document.getElementById('announcementsHistoryList');
+    if (!listContainer) return;
+
+    try {
+        const res = await api('/api/admin/announcements');
+        const json = await res.json();
+        const items = json.data || [];
+
+        listContainer.textContent = '';
+
+        if (items.length === 0) {
+            const emptyP = document.createElement('p');
+            emptyP.style.color = 'var(--text-muted)';
+            emptyP.style.fontSize = '0.85rem';
+            emptyP.textContent = 'No announcements recorded.';
+            listContainer.appendChild(emptyP);
+            return;
+        }
+
+        items.forEach(item => {
+            const card = document.createElement('div');
+            card.style.padding = '0.85rem 1rem';
+            card.style.borderRadius = '6px';
+            card.style.background = 'rgba(255, 255, 255, 0.03)';
+            card.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+            card.style.display = 'flex';
+            card.style.justifyContent = 'space-between';
+            card.style.alignItems = 'flex-start';
+            card.style.gap = '1rem';
+
+            const leftDiv = document.createElement('div');
+            leftDiv.style.flex = '1';
+
+            const headerRow = document.createElement('div');
+            headerRow.style.display = 'flex';
+            headerRow.style.alignItems = 'center';
+            headerRow.style.gap = '0.5rem';
+            headerRow.style.marginBottom = '0.35rem';
+
+            const badge = document.createElement('span');
+            badge.style.padding = '0.15rem 0.45rem';
+            badge.style.borderRadius = '4px';
+            badge.style.fontSize = '0.7rem';
+            badge.style.fontWeight = '700';
+            badge.style.textTransform = 'uppercase';
+            const sev = (item.severity || 'info').toLowerCase();
+            badge.textContent = sev;
+            badge.style.background = sev === 'critical' ? 'rgba(239,68,68,0.2)' : (sev === 'warning' ? 'rgba(245,158,11,0.2)' : 'rgba(59,130,246,0.2)');
+            badge.style.color = sev === 'critical' ? '#f87171' : (sev === 'warning' ? '#fbbf24' : '#60a5fa');
+            headerRow.appendChild(badge);
+
+            const titleStrong = document.createElement('strong');
+            titleStrong.style.fontSize = '0.9rem';
+            titleStrong.style.color = 'var(--text-primary)';
+            titleStrong.textContent = (item.pinned ? '📌 ' : '') + (item.title || 'Notice');
+            headerRow.appendChild(titleStrong);
+
+            if (item.status === 'retracted') {
+                const retBadge = document.createElement('span');
+                retBadge.style.padding = '0.1rem 0.4rem';
+                retBadge.style.borderRadius = '4px';
+                retBadge.style.fontSize = '0.65rem';
+                retBadge.style.background = 'rgba(148,163,184,0.2)';
+                retBadge.style.color = '#94a3b8';
+                retBadge.textContent = 'RETRACTED';
+                headerRow.appendChild(retBadge);
+            }
+
+            leftDiv.appendChild(headerRow);
+
+            const bodyP = document.createElement('p');
+            bodyP.style.fontSize = '0.82rem';
+            bodyP.style.color = 'var(--text-muted)';
+            bodyP.style.margin = '0 0 0.4rem 0';
+            bodyP.style.lineHeight = '1.4';
+            bodyP.textContent = item.body || '';
+            leftDiv.appendChild(bodyP);
+
+            const metaSpan = document.createElement('div');
+            metaSpan.style.fontSize = '0.75rem';
+            metaSpan.style.color = '#64748b';
+            metaSpan.textContent = `Audience: ${item.audience || 'both'} • Read by ${item.read_count || 0} users • Created: ${item.created_at ? new Date(item.created_at).toLocaleString() : 'Recent'}`;
+            leftDiv.appendChild(metaSpan);
+
+            card.appendChild(leftDiv);
+
+            if (item.status === 'active') {
+                const retractBtn = document.createElement('button');
+                retractBtn.className = 'btn-danger';
+                retractBtn.style.padding = '0.35rem 0.75rem';
+                retractBtn.style.fontSize = '0.75rem';
+                retractBtn.style.border = 'none';
+                retractBtn.style.borderRadius = '4px';
+                retractBtn.style.background = 'rgba(239, 68, 68, 0.2)';
+                retractBtn.style.color = '#f87171';
+                retractBtn.style.cursor = 'pointer';
+                retractBtn.textContent = 'Retract';
+                retractBtn.onclick = () => retractAnnouncement(item._id);
+                card.appendChild(retractBtn);
+            }
+
+            listContainer.appendChild(card);
+        });
+    } catch (err) {
+        listContainer.textContent = '';
+        const errP = document.createElement('p');
+        errP.style.color = '#f87171';
+        errP.style.fontSize = '0.85rem';
+        errP.textContent = 'Failed to load announcements: ' + err.message;
+        listContainer.appendChild(errP);
+    }
+}
+
+async function retractAnnouncement(annId) {
+    if (!window.confirm('Are you sure you want to retract this active broadcast immediately?')) {
+        return;
+    }
+    try {
+        const res = await api(`/api/admin/announcements/${annId}/retract`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            loadAdminAnnouncements();
+        } else {
+            alert((data.error && data.error.message) || 'Failed to retract.');
+        }
+    } catch (err) {
+        alert(err.message || 'Failed to retract.');
+    }
 }
 
 

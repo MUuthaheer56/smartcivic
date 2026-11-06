@@ -121,6 +121,11 @@ def assign_worker(issue_id, worker_id, officer_id) -> dict:
     if not worker and not worker_prof:
         raise ValueError("Worker not found")
         
+    prev_worker_id = issue.get("worker_id")
+    # If already assigned to this exact worker, no-op return
+    if prev_worker_id and str(prev_worker_id) == str(worker_id):
+        return issue
+
     # Atomic Availability & Assignment Lock Check
     w_target_id = worker["_id"] if worker else (worker_prof["_id"] if worker_prof else None)
     
@@ -158,11 +163,18 @@ def assign_worker(issue_id, worker_id, officer_id) -> dict:
     assign_doc = create_assignment_doc(str(issue["_id"]), str(worker_id), str(officer_id))
     db.assignments.insert_one(assign_doc)
     
-    # 2. Update issue worker ref, assignment dict, assignment_history, and status atomically
+    # 2. Update issue worker ref, assignment dict, assignment_history atomically
+    # Expected worker value is either None/empty (initial assign) or prev_worker_id (reassign)
+    expected_worker_values = [None, ""]
+    if prev_worker_id:
+        expected_worker_values.append(prev_worker_id)
+        if ObjectId.is_valid(str(prev_worker_id)):
+            expected_worker_values.append(ObjectId(str(prev_worker_id)))
+
     issue_update = db.issues.update_one(
         {
             "_id": issue["_id"],
-            "worker_id": {"$in": [None, ""]}
+            "worker_id": {"$in": expected_worker_values}
         },
         {"$set": {
             "worker_id": ObjectId(worker_id) if ObjectId.is_valid(worker_id) else worker_id,
@@ -178,10 +190,31 @@ def assign_worker(issue_id, worker_id, officer_id) -> dict:
             db.users.update_one({"_id": w_target_id}, {"$inc": {"active_assignments": -1}})
         raise ValueError("Issue is already assigned to another worker.")
 
-    update_status(str(issue["_id"]), "assigned", officer_id, reason=f"Assigned to worker {worker.get('name') if worker else 'Worker'}.")
+    # 3. If this was a reassignment, release previous worker's active_assignments slot
+    if prev_worker_id:
+        p_obj_id = ObjectId(prev_worker_id) if ObjectId.is_valid(str(prev_worker_id)) else None
+        p_filter = {"_id": p_obj_id} if p_obj_id else {"user_id": str(prev_worker_id)}
+        db.users.update_one(p_filter, {"$inc": {"active_assignments": -1}})
+
+    if current_status != "assigned":
+        update_status(str(issue["_id"]), "assigned", officer_id, reason=f"Assigned to worker {worker.get('name') if worker else 'Worker'}.")
+    else:
+        # Already in assigned status, log reassignment transition in status_history
+        db.issues.update_one(
+            {"_id": issue["_id"]},
+            {"$set": {"updated_at": now}, "$push": {"status_history": {
+                "status": "assigned",
+                "timestamp": now.isoformat(),
+                "actor_id": str(officer_id),
+                "note": f"Reassigned to worker {worker.get('name') if worker else 'Worker'}."
+            }}}
+        )
         
     # 4. Log audit & send notifications
-    log_audit("user", worker_id, officer_id, "JOB_ASSIGNED", reason=f"Assigned issue {issue_id}.")
+    if prev_worker_id:
+        log_audit("user", worker_id, officer_id, "JOB_REASSIGNED", reason=f"Reassigned issue {issue_id} from {prev_worker_id} to {worker_id}.")
+    else:
+        log_audit("user", worker_id, officer_id, "JOB_ASSIGNED", reason=f"Assigned issue {issue_id}.")
     send(COMPLAINT_ASSIGNED, str(worker_id), str(issue_id))
     return db.issues.find_one({"_id": issue["_id"]})
     

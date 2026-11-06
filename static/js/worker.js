@@ -7,26 +7,56 @@ let markerLayer = L.layerGroup();
 let currentWorkerId = ""; // Resolved from active jobs
 
 function startLocationTracking() {
+    const updateIndicator = (active, text) => {
+        const statusEl = document.getElementById("workerGpsStatusText");
+        const dotEl = document.getElementById("workerGpsDot");
+        const boxEl = document.getElementById("workerGpsIndicator");
+        if (statusEl) statusEl.textContent = text;
+        if (dotEl) dotEl.style.background = active ? "#10b981" : "#c9a227";
+        if (boxEl) {
+            boxEl.style.borderColor = active ? "var(--jewel-emerald, #10b981)" : "var(--royal-gold-500, #c9a227)";
+            boxEl.style.color = active ? "var(--jewel-emerald, #10b981)" : "var(--royal-gold-400, #e7c76a)";
+        }
+    };
+
     if (!navigator.geolocation) {
         console.warn("Geolocation not supported");
+        updateIndicator(false, "Unsupported");
         return;
     }
     const sendLocation = (pos) => {
         fetch('/api/workers/me/location', {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({
                 lat: pos.coords.latitude,
                 lng: pos.coords.longitude
             })
-        }).catch(err => console.error("Location update failed", err));
+        }).then(res => {
+            if (res.ok) {
+                updateIndicator(true, "Sharing (Active Task)");
+            } else if (res.status === 403) {
+                updateIndicator(false, "Standby (No Active Task)");
+            } else {
+                updateIndicator(false, "Offline");
+            }
+        }).catch(err => {
+            console.error("Location update failed", err);
+            updateIndicator(false, "Error");
+        });
     };
     // Initial
-    navigator.geolocation.getCurrentPosition(sendLocation, err => console.warn(err), { enableHighAccuracy: true });
-    // Poll every 3 minutes
+    navigator.geolocation.getCurrentPosition(sendLocation, err => {
+        console.warn(err);
+        updateIndicator(false, "Permission Denied / Offline");
+    }, { enableHighAccuracy: true });
+    // Poll every 15-30 seconds
     setInterval(() => {
-        navigator.geolocation.getCurrentPosition(sendLocation, () => { }, { enableHighAccuracy: true, maximumAge: 60000 });
-    }, 180000);
+        navigator.geolocation.getCurrentPosition(sendLocation, () => { }, { enableHighAccuracy: true, maximumAge: 30000 });
+    }, 20000);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

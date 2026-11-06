@@ -108,8 +108,19 @@ async function reverseGeocode(lat, lng) {
 
 /** Detect current GPS location */
 function tryDetectLocation() {
+    const statusEl = document.getElementById("location-status");
+
+    if (window.isSecureContext === false && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        const msg = "Geolocation requires HTTPS. Drag or click the map pin manually.";
+        if (typeof showToast === "function") showToast(msg, "warning");
+        if (statusEl) statusEl.textContent = "Manual pin drop mode (HTTPS required)";
+        return;
+    }
+
     if (!navigator.geolocation) {
-        console.warn("Geolocation is not supported by this browser.");
+        const msg = "Geolocation is not supported by your browser. Please drop pin manually.";
+        if (typeof showToast === "function") showToast(msg, "warning");
+        if (statusEl) statusEl.textContent = "Manual pin drop mode active";
         return;
     }
 
@@ -118,22 +129,36 @@ function tryDetectLocation() {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
 
-            map.setView([lat, lng], 16);
-            marker.setLatLng([lat, lng]);
+            if (typeof map !== 'undefined' && map && typeof marker !== 'undefined' && marker) {
+                map.setView([lat, lng], 16);
+                marker.setLatLng([lat, lng]);
+            }
             updateCoords(lat, lng);
             reverseGeocode(lat, lng);
 
             if (typeof showToast === "function") {
                 showToast("Location detected successfully", "success");
             }
+            if (statusEl) statusEl.textContent = "GPS location detected";
         },
         (err) => {
+            let msg = "Could not detect location. Please click or drag the map pin manually.";
+            if (err.code === 1) {
+                msg = "Location permission denied. Please click or drag the map pin manually.";
+            } else if (err.code === 2) {
+                msg = "Location signal unavailable. Please click or drag the map pin manually.";
+            } else if (err.code === 3) {
+                msg = "Location request timed out. Please click or drag the map pin manually.";
+            }
             console.warn("GPS error:", err.message);
-            // Keep default Bangalore pin — user can still drag/click
+            if (typeof showToast === "function") {
+                showToast(msg, "warning");
+            }
+            if (statusEl) statusEl.textContent = "Manual pin drop mode active";
         },
         {
             enableHighAccuracy: true,
-            timeout: 12000,
+            timeout: 10000,
             maximumAge: 60000
         }
     );

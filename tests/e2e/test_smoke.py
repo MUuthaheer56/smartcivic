@@ -164,109 +164,101 @@ def check_page_invariants(page, role, location_label, db_has_data=False):
 
 
 @pytest.mark.parametrize("config", ROLES_CONFIG, ids=[c["role"] for c in ROLES_CONFIG])
-def test_role_e2e_smoke(live_server, config):
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        pytest.skip("playwright not installed")
-
+def test_role_e2e_smoke(browser, live_server, config):
     role = config["role"]
     email = config["email"]
     password = config["password"]
     pages = config["pages"]
     tabs = config["tabs"]
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome", headless=True)
-        context = browser.new_context()
-        page = context.new_page()
+    context = browser.new_context()
+    page = context.new_page()
 
-        console_errors = []
-        page_errors = []
-        failed_requests = []
+    console_errors = []
+    page_errors = []
+    failed_requests = []
 
-        def on_console(msg):
-            if msg.type == "error":
-                loc_url = ""
-                try:
-                    loc_url = msg.location.get("url", "") if isinstance(msg.location, dict) else str(getattr(msg, "location", ""))
-                except Exception:
-                    pass
-                if "favicon.ico" in loc_url or "favicon.ico" in msg.text:
-                    return
-                console_errors.append(f"{msg.text} [loc: {loc_url}]")
-
-        def on_page_error(err):
-            page_errors.append(str(err))
-
-        def on_response(resp):
-            if "favicon.ico" in resp.url:
+    def on_console(msg):
+        if msg.type == "error":
+            loc_url = ""
+            try:
+                loc_url = msg.location.get("url", "") if isinstance(msg.location, dict) else str(getattr(msg, "location", ""))
+            except Exception:
+                pass
+            if "favicon.ico" in loc_url or "favicon.ico" in msg.text:
                 return
-            if resp.status >= 400:
-                failed_requests.append(f"{resp.request.method} {resp.url} -> {resp.status}")
+            console_errors.append(f"{msg.text} [loc: {loc_url}]")
 
-        page.on("console", on_console)
-        page.on("pageerror", on_page_error)
-        page.on("response", on_response)
+    def on_page_error(err):
+        page_errors.append(str(err))
 
-        # 1. Login
-        page.goto(f"{live_server}/login")
-        page.wait_for_load_state("networkidle")
-        page.fill('#email', email)
-        page.fill('#password', password)
-        page.click('#loginSubmit')
+    def on_response(resp):
+        if "favicon.ico" in resp.url:
+            return
+        if resp.status >= 400:
+            failed_requests.append(f"{resp.request.method} {resp.url} -> {resp.status}")
+
+    page.on("console", on_console)
+    page.on("pageerror", on_page_error)
+    page.on("response", on_response)
+
+    # 1. Login
+    page.goto(f"{live_server}/login")
+    page.wait_for_load_state("networkidle")
+    page.fill('#email', email)
+    page.fill('#password', password)
+    page.click('#loginSubmit')
+    page.wait_for_timeout(2000)
+
+    # 2. Visit every configured page
+    for page_path in pages:
+        console_errors.clear()
+        page_errors.clear()
+        failed_requests.clear()
+
+        full_url = f"{live_server}{page_path}"
+        page.goto(full_url, wait_until="load", timeout=12000)
         page.wait_for_timeout(2000)
 
-        # 2. Visit every configured page
-        for page_path in pages:
-            console_errors.clear()
-            page_errors.clear()
-            failed_requests.clear()
+        # Check network & console invariants
+        assert len(page_errors) == 0, f"Page errors on {role} {page_path}: {page_errors}"
+        assert len(console_errors) == 0, f"Console errors on {role} {page_path}: {console_errors}"
+        assert len(failed_requests) == 0, f"Failed requests on {role} {page_path}: {failed_requests}"
 
-            full_url = f"{live_server}{page_path}"
-            page.goto(full_url, wait_until="load", timeout=12000)
-            page.wait_for_timeout(2000)
+        # Check UI invariants
+        # On live map or citizen dashboard, DB has issues
+        db_has_data = False
+        if page_path == "/map":
+            db_has_data = (db.issues.count_documents({"status": {"$nin": ["closed", "rejected"]}}) > 0)
+        elif page_path == "/citizen/dashboard" and role == "citizen_verified":
+            db_has_data = (db.issues.count_documents({"citizen_id": ObjectId("6aed722e7754529d71c908b0")}) > 0)
+        elif page_path == "/worker/dashboard" and role == "worker":
+            db_has_data = (db.issues.count_documents({"worker_id": ObjectId("6aed722e7754529d71c908b4")}) > 0)
 
-            # Check network & console invariants
-            assert len(page_errors) == 0, f"Page errors on {role} {page_path}: {page_errors}"
-            assert len(console_errors) == 0, f"Console errors on {role} {page_path}: {console_errors}"
-            assert len(failed_requests) == 0, f"Failed requests on {role} {page_path}: {failed_requests}"
+        check_page_invariants(page, role, page_path, db_has_data=db_has_data)
 
-            # Check UI invariants
-            # On live map or citizen dashboard, DB has issues
-            db_has_data = False
-            if page_path == "/map":
-                db_has_data = (db.issues.count_documents({"status": {"$nin": ["closed", "rejected"]}}) > 0)
-            elif page_path == "/citizen/dashboard" and role == "citizen_verified":
-                db_has_data = (db.issues.count_documents({"citizen_id": ObjectId("6aed722e7754529d71c908b0")}) > 0)
-            elif page_path == "/worker/dashboard" and role == "worker":
-                db_has_data = (db.issues.count_documents({"worker_id": ObjectId("6aed722e7754529d71c908b4")}) > 0)
+        # If this is the officer dashboard, exercise all tabs
+        if "dashboard" in page_path and tabs:
+            for tab_id, expected_selector in tabs:
+                console_errors.clear()
+                page_errors.clear()
+                failed_requests.clear()
 
-            check_page_invariants(page, role, page_path, db_has_data=db_has_data)
+                # Click tab button or invoke switchTab
+                page.evaluate(f"switchTab('{tab_id}')")
+                page.wait_for_timeout(1000)
 
-            # If this is the officer dashboard, exercise all tabs
-            if "dashboard" in page_path and tabs:
-                for tab_id, expected_selector in tabs:
-                    console_errors.clear()
-                    page_errors.clear()
-                    failed_requests.clear()
+                assert len(page_errors) == 0, f"Page errors on {role} tab '{tab_id}': {page_errors}"
+                assert len(console_errors) == 0, f"Console errors on {role} tab '{tab_id}': {console_errors}"
+                assert len(failed_requests) == 0, f"Failed requests on {role} tab '{tab_id}': {failed_requests}"
 
-                    # Click tab button or invoke switchTab
-                    page.evaluate(f"switchTab('{tab_id}')")
-                    page.wait_for_timeout(1000)
+                tab_has_data = False
+                if tab_id in ["new-complaints", "priority-queue"] and role in ["officer_all", "admin"]:
+                    tab_has_data = True
+                elif tab_id == "account-approvals":
+                    tab_has_data = (db.users.count_documents({"verification_status": "pending"}) > 0)
 
-                    assert len(page_errors) == 0, f"Page errors on {role} tab '{tab_id}': {page_errors}"
-                    assert len(console_errors) == 0, f"Console errors on {role} tab '{tab_id}': {console_errors}"
-                    assert len(failed_requests) == 0, f"Failed requests on {role} tab '{tab_id}': {failed_requests}"
+                check_page_invariants(page, role, f"tab:{tab_id}", db_has_data=tab_has_data)
 
-                    tab_has_data = False
-                    if tab_id in ["new-complaints", "priority-queue"] and role in ["officer_all", "admin"]:
-                        tab_has_data = True
-                    elif tab_id == "account-approvals":
-                        tab_has_data = (db.users.count_documents({"verification_status": "pending"}) > 0)
-
-                    check_page_invariants(page, role, f"tab:{tab_id}", db_has_data=tab_has_data)
-
-        context.close()
-        browser.close()
+    context.close()
 

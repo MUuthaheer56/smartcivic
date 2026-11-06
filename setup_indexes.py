@@ -71,6 +71,15 @@ def setup_database_indexes(db):
         _safe_create_index(db.notifications, [("user_id", ASCENDING), ("read", ASCENDING)])
         _safe_create_index(db.notifications, [("created_at", DESCENDING)], expireAfterSeconds=2592000)
 
+        # Announcements collection indexes
+        _safe_create_index(db.announcements, [("status", ASCENDING), ("expires_at", ASCENDING), ("audience", ASCENDING)])
+        _safe_create_index(db.announcements, "idempotency_key", unique=True, sparse=True)
+        _safe_create_index(db.announcements, [("created_at", DESCENDING)])
+
+        # Announcement reads collection indexes
+        _safe_create_index(db.announcement_reads, [("announcement_id", ASCENDING), ("user_id", ASCENDING)], unique=True)
+        _safe_create_index(db.announcement_reads, [("user_id", ASCENDING)])
+
         logger.info("Database indexes successfully created and verified.")
     except Exception as e:
         logger.error(f"Failed to create database indexes: {e}")

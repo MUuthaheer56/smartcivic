@@ -19,7 +19,7 @@ def get_map_issues():
     
     # Ward boundaries
     officer_ward = g.current_user.get("ward")
-    if g.current_user["role"] == "officer" and officer_ward != "all":
+    if g.current_user["role"] == "officer" and str(officer_ward or '').strip().lower() not in ('all', '*', ''):
         query["ward"] = officer_ward
     elif g.current_user["role"] == "citizen":
         # A citizen can see public issue pins in the system
@@ -106,11 +106,22 @@ def get_map_heatmap():
 
 @map_api_bp.route('/api/map/workers', methods=['GET'])
 @require_auth
-@require_role('officer')
+@require_role('officer', 'admin')
 def get_map_workers():
-    query = {"role": "worker"}
+    """
+    Returns live locations of active field workers.
+    Accessible strictly by officers and admins.
+    Retains and exposes coordinates updated within the last 24 hours only.
+    """
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    query = {
+        "role": "worker",
+        "current_location": {"$exists": True, "$ne": None},
+        "location_updated_at": {"$gte": cutoff}
+    }
     officer_ward = g.current_user.get("ward")
-    if str(officer_ward or '').strip().lower() not in ('all', '*', ''):
+    if g.current_user.get("role") == "officer" and str(officer_ward or '').strip().lower() not in ('all', '*', ''):
         query["ward"] = officer_ward
         
     workers = list(db.users.find(query, {
@@ -118,8 +129,10 @@ def get_map_workers():
         "email": 1,
         "skills": 1,
         "current_location": 1,
+        "location_updated_at": 1,
         "active_assignments": 1,
-        "is_available": 1
+        "is_available": 1,
+        "ward": 1
     }))
     
     return jsonify({"success": True, "data": serialize(workers)}), 200
