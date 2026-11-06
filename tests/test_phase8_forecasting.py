@@ -92,8 +92,9 @@ def test_rolling_origin_backtest_refusal_on_short_data(app_instance):
         assert result["error"] == "insufficient_history"
         assert ">= 12 months" in result["refusal_reason"]
 
-def test_rolling_origin_backtest_synthetic_benchmark(app_instance):
+def test_rolling_origin_backtest_synthetic_benchmark(app_instance, monkeypatch, tmp_path):
     """Validates rolling-origin backtest execution on 24-month benchmark."""
+    monkeypatch.setattr("ml.evaluate.eval_forecast.REPORT_PATH", str(tmp_path / "forecasting_evaluation.json"))
     with app_instance.app_context():
         result = evaluate_forecasting(use_synthetic_benchmark=True)
         assert result is not None

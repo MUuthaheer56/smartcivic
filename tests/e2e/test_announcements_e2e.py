@@ -22,7 +22,6 @@ os.environ["RATE_LIMIT_ENABLED"] = "false"
 os.environ["WTF_CSRF_ENABLED"] = "true"
 
 from app import db
-from tests.e2e.test_smoke import live_server
 from tests.e2e.test_actions import attach_error_monitors, login, assert_invariants
 
 

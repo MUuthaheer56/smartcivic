@@ -125,37 +125,13 @@
         <h1>Field Crew Dispatch</h1>
         <p>Manage assigned maintenance orders, compute OSRM road routes, and capture resolution evidence</p>
     </div>
-    <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <!-- Announcement Bell -->
-        <div style="position: relative;">
-            <button id="announcementBellBtn" type="button" onclick="toggleAnnouncementDropdown()"
-                title="Municipal Notices"
-                style="position: relative; background: rgba(255,255,255,0.06); border: 1px solid var(--sc-card-border); color: var(--sc-text); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;">
-                <i class="fa-solid fa-bell"></i>
-                <span id="announcementUnreadBadge" style="display: none; position: absolute; top: -3px; right: -3px; background: #ef4444; color: #fff; font-size: 0.65rem; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">0</span>
-            </button>
-            <div id="announcementDropdown" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); width: 340px; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.6); z-index: 1000; padding: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    <strong style="font-size: 0.9rem; color: #f8fafc;"><i class="fa-solid fa-bullhorn" style="color: #60a5fa; margin-right: 0.4rem;"></i> Municipal Notices</strong>
-                    <span id="announcementDropdownCount" style="font-size: 0.75rem; color: #94a3b8;">0 unread</span>
-                </div>
-                <div id="announcementDropdownList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;">
-                    <p style="color: #94a3b8; font-size: 0.8rem; margin: 0;">No active notices.</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="workerGpsIndicator"
-            style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(16, 185, 129, 0.12); border: 1px solid var(--jewel-emerald, #10b981); color: var(--jewel-emerald, #10b981); padding: 0.45rem 1rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600;">
-            <span id="workerGpsDot"
-                style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
-            <span>Live Location: <strong id="workerGpsStatusText">Standby</strong></span>
-        </div>
+    <div id="workerGpsIndicator"
+        style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(16, 185, 129, 0.12); border: 1px solid var(--jewel-emerald, #10b981); color: var(--jewel-emerald, #10b981); padding: 0.45rem 1rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600;">
+        <span id="workerGpsDot"
+            style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+        <span>Live Location: <strong id="workerGpsStatusText">Standby</strong></span>
     </div>
 </div>
-
-<!-- Active Dismissible Announcement Banner -->
-<div id="activeAnnouncementBanner" style="display: none; margin-top: 1.25rem;"></div>
 
 <div class="worker-grid">
     <!-- Left Column: Jobs List -->
@@ -204,7 +180,6 @@
 
 {% block scripts %}
 <script src="/static/js/worker.js"></script>
-<script src="/static/js/announcements.js"></script>
 <script>
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/static/js/sw.js')

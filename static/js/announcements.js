@@ -295,3 +295,4 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchAndRenderAnnouncements();
     setupAnnouncementRealtime();
 });
+

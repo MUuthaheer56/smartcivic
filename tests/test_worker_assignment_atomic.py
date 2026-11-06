@@ -95,7 +95,6 @@ def test_full_or_inactive_worker_rejection(app_ctx):
     db.users.insert_one({
         "_id": w_full_id,
         "name": "Full Worker",
-        "email": f"full_worker_{w_full_id}@test.com",
         "role": "worker",
         "is_available": True,
         "active_assignments": 5
@@ -104,7 +103,6 @@ def test_full_or_inactive_worker_rejection(app_ctx):
     db.users.insert_one({
         "_id": w_inactive_id,
         "name": "Inactive Worker",
-        "email": f"inactive_worker_{w_inactive_id}@test.com",
         "role": "worker",
         "is_available": False,
         "active_assignments": 1
@@ -137,7 +135,6 @@ def test_concurrent_dual_officer_assignment_race(app_ctx):
     db.users.insert_one({
         "_id": w1_id,
         "name": "Worker 1",
-        "email": f"worker1_race_{w1_id}@test.com",
         "role": "worker",
         "is_available": True,
         "active_assignments": 0
@@ -146,7 +143,6 @@ def test_concurrent_dual_officer_assignment_race(app_ctx):
     db.users.insert_one({
         "_id": w2_id,
         "name": "Worker 2",
-        "email": f"worker2_race_{w2_id}@test.com",
         "role": "worker",
         "is_available": True,
         "active_assignments": 0
@@ -193,3 +189,4 @@ def test_concurrent_dual_officer_assignment_race(app_ctx):
         db.users.delete_many({"_id": {"$in": [w1_id, w2_id]}})
         db.issues.delete_one({"_id": issue_id})
         db.assignments.delete_many({"issue_id": str(issue_id)})
+

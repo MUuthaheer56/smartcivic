@@ -30,7 +30,7 @@ os.environ["RATE_LIMIT_ENABLED"] = "false"
 os.environ["WTF_CSRF_ENABLED"] = "true"
 
 from app import db
-from tests.e2e.test_smoke import live_server
+
 
 class ActionFailure(Exception):
     pass
@@ -43,8 +43,8 @@ def attach_error_monitors(page):
     def on_console(msg):
         if msg.type in ("error", "assert"):
             txt = msg.text
-            # Ignore Leaflet tile host 404s/cross-origin tile notices or favicon if any
-            if "tile" in txt.lower() or "favicon" in txt.lower():
+            # Ignore Leaflet tile host 404s/cross-origin tile notices, favicon, or aborted network connections on page nav
+            if "tile" in txt.lower() or "favicon" in txt.lower() or "err_connection_closed" in txt.lower() or "err_aborted" in txt.lower():
                 return
             loc_url = ""
             try:
@@ -134,7 +134,7 @@ def test_admin_actions(browser, live_server):
 
     # Action 5: Visit Map page
     page.goto(f"{live_server}/map")
-    page.wait_for_selector("#liveMap", state="visible")
+    page.wait_for_selector("#map", state="visible")
     assert_invariants(page, errors, failed_requests, "admin_map_page")
 
     context.close()
@@ -175,7 +175,7 @@ def test_officer_all_actions(browser, live_server):
 
     # Action 4: Visit Map page
     page.goto(f"{live_server}/map")
-    page.wait_for_selector("#liveMap", state="visible")
+    page.wait_for_selector("#map", state="visible")
     assert_invariants(page, errors, failed_requests, "officer_all_map_page")
 
     context.close()
@@ -201,7 +201,7 @@ def test_officer_ward_actions(browser, live_server):
 
     # Action 3: Switch to Verification tab
     page.click("button:has-text('Verification')")
-    page.wait_for_selector("#issuesGrid", state="visible")
+    page.wait_for_selector("#verificationGrid", state="visible")
     assert_invariants(page, errors, failed_requests, "officer_ward_verification")
 
     context.close()
@@ -223,11 +223,7 @@ def test_worker_actions(browser, live_server):
     # Action 2: If jobs exist, inspect job detail modal
     job_cards = page.locator("#jobsList .job-card")
     if job_cards.count() > 0:
-        detail_btn = job_cards.first.locator("button:has-text('Detail'), button[onclick*='openJobDetail']")
-        if detail_btn.count() > 0:
-            detail_btn.first.click()
-        else:
-            job_cards.first.click()
+        job_cards.first.click()
         page.wait_for_selector("#jobDetailModal", state="visible")
         assert_invariants(page, errors, failed_requests, "worker_open_job_modal")
         page.click("button:has-text('Close')")

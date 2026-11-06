@@ -93,38 +93,14 @@
         <h1>Citizen Portal</h1>
         <p>Report municipal issues, review AI verification status, and track real-time resolution timelines</p>
     </div>
-    <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <!-- Announcement Bell -->
-        <div style="position: relative;">
-            <button id="announcementBellBtn" type="button" onclick="toggleAnnouncementDropdown()"
-                title="Municipal Notices"
-                style="position: relative; background: rgba(255,255,255,0.06); border: 1px solid var(--sc-card-border); color: var(--sc-text); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;">
-                <i class="fa-solid fa-bell"></i>
-                <span id="announcementUnreadBadge" style="display: none; position: absolute; top: -3px; right: -3px; background: #ef4444; color: #fff; font-size: 0.65rem; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">0</span>
-            </button>
-            <div id="announcementDropdown" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); width: 340px; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.6); z-index: 1000; padding: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    <strong style="font-size: 0.9rem; color: #f8fafc;"><i class="fa-solid fa-bullhorn" style="color: #60a5fa; margin-right: 0.4rem;"></i> Municipal Notices</strong>
-                    <span id="announcementDropdownCount" style="font-size: 0.75rem; color: #94a3b8;">0 unread</span>
-                </div>
-                <div id="announcementDropdownList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;">
-                    <p style="color: #94a3b8; font-size: 0.8rem; margin: 0;">No active notices.</p>
-                </div>
-            </div>
-        </div>
-
-        {% if g.current_user %}
-        <div class="civic-score-chip" style="background: rgba(11, 20, 55, 0.45); border-color: #e7c76a; color: #f4df9b; padding: 0.5rem 1.1rem; font-size: 0.95rem;">
-            <i class="fa-solid fa-medal" style="color: #e7c76a; font-size: 1.1rem;"></i>
-            <span>CivicScore: <strong>{{ g.current_user.civic_score or 100 }}</strong></span>
-            <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85;">· {{ g.current_user.role_tier or 'Reporter' }}</span>
-        </div>
-        {% endif %}
+    {% if g.current_user %}
+    <div class="civic-score-chip" style="background: rgba(11, 20, 55, 0.45); border-color: #e7c76a; color: #f4df9b; padding: 0.5rem 1.1rem; font-size: 0.95rem;">
+        <i class="fa-solid fa-medal" style="color: #e7c76a; font-size: 1.1rem;"></i>
+        <span>CivicScore: <strong>{{ g.current_user.civic_score or 100 }}</strong></span>
+        <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85;">· {{ g.current_user.role_tier or 'Reporter' }}</span>
     </div>
+    {% endif %}
 </div>
-
-<!-- Active Dismissible Announcement Banner -->
-<div id="activeAnnouncementBanner" style="display: none; margin-top: 1.25rem;"></div>
 
 <div class="dashboard-grid">
     <!-- Left Column: Report Issue Form -->
@@ -349,5 +325,4 @@
 
 {% block scripts %}
 <script src="/static/js/citizen.js"></script>
-<script src="/static/js/announcements.js"></script>
 {% endblock %}

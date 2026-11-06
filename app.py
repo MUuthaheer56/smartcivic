@@ -459,6 +459,31 @@ def create_app():
     except Exception as e:
         app.logger.warning(f"Startup index setup skipped: {e}")
 
+    env_name = (os.getenv("FLASK_ENV") or os.getenv("APP_ENV") or "development").lower()
+    if env_name in {"development", "dev", "test", "testing"}:
+        try:
+            from routes.auth import hash_password
+            demo_users = [
+                {"name": "System Administrator", "email": "admin@smartcivic.com", "role": "admin", "ward": "ALL", "verified": True},
+                {"name": "Central Authority", "email": "authority@smartcivic.com", "role": "officer", "ward": "ALL", "verified": True},
+                {"name": "Ward 150 Officer", "email": "officer@smartcivic.com", "role": "officer", "ward": "Ward 150 - Bellandur", "verified": True},
+                {"name": "Field Worker Ramesh", "email": "worker@smartcivic.com", "role": "worker", "ward": "Ward 150 - Bellandur", "skills": ["road_repair", "pothole", "drainage"], "verified": True, "is_available": True},
+                {"name": "Citizen Priya Sharma", "email": "citizen@smartcivic.com", "role": "citizen", "ward": "Ward 150 - Bellandur", "verified": True, "verification_status": "verified"},
+                {"name": "Citizen Ananya Rao", "email": "pending_citizen@smartcivic.com", "role": "citizen", "ward": "Ward 151 - Koramangala", "verified": False, "verification_status": "pending"},
+            ]
+            for user in demo_users:
+                email = (user.get("email") or "").strip().lower()
+                if not email or db.users.find_one({"email": email}):
+                    continue
+                doc = dict(user)
+                doc["password_hash"] = hash_password("smartcivic123")
+                doc["demo_seed"] = True
+                doc["status"] = doc.get("status") or ("pending_verification" if doc.get("role") in {"citizen", "resident", "worker"} and not doc.get("verified") else "active")
+                doc["updated_at"] = datetime.utcnow()
+                doc["created_at"] = datetime.utcnow()
+                db.users.insert_one(doc)
+        except Exception as e:
+            app.logger.warning(f"Demo account seeding skipped: {e}")
 
     return app
 

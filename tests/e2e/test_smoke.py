@@ -13,48 +13,7 @@ os.environ["FLASK_ENV"] = "development"
 os.environ["RATE_LIMIT_ENABLED"] = "false"
 os.environ["WTF_CSRF_ENABLED"] = "true"
 
-from app import create_app, socketio, db
-
-def get_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('127.0.0.1', 0))
-        return s.getsockname()[1]
-
-@pytest.fixture(scope="session")
-def live_server():
-    port = get_free_port()
-    os.environ["ALLOWED_ORIGINS"] = f"http://localhost:{port},http://127.0.0.1:{port}"
-    app = create_app()
-    app.config["TESTING"] = False
-
-    server_thread = threading.Thread(
-        target=lambda: socketio.run(
-            app,
-            host="127.0.0.1",
-            port=port,
-            debug=False,
-            use_reloader=False,
-            allow_unsafe_werkzeug=True
-        ),
-        daemon=True
-    )
-    server_thread.start()
-
-    base_url = f"http://127.0.0.1:{port}"
-    started = False
-    for _ in range(40):
-        try:
-            with urllib.request.urlopen(f"{base_url}/health", timeout=1) as resp:
-                if resp.status == 200:
-                    started = True
-                    break
-        except Exception:
-            time.sleep(0.25)
-
-    if not started:
-        pytest.fail("Live test server failed to start within timeout.")
-
-    yield base_url
+from app import db
 
 ROLES_CONFIG = [
     {

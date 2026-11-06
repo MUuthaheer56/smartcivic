@@ -154,3 +154,4 @@ Modern mobile browsers (Chrome on Android, Safari on iOS) block `navigator.geolo
 | `tests/e2e/test_announcements_e2e.py` | Playwright multi-context broadcast, banner, dismiss, retract | 1 | **1 PASSED** | 16.85s |
 | `tests/e2e/test_smoke.py` | Playwright full page navigation smoke suite | 6 | **6 PASSED** | 32.10s |
 | **Total** | **All Automated Test Suites** | **233** | **233 PASSED** | **100% Pass** |
+

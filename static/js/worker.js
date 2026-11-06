@@ -27,7 +27,7 @@ function startLocationTracking() {
     const sendLocation = (pos) => {
         fetch('/api/workers/me/location', {
             method: 'PUT',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCsrfToken()
             },

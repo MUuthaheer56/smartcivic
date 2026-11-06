@@ -486,6 +486,9 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <main>
+        {% if g.current_user %}
+        <div id="activeAnnouncementBanner" style="display:none; margin-bottom: 1.5rem;"></div>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 
@@ -499,6 +502,9 @@
     <script src="/static/vendor/socket.io/socket.io.min.js"></script>
     <script src="/static/js/toast.js"></script>
     <script src="/static/js/filters.js"></script>
+    {% if g.current_user %}
+    <script src="/static/js/announcements.js"></script>
+    {% endif %}
     <script>
         // Shared global theme management
         function initTheme() {

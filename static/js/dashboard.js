@@ -37,6 +37,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
 let currentApprovalRole = "citizen";
 
+function setActiveQueueGrid(activeGridId) {
+    const issuesGrid = document.getElementById("issuesGrid");
+    const verificationGrid = document.getElementById("verificationGrid");
+    if (issuesGrid) {
+        issuesGrid.style.display = activeGridId === "issuesGrid" ? "grid" : "none";
+    }
+    if (verificationGrid) {
+        verificationGrid.style.display = activeGridId === "verificationGrid" ? "grid" : "none";
+    }
+}
+
 function switchTab(tabId) {
     // Reset active button class
     document.querySelectorAll(".sidebar-btn").forEach(btn => {
@@ -92,6 +103,7 @@ function switchTab(tabId) {
     } else {
         const el = document.getElementById("tab-issues-list");
         if (el) el.style.display = "block";
+        setActiveQueueGrid(tabId === "verification" ? "verificationGrid" : "issuesGrid");
         loadIssuesQueue(tabId);
         loadEmergencyBar();
     }
@@ -169,8 +181,10 @@ async function loadOverviewStats(force = false) {
 
 async function loadIssuesQueue(queueType, force = false) {
     const listTitle = document.getElementById("listTitle");
-    const issuesGrid = document.getElementById("issuesGrid");
+    const activeGridId = queueType === "verification" ? "verificationGrid" : "issuesGrid";
+    const issuesGrid = document.getElementById(activeGridId);
     if (!issuesGrid) return;
+    setActiveQueueGrid(activeGridId);
 
     if (queueType === "verification") {
         if (listTitle) listTitle.innerText = "Pending Resident & Worker Verification";
@@ -234,11 +248,19 @@ async function loadIssuesQueue(queueType, force = false) {
 }
 
 async function renderPendingResidentVerifications() {
+    const verificationGrid = document.getElementById("verificationGrid");
+    const issuesGrid = document.getElementById("issuesGrid");
+    if (verificationGrid) {
+        verificationGrid.style.display = "grid";
+    }
+    if (issuesGrid && verificationGrid) {
+        issuesGrid.style.display = "none";
+    }
     loadPendingAccountApprovals("citizen");
 }
 
 function renderApprovalsList(users, role) {
-    const approvalsGrid = document.getElementById("approvalsGrid") || document.getElementById("issuesGrid");
+    const approvalsGrid = document.getElementById("approvalsGrid") || (document.getElementById("verificationGrid") && document.getElementById("tab-issues-list") && document.getElementById("tab-issues-list").style.display !== "none" ? document.getElementById("verificationGrid") : document.getElementById("issuesGrid"));
     if (!approvalsGrid) return;
     if (users.length === 0) {
         approvalsGrid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><i class="fa-solid fa-user-check empty-state-icon"></i><div>No ${role === 'worker' ? 'workers' : 'residents'} are pending approval.</div></div>`;
@@ -275,7 +297,9 @@ function renderApprovalsList(users, role) {
 }
 
 async function loadPendingAccountApprovals(role = "citizen", force = false) {
-    const approvalsGrid = document.getElementById("approvalsGrid") || document.getElementById("issuesGrid");
+    const tabIssuesList = document.getElementById("tab-issues-list");
+    const approvalsGrid = document.getElementById("approvalsGrid") ||
+        ((tabIssuesList && tabIssuesList.style.display !== "none") ? document.getElementById("verificationGrid") || document.getElementById("issuesGrid") : document.getElementById("issuesGrid"));
     if (!approvalsGrid) return;
 
     if (!force) {

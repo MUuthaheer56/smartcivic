@@ -52,8 +52,14 @@ def setup_database_indexes(db):
     across users, issues, notifications, and geospatial locations.
     """
     try:
-        # Users collection indexes
-        _safe_create_index(db.users, "email", unique=True)
+        # Users collection indexes.
+        # Email can legitimately be absent for some worker/test records, so keep
+        # a sparse unique index rather than a hard unique non-null index.
+        try:
+            db.users.drop_index("email_1")
+        except Exception:
+            pass
+        _safe_create_index(db.users, "email", unique=True, sparse=True)
         _safe_create_index(db.users, [("role", ASCENDING), ("ward", ASCENDING)])
         _safe_create_index(db.users, [("verified", ASCENDING), ("approved_by_authority", ASCENDING)])
 
@@ -341,7 +347,11 @@ def create_indexes(mongo_uri: str = None) -> bool:
              "Could not run duplicate-email cleanup (aggregate failed).",
              error_type=type(exc).__name__, error=str(exc))
 
-    all_ok &= _safe_create_index(db.users, "email", unique=True)
+    try:
+        db.users.drop_index("email_1")
+    except Exception:
+        pass
+    all_ok &= _safe_create_index(db.users, "email", unique=True, sparse=True)
     all_ok &= _safe_create_index(db.users, "ward_id")
     all_ok &= _safe_create_index(db.users, "ward")
     all_ok &= _safe_create_index(db.users, "role")

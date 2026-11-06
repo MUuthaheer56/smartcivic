@@ -62,13 +62,9 @@
             if (!areaCode) return;
 
             try {
-                const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
                 const res = await fetch('/api/auth/verify-ward', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ area_code: areaCode })
                 });
 

@@ -16,10 +16,11 @@ map_api_bp = Blueprint('map_api', __name__)
 def get_map_issues():
     # Only return coordinate and metadata to minimize payload size
     query = {"status": {"$nin": ["closed", "rejected"]}}
-    
+
     # Ward boundaries
     officer_ward = g.current_user.get("ward")
-    if g.current_user["role"] == "officer" and str(officer_ward or '').strip().lower() not in ('all', '*', ''):
+    officer_ward_norm = str(officer_ward or "").strip().lower()
+    if g.current_user["role"] == "officer" and officer_ward_norm not in ("all", "*", ""):
         query["ward"] = officer_ward
     elif g.current_user["role"] == "citizen":
         # A citizen can see public issue pins in the system

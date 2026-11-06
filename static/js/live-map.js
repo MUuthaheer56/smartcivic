@@ -9,7 +9,8 @@ const defaultMapCenter = [12.9716, 77.5946];
 const refreshIntervalMs = 15000;
 
 window.addEventListener("DOMContentLoaded", () => {
-    liveMap = L.map("liveMap", { zoomControl: true }).setView(defaultMapCenter, 13);
+    const mapElement = document.getElementById("map") || document.getElementById("liveMap");
+    liveMap = L.map(mapElement || "map", { zoomControl: true }).setView(defaultMapCenter, 13);
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || document.documentElement.classList.contains('dark');
     const tileUrl = isDark 
         ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
