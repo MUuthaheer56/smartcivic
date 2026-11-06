@@ -81,7 +81,7 @@ LEGAL_TRANSITIONS = {
     "under_review":          ["verified", "officer_reviewed", "assigned", "rejected", "duplicate"],
     "officer_reviewed":      ["verified", "assigned", "rejected", "duplicate"],
     "verified":              ["assigned", "rejected"],
-    "assigned":              ["en_route", "work_started", "in_progress", "rejected"],
+    "assigned":              ["en_route", "work_started", "in_progress", "work_completed", "resolved", "rejected"],
     "en_route":              ["work_started", "in_progress", "work_completed", "resolved"],
     "work_started":          ["in_progress", "work_completed", "resolved"],
     "in_progress":           ["work_completed", "resolved"],

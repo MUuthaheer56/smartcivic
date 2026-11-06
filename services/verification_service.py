@@ -97,7 +97,7 @@ def submit_resolution(issue_id, worker_id, before_image: dict, after_image: dict
     )
     
     # 2. Update status to work_completed
-    update_status(issue_id, "work_completed", worker_id, reason="Worker completed repair task.")
+    update_status(issue_id, "work_completed", worker_id, reason="Worker completed repair task.", actor_role="worker")
     
     # 3. Log audit log & notify officer
     log_audit("issue", issue_id, worker_id, "RESOLUTION_SUBMIT", reason=f"Resolution submitted. AI Verdict: {ai_verification['status']}")

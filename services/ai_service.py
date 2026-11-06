@@ -81,7 +81,21 @@ class GeminiCircuitBreaker:
 gemini_circuit_breaker = GeminiCircuitBreaker()
 
 
+def _is_local_ai_mode() -> bool:
+    """Returns True if running in offline/local AI mode (default)."""
+    mode = os.getenv("AI_MODE")
+    if not mode:
+        try:
+            from config import Config
+            mode = getattr(Config, "AI_MODE", "local")
+        except Exception:
+            mode = "local"
+    return str(mode).strip().lower() != "hybrid"
+
+
 def _get_gemini_api_key():
+    if _is_local_ai_mode():
+        return None
     key = os.getenv("GEMINI_API_KEY")
     if not key:
         return None
@@ -311,12 +325,50 @@ def sanitize_gemini_prompt(text: str, max_chars: int = 2000) -> str:
 def analyze_complaint_text(description: str) -> dict:
     """
     Returns: category, type, severity, department, confidence
-    Falls back to rule-based if Gemini fails or is not configured.
+    In local mode (default), uses local text classifier (models_artifacts/text_classifier_v1.joblib)
+    first, then falls back to rule-based with Indic/Kannada dictionary. Never calls Gemini.
     """
     clean_desc = sanitize_gemini_prompt(description)
+
+    if _is_local_ai_mode():
+        # 1. Primary: Local text classifier
+        try:
+            from services.ai.local_text import predict_local_text
+            loc_res = predict_local_text(clean_desc)
+            loc_val = loc_res.get("value", {})
+            if loc_val.get("available"):
+                service_raw = loc_val.get("service", "other")
+                cat = _normalize_category(service_raw)
+                dept = CATEGORY_TO_DEPT.get(cat, "roads")
+                sev = "critical" if loc_val.get("emergency") else _rule_based_fallback(clean_desc).get("severity", "medium")
+                return {
+                    "category": cat,
+                    "type": loc_val.get("issue_type") or "other",
+                    "severity": sev,
+                    "department": dept,
+                    "confidence": float(loc_val.get("confidence", 0.8)),
+                    "confidence_type": "model_reported",
+                    "provider": "local_text",
+                    "model": "text_classifier_v1.joblib",
+                    "ai_available": True,
+                    "analyzed_at": datetime.utcnow()
+                }
+        except Exception as e:
+            print(f"[AI Service] Local text classifier failed, using rule fallback: {e}")
+
+        # 2. Secondary: Rule-based fallback with Kannada/Hinglish glossary
+        res = _rule_based_fallback(clean_desc)
+        res["provider"] = "rule_based"
+        res["model"] = "indic_keyword_glossary_v1"
+        res["ai_available"] = False
+        res["analyzed_at"] = datetime.utcnow()
+        return res
+
     key = _get_gemini_api_key()
     if not key:
         res = _rule_based_fallback(clean_desc)
+        res["provider"] = "rule_based"
+        res["ai_available"] = False
         res["analyzed_at"] = datetime.utcnow()
         return res
         
@@ -358,9 +410,94 @@ def analyze_complaint_text(description: str) -> dict:
 
 def analyze_complaint_image(image_path: str) -> dict:
     """
-    Returns a structured image result. An unavailable provider is explicit;
-    this function never claims to have analyzed an image it did not inspect.
+    Returns a structured image result.
+    In local mode, uses local road defect detector (ml/models/road_damage_v1.onnx).
+    Never calls Gemini in local mode.
     """
+    if _is_local_ai_mode():
+        if not image_path or not os.path.exists(image_path):
+            return {
+                "available": False,
+                "status": "unavailable",
+                "provider": "local_yolo",
+                "model": "road_damage_v1.onnx",
+                "reason": "No image file provided or file does not exist.",
+                "detected_issues": [],
+                "image_detections": [],
+                "detected_features": [],
+                "hazards": [],
+                "analyzed_at": datetime.utcnow()
+            }
+        try:
+            from services.ai.road_detector import detect_road_damage
+            yolo_res = detect_road_damage(image_path)
+            yolo_val = yolo_res.get("value", {})
+            if yolo_val.get("available"):
+                primary = yolo_val.get("primary_defect")
+                detections = yolo_val.get("detections", [])
+                if detections and primary:
+                    cls_code = yolo_val.get("defect_class", "D40")
+                    sev = yolo_val.get("severity", "medium")
+                    conf = float(yolo_res.get("confidence") or 0.8)
+                    issue_t = "pothole" if ("pothole" in primary.lower() or cls_code == "D40") else "road_surface_damage"
+                    return {
+                        "available": True,
+                        "status": "analyzed",
+                        "provider": "local_yolo",
+                        "model": "road_damage_v1.onnx",
+                        "issue_type": issue_t,
+                        "type": issue_t,
+                        "category": "road",
+                        "severity": sev,
+                        "department": "roads",
+                        "department_source": "category_mapping",
+                        "confidence": conf,
+                        "confidence_type": "model_reported",
+                        "reason": f"Visual evidence analyzed by local YOLOv8n ONNX: {primary} detected.",
+                        "detected_features": [d.get("class_name") for d in detections],
+                        "hazards": ["road_hazard"] if sev in ("high", "critical") else [],
+                        "detected_issues": [primary],
+                        "image_detections": [d.get("class_name") for d in detections],
+                        "detections": detections,
+                        "analyzed_at": datetime.utcnow()
+                    }
+                else:
+                    return {
+                        "available": True,
+                        "status": "analyzed",
+                        "provider": "local_yolo",
+                        "model": "road_damage_v1.onnx",
+                        "issue_type": "other",
+                        "type": "other",
+                        "category": "road",
+                        "severity": "low",
+                        "department": "roads",
+                        "confidence": 0.0,
+                        "confidence_type": "model_reported",
+                        "reason": "Local road detector inspected image; no significant road surface defects detected above threshold.",
+                        "detected_features": [],
+                        "hazards": [],
+                        "detected_issues": [],
+                        "image_detections": [],
+                        "detections": [],
+                        "analyzed_at": datetime.utcnow()
+                    }
+        except Exception as e:
+            print(f"[AI Service] Local road detector failed: {e}")
+
+        return {
+            "available": False,
+            "status": "unavailable",
+            "provider": "local_yolo",
+            "model": "road_damage_v1.onnx",
+            "reason": "Local vision model unavailable or could not process image.",
+            "detected_issues": [],
+            "image_detections": [],
+            "detected_features": [],
+            "hazards": [],
+            "analyzed_at": datetime.utcnow()
+        }
+
     key = _get_gemini_api_key()
     if not key:
         return {

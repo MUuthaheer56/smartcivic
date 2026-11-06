@@ -111,9 +111,10 @@ class Config:
     YOLO_MODEL_PATH          = os.getenv("YOLO_MODEL_PATH", "ml/models/road_damage_v1.onnx")
     YOLO_CONFIDENCE_THRESHOLD = 0.40
 
-    # Master Implementation Plan Feature Flags (Default OFF)
-    AI_LOCAL_TEXT_ENABLED       = os.getenv("AI_LOCAL_TEXT_ENABLED", "false").lower() == "true"
-    AI_LOCAL_DETECTOR_ENABLED   = os.getenv("AI_LOCAL_DETECTOR_ENABLED", "false").lower() == "true"
+    # Master Implementation Plan Feature Flags & AI Operation Modes
+    AI_MODE                     = os.getenv("AI_MODE", "local").lower()
+    AI_LOCAL_TEXT_ENABLED       = os.getenv("AI_LOCAL_TEXT_ENABLED", "true" if os.getenv("AI_MODE", "local").lower() == "local" else "false").lower() == "true"
+    AI_LOCAL_DETECTOR_ENABLED   = os.getenv("AI_LOCAL_DETECTOR_ENABLED", "true" if os.getenv("AI_MODE", "local").lower() == "local" else "false").lower() == "true"
     AI_EMBED_DUPLICATES_ENABLED = os.getenv("AI_EMBED_DUPLICATES_ENABLED", "false").lower() == "true"
     AI_IMAGE_GATE_ENABLED       = os.getenv("AI_IMAGE_GATE_ENABLED", "false").lower() == "true"
     AI_REPAIR_V2_ENABLED        = os.getenv("AI_REPAIR_V2_ENABLED", "false").lower() == "true"

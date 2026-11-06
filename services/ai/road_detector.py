@@ -328,3 +328,8 @@ def run_road_detector(
             error=str(exc)
         )
 
+
+# Alias for backward compatibility
+detect_road_damage = run_road_detector
+
+
