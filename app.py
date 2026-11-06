@@ -85,7 +85,8 @@ def _get_cors_origins():
 socketio = SocketIO(
     cors_allowed_origins=_get_cors_origins(),
     async_mode="threading",
-    max_http_buffer_size=1048576  # 1MB buffer ceiling
+    max_http_buffer_size=1048576,  # 1MB buffer ceiling
+    manage_session=False
 )
 
 def _get_limiter_storage_uri():
@@ -178,7 +179,7 @@ def create_app():
     
     # Initialize extensions with app context
     cors_origins = _get_cors_origins()
-    socketio.init_app(app, cors_allowed_origins=cors_origins)
+    socketio.init_app(app, cors_allowed_origins=cors_origins, manage_session=False)
     try:
         from flask_cors import CORS
         CORS(app, origins=cors_origins, supports_credentials=True)
@@ -372,19 +373,29 @@ def create_app():
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response.headers['Permissions-Policy'] = 'geolocation=(self), camera=(self), microphone=()'
         
+        # Exact allowed tile hosts for CartoDB and OpenStreetMap (NO wildcards, NO unsafe-*)
+        exact_tile_hosts = (
+            "https://a.basemaps.cartocdn.com "
+            "https://b.basemaps.cartocdn.com "
+            "https://c.basemaps.cartocdn.com "
+            "https://d.basemaps.cartocdn.com "
+            "https://a.tile.openstreetmap.org "
+            "https://b.tile.openstreetmap.org "
+            "https://c.tile.openstreetmap.org "
+            "https://tile.openstreetmap.org"
+        )
         trusted_cdns = (
             "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com "
-            "https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com "
-            "https://*.openstreetmap.org https://*.tile.openstreetmap.org https://tile.openstreetmap.org "
-            "http://router.project-osrm.org https://router.project-osrm.org https://nominatim.openstreetmap.org"
+            "https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com"
         )
+        geo_apis = "https://nominatim.openstreetmap.org https://router.project-osrm.org http://router.project-osrm.org"
         response.headers['Content-Security-Policy'] = (
             f"default-src 'self'; "
             f"script-src 'self' 'unsafe-inline' 'unsafe-eval' {trusted_cdns}; "
             f"style-src 'self' 'unsafe-inline' {trusted_cdns}; "
-            f"img-src 'self' data: blob: {trusted_cdns}; "
+            f"img-src 'self' data: blob: {exact_tile_hosts}; "
             f"font-src 'self' data: {trusted_cdns}; "
-            f"connect-src 'self' {trusted_cdns} ws: wss:;"
+            f"connect-src 'self' {trusted_cdns} {geo_apis} ws: wss:;"
         )
         
         # Log request

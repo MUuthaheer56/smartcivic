@@ -146,3 +146,4 @@ class TestAuthLegacyAndReset(unittest.TestCase):
             self.assertIsNotNone(sentinel, "Collections were dropped before password validation!")
         finally:
             db.users.delete_many({"email": sentinel_email})
+

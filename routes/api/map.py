@@ -46,7 +46,7 @@ def get_map_issues():
 def get_map_clusters():
     query = {"status": "open"}
     officer_ward = g.current_user.get("ward")
-    if g.current_user["role"] == "officer" and officer_ward != "all":
+    if g.current_user["role"] == "officer" and str(officer_ward or '').strip().lower() not in ('all', '*', ''):
         query["ward"] = officer_ward
         
     clusters = list(db.clusters.find(query))
@@ -66,7 +66,7 @@ def get_map_heatmap():
 
     query = {"status": {"$nin": ["closed", "rejected"]}}
     officer_ward = g.current_user.get("ward")
-    if g.current_user["role"] == "officer" and officer_ward != "all":
+    if g.current_user["role"] == "officer" and str(officer_ward or '').strip().lower() not in ('all', '*', ''):
         query["ward"] = officer_ward
 
     if layer == "new":
@@ -110,7 +110,7 @@ def get_map_heatmap():
 def get_map_workers():
     query = {"role": "worker"}
     officer_ward = g.current_user.get("ward")
-    if officer_ward != "all":
+    if str(officer_ward or '').strip().lower() not in ('all', '*', ''):
         query["ward"] = officer_ward
         
     workers = list(db.users.find(query, {
@@ -190,7 +190,40 @@ def get_optimized_route():
 
 @map_api_bp.route('/api/public/map', methods=['GET'])
 def get_public_map():
-    issues = list(db.issues.find({"status": {"$nin": ["closed", "rejected"]}}, {
+    query = {"status": {"$nin": ["closed", "rejected"]}}
+
+    try:
+        min_lat = request.args.get("min_lat")
+        min_lng = request.args.get("min_lng")
+        max_lat = request.args.get("max_lat")
+        max_lng = request.args.get("max_lng")
+        bbox = request.args.get("bbox")
+
+        if bbox:
+            parts = [float(p.strip()) for p in bbox.split(",")]
+            if len(parts) == 4:
+                min_lng, min_lat, max_lng, max_lat = parts
+        elif min_lat is not None and min_lng is not None and max_lat is not None and max_lng is not None:
+            min_lat = float(min_lat)
+            min_lng = float(min_lng)
+            max_lat = float(max_lat)
+            max_lng = float(max_lng)
+        else:
+            min_lat = None
+
+        if min_lat is not None:
+            query["location"] = {
+                "$geoWithin": {
+                    "$box": [
+                        [min_lng, min_lat],
+                        [max_lng, max_lat]
+                    ]
+                }
+            }
+    except (ValueError, TypeError):
+        pass
+
+    issues = list(db.issues.find(query, {
         "location": 1,
         "severity": 1,
         "category": 1,

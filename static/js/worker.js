@@ -46,12 +46,18 @@ function initMap() {
 }
 
 async function loadMyJobs() {
-    try {
-        const res = await fetch("/api/worker/jobs");
-        const data = await res.json();
+    const listEl = document.getElementById("jobsList");
+    if (listEl && typeof window.renderLoading === "function") {
+        window.renderLoading(listEl, "Loading assigned jobs...");
+    }
 
-        if (data.success) {
-            const listEl = document.getElementById("jobsList");
+    try {
+        const fetchFn = window.api || window.fetch;
+        const res = await fetchFn("/api/worker/jobs");
+        const data = (res && typeof res.json === "function" && !(res instanceof Response)) ? res : (res.data ? res : await res.json());
+
+        if (data && data.success) {
+            if (!listEl) return;
             listEl.innerHTML = "";
 
             if (data.data.length === 0) {
@@ -91,9 +97,16 @@ async function loadMyJobs() {
 
             // Draw optimized daily itinerary route path
             drawItineraryRoute();
+        } else {
+            if (listEl && typeof window.renderErrorRetry === "function") {
+                window.renderErrorRetry(listEl, "Failed to load assigned jobs.", () => loadMyJobs());
+            }
         }
     } catch (err) {
         console.error("Job load failed: ", err);
+        if (listEl && typeof window.renderErrorRetry === "function") {
+            window.renderErrorRetry(listEl, "Failed to load assigned jobs. Check connection.", () => loadMyJobs());
+        }
     }
 }
 
@@ -142,7 +155,7 @@ async function drawItineraryRoute() {
             `;
         }
     } catch (err) {
-        console.error("Failed to load OSRM optimized path: ", err);
+        console.warn("OSRM itinerary routing offline or unreachable: ", err);
     }
 }
 

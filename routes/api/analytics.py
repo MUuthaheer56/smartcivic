@@ -10,13 +10,16 @@ from services import sla_service
 
 analytics_api_bp = Blueprint('analytics_api', __name__)
 
+def is_all_ward(w):
+    return str(w or '').strip().lower() in ('all', '*', '')
+
 @analytics_api_bp.route('/api/analytics/overview', methods=['GET'])
 @require_auth
 @require_role('officer', 'admin')
 def get_overview_analytics():
     query = {}
     officer_ward = g.current_user.get("ward")
-    if officer_ward != "all":
+    if not is_all_ward(officer_ward):
         query["ward"] = officer_ward
         
     total_complaints = db.issues.count_documents(query)
@@ -25,7 +28,7 @@ def get_overview_analytics():
     critical = db.issues.count_documents({**query, "status": {"$nin": ["closed", "rejected"]}, "severity": "critical"})
     
     # SLA health breakdown
-    sla_health = sla_service.get_sla_health(ward=None if officer_ward == "all" else officer_ward)
+    sla_health = sla_service.get_sla_health(ward=None if is_all_ward(officer_ward) else officer_ward)
     
     return jsonify({
         "success": True,
@@ -50,7 +53,7 @@ def get_by_ward_analytics():
     
     # Officer ward constraint
     officer_ward = g.current_user.get("ward")
-    if officer_ward != "all":
+    if not is_all_ward(officer_ward):
         pipeline.insert(0, {"$match": {"ward": officer_ward}})
         
     results = list(db.issues.aggregate(pipeline))
@@ -100,7 +103,7 @@ def get_by_department_analytics():
     
     # Officer ward constraint
     officer_ward = g.current_user.get("ward")
-    if officer_ward != "all":
+    if not is_all_ward(officer_ward):
         pipeline.insert(0, {"$match": {"ward": officer_ward}})
         
     results = list(db.issues.aggregate(pipeline))
@@ -176,7 +179,7 @@ def get_department_performance():
 @require_role('officer', 'admin')
 def get_sla_analytics():
     officer_ward = g.current_user.get("ward")
-    ward = None if officer_ward == "all" else officer_ward
+    ward = None if is_all_ward(officer_ward) else officer_ward
     health = sla_service.get_sla_health(ward=ward)
     return jsonify({"success": True, "data": health}), 200
 
@@ -269,7 +272,7 @@ def get_public_stats():
 def list_recurring_hotspots():
     query = {"is_recurring": True}
     officer_ward = g.current_user.get("ward")
-    if officer_ward != "all":
+    if not is_all_ward(officer_ward):
         query["ward"] = officer_ward
         
     hotspots = list(db.issues.find(query, {
@@ -328,7 +331,7 @@ def get_infrastructure_analytics():
     
     # Filter by user ward if they are restricted
     officer_ward = g.current_user.get("ward")
-    if officer_ward != "all":
+    if not is_all_ward(officer_ward):
         ward = officer_ward
         
     results = get_infrastructure_health_overview(
@@ -352,7 +355,7 @@ def post_simulate_worker_addition():
     
     # Restrict ward simulation if officer is restricted
     officer_ward = g.current_user.get("ward")
-    if officer_ward != "all":
+    if not is_all_ward(officer_ward):
         ward = officer_ward
         
     result = simulate_worker_addition(ward, dept, add_count)
@@ -437,7 +440,7 @@ def post_analytics_ask():
     
     # Restrict ward if officer is restricted
     officer_ward = g.current_user.get("ward")
-    if officer_ward != "all":
+    if not is_all_ward(officer_ward):
         query["ward"] = officer_ward
     elif "ward" in filters:
         query["ward"] = filters["ward"]

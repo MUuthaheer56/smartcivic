@@ -42,7 +42,7 @@ def list_workers():
     # Filter by ward if officer belongs to a specific ward
     query = {"role": "worker"}
     officer_ward = g.current_user.get("ward")
-    if officer_ward != "all":
+    if str(officer_ward or '').strip().lower() not in ('all', '*', ''):
         query["ward"] = officer_ward
         
     workers = list(db.users.find(query, {

@@ -10,15 +10,29 @@ let workerLayer = L.layerGroup();
 let officerFilter;
 let allOfficerQueueIssues = [];
 
+// In-memory tab caching to prevent request bursts (UI-REPAIR requirement 6)
+const _dashboardCache = {};
+const DASHBOARD_CACHE_TTL_MS = 60000; // 60s cache
+
+function getCached(key) {
+    const entry = _dashboardCache[key];
+    if (entry && (Date.now() - entry.time < DASHBOARD_CACHE_TTL_MS)) {
+        return entry.data;
+    }
+    return null;
+}
+
+function setCached(key, data) {
+    _dashboardCache[key] = { data, time: Date.now() };
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     officerFilter = new SmartCivicFilter({
         containerId: 'filterBar',
         onFilterChange: () => renderOfficerIssuesQueue()
     });
+    // Load only the initial active tab (overview) - no parallel burst
     switchTab("overview");
-    loadOverviewStats();
-    loadBriefing();
-    loadEmergencyBar();
 });
 
 let currentApprovalRole = "citizen";
@@ -40,33 +54,42 @@ function switchTab(tabId) {
     });
 
     if (tabId === "overview") {
-        document.getElementById("tab-overview").style.display = "block";
+        const el = document.getElementById("tab-overview");
+        if (el) el.style.display = "block";
         loadOverviewStats();
         loadBriefing();
+        loadEmergencyBar();
     } else if (tabId === "account-approvals") {
-        document.getElementById("tab-account-approvals").style.display = "block";
+        const el = document.getElementById("tab-account-approvals");
+        if (el) el.style.display = "block";
         loadPendingAccountApprovals(currentApprovalRole);
     } else if (tabId === "map-view") {
-        document.getElementById("tab-map-view").style.display = "block";
+        const el = document.getElementById("tab-map-view");
+        if (el) el.style.display = "block";
         setTimeout(() => {
             initMap();
             if (map) map.invalidateSize();
         }, 100);
     } else if (tabId === "workers-view") {
-        document.getElementById("tab-workers-view").style.display = "block";
+        const el = document.getElementById("tab-workers-view");
+        if (el) el.style.display = "block";
         loadWorkers();
     } else if (tabId === "ward-health") {
-        document.getElementById("tab-ward-health").style.display = "block";
+        const el = document.getElementById("tab-ward-health");
+        if (el) el.style.display = "block";
         loadWardHealth();
     } else if (tabId === "recurring") {
-        document.getElementById("tab-recurring").style.display = "block";
+        const el = document.getElementById("tab-recurring");
+        if (el) el.style.display = "block";
         loadRecurringHotspots();
     } else if (tabId === "simulation") {
-        document.getElementById("tab-simulation").style.display = "block";
+        const el = document.getElementById("tab-simulation");
+        if (el) el.style.display = "block";
     } else {
-        document.getElementById("tab-issues-list").style.display = "block";
+        const el = document.getElementById("tab-issues-list");
+        if (el) el.style.display = "block";
         loadIssuesQueue(tabId);
-        loadEmergencyBar(); // Check active emergencies
+        loadEmergencyBar();
     }
 }
 
@@ -94,67 +117,115 @@ function switchApprovalTab(role) {
     loadPendingAccountApprovals(role);
 }
 
-async function loadOverviewStats() {
+function renderOverviewStats(stats) {
+    if (!stats) return;
+    const elTotal = document.getElementById("statTotal");
+    if (elTotal) elTotal.innerText = stats.total ?? 0;
+    const elResolved = document.getElementById("statResolved");
+    if (elResolved) elResolved.innerText = stats.resolved ?? 0;
+    const elPending = document.getElementById("statPending");
+    if (elPending) elPending.innerText = stats.pending ?? 0;
+    const elCritical = document.getElementById("statCritical");
+    if (elCritical) elCritical.innerText = stats.critical_active ?? 0;
+
+    const sla = stats.sla || {};
+    const setW = (id, val) => { const el = document.getElementById(id); if (el) el.style.width = `${val || 0}%`; };
+    const setT = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = `${val || 0}%`; };
+    setW("seg-ontrack", sla.on_track_pct);
+    setW("seg-warning", sla.warning_pct);
+    setW("seg-urgent", sla.urgent_pct);
+    setW("seg-breached", sla.breached_pct);
+
+    setT("lbl-ontrack", sla.on_track_pct);
+    setT("lbl-warning", sla.warning_pct);
+    setT("lbl-urgent", sla.urgent_pct);
+    setT("lbl-breached", sla.breached_pct);
+}
+
+async function loadOverviewStats(force = false) {
+    if (!force) {
+        const cached = getCached('overview_stats');
+        if (cached) {
+            renderOverviewStats(cached);
+            return;
+        }
+    }
     try {
-        const res = await fetch("/api/analytics/overview");
-        const data = await res.json();
-        if (data.success) {
-            const stats = data.data;
-            document.getElementById("statTotal").innerText = stats.total;
-            document.getElementById("statResolved").innerText = stats.resolved;
-            document.getElementById("statPending").innerText = stats.pending;
-            document.getElementById("statCritical").innerText = stats.critical_active;
-
-            // SLA Health Bar update
-            const sla = stats.sla || {};
-            document.getElementById("seg-ontrack").style.width = `${sla.on_track_pct || 0}%`;
-            document.getElementById("seg-warning").style.width = `${sla.warning_pct || 0}%`;
-            document.getElementById("seg-urgent").style.width = `${sla.urgent_pct || 0}%`;
-            document.getElementById("seg-breached").style.width = `${sla.breached_pct || 0}%`;
-
-            document.getElementById("lbl-ontrack").innerText = `${sla.on_track_pct || 0}%`;
-            document.getElementById("lbl-warning").innerText = `${sla.warning_pct || 0}%`;
-            document.getElementById("lbl-urgent").innerText = `${sla.urgent_pct || 0}%`;
-            document.getElementById("lbl-breached").innerText = `${sla.breached_pct || 0}%`;
+        const fetchFn = window.api || window.fetch;
+        const res = await fetchFn("/api/analytics/overview");
+        const data = (res && typeof res.json === "function" && !(res instanceof Response)) ? res : (res.data ? res : await res.json());
+        if (data && data.success) {
+            setCached('overview_stats', data.data);
+            renderOverviewStats(data.data);
         }
     } catch (err) {
-        console.error("Overview stats fetch failed: ", err);
+        console.error("Overview stats fetch failed:", err);
     }
 }
 
-async function loadIssuesQueue(queueType) {
+async function loadIssuesQueue(queueType, force = false) {
     const listTitle = document.getElementById("listTitle");
     const issuesGrid = document.getElementById("issuesGrid");
-    issuesGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading issues...</div>`;
+    if (!issuesGrid) return;
+
+    if (queueType === "verification") {
+        if (listTitle) listTitle.innerText = "Pending Resident & Worker Verification";
+        renderPendingResidentVerifications();
+        return;
+    }
 
     let url = "/api/issues";
     if (queueType === "new-complaints") {
-        listTitle.innerText = "New Complaints (Under Review)";
+        if (listTitle) listTitle.innerText = "New Complaints (Under Review)";
         url += "?status=submitted,ai_reviewed";
     } else if (queueType === "priority-queue") {
-        listTitle.innerText = "Priority Queue";
+        if (listTitle) listTitle.innerText = "Priority Queue";
         url += "?status=submitted,ai_reviewed,officer_reviewed&sort=priority_score";
     } else if (queueType === "in-progress") {
-        listTitle.innerText = "In Progress Repairs";
+        if (listTitle) listTitle.innerText = "In Progress Repairs";
         url += "?status=work_started";
-    } else if (queueType === "verification") {
-        listTitle.innerText = "Pending Resident & Worker Verification";
-        renderPendingResidentVerifications();
-        return;
     } else if (queueType === "sla-alerts") {
-        listTitle.innerText = "SLA Breach Warnings";
+        if (listTitle) listTitle.innerText = "SLA Breach Warnings";
         url += "?severity=critical";
     }
 
-    try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.success) {
-            allOfficerQueueIssues = data.data || [];
+    if (!force) {
+        const cached = getCached('queue_' + queueType);
+        if (cached) {
+            allOfficerQueueIssues = cached;
             renderOfficerIssuesQueue();
+            return;
+        }
+    }
+
+    if (typeof window.renderLoading === "function") {
+        window.renderLoading(issuesGrid, "Loading issues...");
+    } else {
+        issuesGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading issues...</div>`;
+    }
+
+    try {
+        const fetchFn = window.api || window.fetch;
+        const res = await fetchFn(url);
+        const data = (res && typeof res.json === "function" && !(res instanceof Response)) ? res : (res.data ? res : await res.json());
+        if (data && data.success) {
+            allOfficerQueueIssues = data.data || [];
+            setCached('queue_' + queueType, allOfficerQueueIssues);
+            renderOfficerIssuesQueue();
+        } else {
+            if (typeof window.renderErrorRetry === "function") {
+                window.renderErrorRetry(issuesGrid, "Failed to load issues.", () => loadIssuesQueue(queueType, true));
+            } else {
+                issuesGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load issues.</div>`;
+            }
         }
     } catch (err) {
         console.error("Queue fetch failed: ", err);
+        if (typeof window.renderErrorRetry === "function") {
+            window.renderErrorRetry(issuesGrid, "Failed to load issues. Check connection.", () => loadIssuesQueue(queueType, true));
+        } else {
+            issuesGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load issues.</div>`;
+        }
     }
 }
 
@@ -162,55 +233,84 @@ async function renderPendingResidentVerifications() {
     loadPendingAccountApprovals("citizen");
 }
 
-async function loadPendingAccountApprovals(role = "citizen") {
+function renderApprovalsList(users, role) {
     const approvalsGrid = document.getElementById("approvalsGrid") || document.getElementById("issuesGrid");
     if (!approvalsGrid) return;
-    approvalsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading pending ${role === 'worker' ? 'worker' : 'resident'} approvals...</div>`;
+    if (users.length === 0) {
+        approvalsGrid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><i class="fa-solid fa-user-check empty-state-icon"></i><div>No ${role === 'worker' ? 'workers' : 'residents'} are pending approval.</div></div>`;
+        return;
+    }
+
+    approvalsGrid.innerHTML = "";
+    const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
+    users.forEach(user => {
+        const card = document.createElement("div");
+        card.className = "glass-panel queue-card";
+        const registeredDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A';
+        const safeId = encodeURIComponent(String(user._id || ''));
+        card.innerHTML = `
+            <div class="queue-card-header">
+                <span class="badge badge-status">${esc((user.verification_status || user.status || 'pending').toUpperCase())}</span>
+                <span class="badge ${user.verified ? 'badge-low' : 'badge-warning'}">${user.verified ? 'Verified' : 'Pending'}</span>
+            </div>
+            <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #ffffff;">${esc(user.name || (user.role === 'worker' ? 'Worker Crew' : 'Resident'))}</h4>
+            <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.35rem;">
+                <div><strong>Role:</strong> <span style="color: var(--text-main);">${esc(user.role || 'resident')}</span></div>
+                <div><strong>Email:</strong> <span style="color: var(--text-main);">${esc(user.email || 'Unknown')}</span></div>
+                <div><strong>Ward:</strong> <span style="color: var(--text-main);">${esc(user.ward || 'Ward 1')}</span></div>
+                <div><strong>Registered On:</strong> <span style="color: var(--text-main);">${esc(registeredDate)}</span></div>
+                <div><strong>Status:</strong> <span style="color: var(--warning);">${esc(user.status || 'pending_verification')}</span></div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                <button onclick="approveResidentVerification('${safeId}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-check"></i> Approve</button>
+                <button onclick="rejectResidentVerification('${safeId}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-ban"></i> Reject</button>
+            </div>
+        `;
+        approvalsGrid.appendChild(card);
+    });
+}
+
+async function loadPendingAccountApprovals(role = "citizen", force = false) {
+    const approvalsGrid = document.getElementById("approvalsGrid") || document.getElementById("issuesGrid");
+    if (!approvalsGrid) return;
+
+    if (!force) {
+        const cached = getCached('approvals_' + role);
+        if (cached) {
+            renderApprovalsList(cached, role);
+            return;
+        }
+    }
+
+    if (typeof window.renderLoading === "function") {
+        window.renderLoading(approvalsGrid, `Loading pending ${role === 'worker' ? 'worker' : 'resident'} approvals...`);
+    } else {
+        approvalsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading pending ${role === 'worker' ? 'worker' : 'resident'} approvals...</div>`;
+    }
 
     try {
-        const res = await fetch(`/api/auth/users/pending?role=${role}`);
-        const data = await res.json();
-        if (!data.success) {
-            approvalsGrid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="fa-solid fa-user-slash empty-state-icon"></i><div>Unable to load approval queue.</div></div>';
+        const fetchFn = window.api || window.fetch;
+        const res = await fetchFn(`/api/auth/users/pending?role=${role}`);
+        const data = (res && typeof res.json === "function" && !(res instanceof Response)) ? res : (res.data ? res : await res.json());
+        if (!data || !data.success) {
+            if (typeof window.renderErrorRetry === "function") {
+                window.renderErrorRetry(approvalsGrid, "Unable to load approval queue.", () => loadPendingAccountApprovals(role, true));
+            } else {
+                approvalsGrid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div>Unable to load approval queue.</div></div>';
+            }
             return;
         }
 
         const users = data.data || [];
-        if (users.length === 0) {
-            approvalsGrid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><i class="fa-solid fa-user-check empty-state-icon"></i><div>No ${role === 'worker' ? 'workers' : 'residents'} are pending approval.</div></div>`;
-            return;
-        }
-
-        approvalsGrid.innerHTML = "";
-        const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
-        users.forEach(user => {
-            const card = document.createElement("div");
-            card.className = "glass-panel queue-card";
-            const registeredDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A';
-            const safeId = encodeURIComponent(String(user._id || ''));
-            card.innerHTML = `
-                <div class="queue-card-header">
-                    <span class="badge badge-status">${esc((user.verification_status || user.status || 'pending').toUpperCase())}</span>
-                    <span class="badge ${user.verified ? 'badge-low' : 'badge-warning'}">${user.verified ? 'Verified' : 'Pending'}</span>
-                </div>
-                <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #ffffff;">${esc(user.name || (user.role === 'worker' ? 'Worker Crew' : 'Resident'))}</h4>
-                <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.35rem;">
-                    <div><strong>Role:</strong> <span style="color: var(--text-main);">${esc(user.role || 'resident')}</span></div>
-                    <div><strong>Email:</strong> <span style="color: var(--text-main);">${esc(user.email || 'Unknown')}</span></div>
-                    <div><strong>Ward:</strong> <span style="color: var(--text-main);">${esc(user.ward || 'Ward 1')}</span></div>
-                    <div><strong>Registered On:</strong> <span style="color: var(--text-main);">${esc(registeredDate)}</span></div>
-                    <div><strong>Status:</strong> <span style="color: var(--warning);">${esc(user.status || 'pending_verification')}</span></div>
-                </div>
-                <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                    <button onclick="approveResidentVerification('${safeId}')" class="btn btn-primary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-check"></i> Approve</button>
-                    <button onclick="rejectResidentVerification('${safeId}')" class="btn btn-secondary" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);"><i class="fa-solid fa-ban"></i> Reject</button>
-                </div>
-            `;
-            approvalsGrid.appendChild(card);
-        });
+        setCached('approvals_' + role, users);
+        renderApprovalsList(users, role);
     } catch (err) {
         console.error("Pending account approval load failed:", err);
-        approvalsGrid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="fa-solid fa-triangle-exclamation empty-state-icon"></i><div>Failed to load pending approvals.</div></div>';
+        if (typeof window.renderErrorRetry === "function") {
+            window.renderErrorRetry(approvalsGrid, "Failed to load pending approvals.", () => loadPendingAccountApprovals(role, true));
+        } else {
+            approvalsGrid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div>Failed to load pending approvals.</div></div>';
+        }
     }
 }
 
@@ -608,42 +708,85 @@ async function loadMapLayers() {
     }
 }
 
-async function loadWorkers() {
+function renderWorkersList(workers) {
     const workersGrid = document.getElementById("workersGrid");
-    workersGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading crew status...</div>`;
+    if (!workersGrid) return;
+    workersGrid.innerHTML = "";
+    if (workers.length === 0) {
+        workersGrid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">No workers registered.</div>`;
+        return;
+    }
+    const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
+    workers.forEach(w => {
+        const card = document.createElement("div");
+        card.className = "glass-panel queue-card";
+        const activeTasks = w.active_assignments ?? w.active_tasks ?? w.active_task_count ?? 0;
+        const skillsText = (Array.isArray(w.skills) && w.skills.length > 0) ? w.skills.join(', ') : 'General Repair';
+        const rating = Number(w.average_rating || 0).toFixed(1);
+        const totalRatings = w.total_ratings || 0;
+        card.innerHTML = `
+            <div class="queue-card-header">
+                <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: var(--primary)">${w.is_available ? 'Available' : 'Busy'}</span>
+                <strong style="color: var(--text-main);">${esc(w.name || 'Worker Crew')}</strong>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem;">
+                <div><strong>Email:</strong> ${esc(w.email || '')}</div>
+                <div><strong>Ward:</strong> ${esc(w.ward || 'N/A')}</div>
+                <div><strong>Rating:</strong> ⭐ ${rating} (${totalRatings} ratings)</div>
+                <div><strong>Active Tasks:</strong> ${activeTasks} / 5 limit</div>
+                <div><strong>Skills:</strong> ${esc(skillsText)}</div>
+            </div>
+            <div style="margin-top: 0.75rem;">
+                <button onclick="drawWorkerRouteOnOfficerMap('${esc(w._id)}')" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">
+                    <i class="fa-solid fa-route" style="color: var(--primary);"></i> View Route on Map
+                </button>
+            </div>
+        `;
+        workersGrid.appendChild(card);
+    });
+}
+
+async function loadWorkers(force = false) {
+    const workersGrid = document.getElementById("workersGrid");
+    if (!workersGrid) return;
+
+    if (!force) {
+        const cached = getCached('workers');
+        if (cached) {
+            renderWorkersList(cached);
+            return;
+        }
+    }
+
+    if (typeof window.renderLoading === "function") {
+        window.renderLoading(workersGrid, "Loading crew status...");
+    } else {
+        workersGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading crew status...</div>`;
+    }
 
     try {
-        const res = await fetch("/api/workers");
-        const data = await res.json();
+        const fetchFn = window.api || window.fetch;
+        const res = await fetchFn("/api/workers");
+        const data = (res && typeof res.json === "function" && !(res instanceof Response)) ? res : (res.data ? res : await res.json());
 
-        if (data.success) {
-            workersGrid.innerHTML = "";
-            data.data.forEach(w => {
-                const card = document.createElement("div");
-                card.className = "glass-panel queue-card";
-                card.innerHTML = `
-                    <div class="queue-card-header">
-                        <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: var(--primary)">${w.is_available ? 'Available' : 'Busy'}</span>
-                        <strong style="color: var(--text-main);">${w.name}</strong>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem;">
-                        <div><strong>Email:</strong> ${w.email}</div>
-                        <div><strong>Ward:</strong> ${w.ward}</div>
-                        <div><strong>Rating:</strong> ⭐ ${w.average_rating || 0.0} (${w.total_ratings || 0} ratings)</div>
-                        <div><strong>Active Tasks:</strong> ${w.active_assignments} / 5 limit</div>
-                        <div><strong>Skills:</strong> ${w.skills.join(', ') || 'General Repair'}</div>
-                    </div>
-                    <div style="margin-top: 0.75rem;">
-                        <button onclick="drawWorkerRouteOnOfficerMap('${w._id}')" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">
-                            <i class="fa-solid fa-route" style="color: var(--primary);"></i> View Route on Map
-                        </button>
-                    </div>
-                `;
-                workersGrid.appendChild(card);
-            });
+        if (data && data.success) {
+            const workers = data.data || [];
+            setCached('workers', workers);
+            renderWorkersList(workers);
+        } else {
+            if (typeof window.renderErrorRetry === "function") {
+                window.renderErrorRetry(workersGrid, "Failed to load worker profiles.", () => loadWorkers(true));
+            } else {
+                workersGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load worker profiles.</div>`;
+            }
         }
     } catch (err) {
-        workersGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load worker profiles.</div>`;
+        console.error("Worker profiles fetch failed:", err);
+        if (typeof window.renderErrorRetry === "function") {
+            window.renderErrorRetry(workersGrid, "Failed to load worker profiles.", () => loadWorkers(true));
+        } else {
+            workersGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load worker profiles.</div>`;
+        }
     }
 }
 
@@ -680,25 +823,43 @@ async function drawWorkerRouteOnOfficerMap(workerId) {
     }
 }
 
+function renderBriefing(data) {
+    if (!data) return;
+    const textEl = document.getElementById("briefingText");
+    if (textEl) textEl.innerText = data.briefing_text || '';
+
+    const actionsEl = document.getElementById("recommendedActions");
+    if (actionsEl) {
+        actionsEl.innerHTML = "";
+        const recs = data.recommended_actions || [];
+        if (recs.length === 0) {
+            actionsEl.innerHTML = "<li>No urgent recommendation actions.</li>";
+        } else {
+            recs.forEach(act => {
+                const li = document.createElement("li");
+                li.innerText = act;
+                actionsEl.appendChild(li);
+            });
+        }
+    }
+}
+
 async function loadBriefing(forceRefresh = false) {
+    if (!forceRefresh) {
+        const cached = getCached('briefing');
+        if (cached) {
+            renderBriefing(cached);
+            return;
+        }
+    }
     try {
         const url = `/api/officer/briefing${forceRefresh ? '?refresh=true' : ''}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.success) {
-            document.getElementById("briefingText").innerText = data.data.briefing_text;
-
-            const actionsEl = document.getElementById("recommendedActions");
-            actionsEl.innerHTML = "";
-            if (data.data.recommended_actions.length === 0) {
-                actionsEl.innerHTML = "<li>No urgent recommendation actions.</li>";
-            } else {
-                data.data.recommended_actions.forEach(act => {
-                    const li = document.createElement("li");
-                    li.innerText = act;
-                    actionsEl.appendChild(li);
-                });
-            }
+        const fetchFn = window.api || window.fetch;
+        const res = await fetchFn(url);
+        const data = (res && typeof res.json === "function" && !(res instanceof Response)) ? res : (res.data ? res : await res.json());
+        if (data && data.success && data.data) {
+            setCached('briefing', data.data);
+            renderBriefing(data.data);
         }
     } catch (err) {
         console.error("Failed to load briefing", err);
@@ -707,24 +868,27 @@ async function loadBriefing(forceRefresh = false) {
 
 async function loadEmergencyBar() {
     try {
-        const res = await fetch("/api/issues?severity=critical");
-        const data = await res.json();
+        const fetchFn = window.api || window.fetch;
+        const res = await fetchFn("/api/issues?severity=critical");
+        const data = (res && typeof res.json === "function" && !(res instanceof Response)) ? res : (res.data ? res : await res.json());
         const bar = document.getElementById("emergencyBar");
         const list = document.getElementById("emergencyList");
+        if (!bar || !list) return;
 
-        if (data.success && data.data.length > 0) {
+        if (data && data.success && data.data && data.data.length > 0) {
             list.innerHTML = "";
+            const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
             data.data.forEach(issue => {
                 if (issue.is_emergency) {
                     const row = document.createElement("div");
                     row.style = "display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 6px;";
                     row.innerHTML = `
                         <div>
-                            <strong>${issue.title} — ${issue.emergency_category || 'EMERGENCY'}</strong>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">Ward ${issue.ward} · SLA: 1 hour</div>
+                            <strong>${esc(issue.title || 'Civic Issue')} — ${esc(issue.emergency_category || 'EMERGENCY')}</strong>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Ward ${esc(issue.ward || '1')} · SLA: 1 hour</div>
                         </div>
                         <div style="display: flex; gap: 0.5rem;">
-                            <button onclick="openAssignWorker('${issue._id}')" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;"><i class="fa-solid fa-user-plus"></i> Assign Now</button>
+                            <button onclick="openAssignWorker('${esc(issue._id)}')" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;"><i class="fa-solid fa-user-plus"></i> Assign Now</button>
                         </div>
                     `;
                     list.appendChild(row);
@@ -801,78 +965,155 @@ function clearSearch() {
     loadIssuesQueue("new-complaints");
 }
 
-async function loadWardHealth() {
+function renderWardHealthList(wards) {
     const grid = document.getElementById("wardHealthGrid");
-    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Calculating health ratios...</div>`;
+    if (!grid) return;
+    grid.innerHTML = "";
+    if (wards.length === 0) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">No ward data available.</div>`;
+        return;
+    }
+    const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
+    wards.forEach(w => {
+        const score = w.ward_health_score ?? 100;
+        let barColor = '#0f9d6b';
+        if (score < 60) barColor = '#d1264a';
+        else if (score < 80) barColor = '#d99a1a';
+
+        const card = document.createElement("div");
+        card.className = "glass-panel queue-card";
+        card.style = "padding: 1.5rem; display:flex; flex-direction:column; gap:0.5rem;";
+        card.innerHTML = `
+            <h4 style="font-family: var(--font-display); font-weight:700;">${esc(w.ward || 'Ward')}</h4>
+            <div style="font-size: 0.85rem; color:var(--text-muted);">Active Complaints: <strong>${w.count ?? 0}</strong></div>
+            <div style="margin-top: 0.5rem;">
+                <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom: 0.25rem;">
+                    <span>Health Score</span>
+                    <span style="color: ${barColor}; font-weight:700;">${score}/100</span>
+                </div>
+                <div style="width:100%; height:10px; background:rgba(255,255,255,0.05); border-radius:5px; overflow:hidden;">
+                    <div style="width:${Math.min(100, Math.max(0, score))}%; height:100%; background:${barColor};"></div>
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+async function loadWardHealth(force = false) {
+    const grid = document.getElementById("wardHealthGrid");
+    if (!grid) return;
+
+    if (!force) {
+        const cached = getCached('ward_health');
+        if (cached) {
+            renderWardHealthList(cached);
+            return;
+        }
+    }
+
+    if (typeof window.renderLoading === "function") {
+        window.renderLoading(grid, "Calculating health ratios...");
+    } else {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Calculating health ratios...</div>`;
+    }
 
     try {
-        const res = await fetch("/api/analytics/by-ward");
-        const data = await res.json();
-        if (data.success) {
-            grid.innerHTML = "";
-            data.data.forEach(w => {
-                const score = w.ward_health_score || 100;
-                let barColor = '#0f9d6b'; // Jewel Emerald
-                if (score < 60) barColor = '#d1264a'; // Jewel Ruby
-                else if (score < 80) barColor = '#d99a1a'; // Amber Gold
-
-                const card = document.createElement("div");
-                card.className = "glass-panel queue-card";
-                card.style = "padding: 1.5rem; display:flex; flex-direction:column; gap:0.5rem;";
-                card.innerHTML = `
-                    <h4 style="font-family: var(--font-display); font-weight:700;">${w.ward}</h4>
-                    <div style="font-size: 0.85rem; color:var(--text-muted);">Active Complaints: <strong>${w.count}</strong></div>
-                    <div style="margin-top: 0.5rem;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom: 0.25rem;">
-                            <span>Health Score</span>
-                            <span style="color: ${barColor}; font-weight:700;">${score}/100</span>
-                        </div>
-                        <div style="width:100%; height:10px; background:rgba(255,255,255,0.05); border-radius:5px; overflow:hidden;">
-                            <div style="width:${score}%; height:100%; background:${barColor};"></div>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+        const fetchFn = window.api || window.fetch;
+        const res = await fetchFn("/api/analytics/by-ward");
+        const data = (res && typeof res.json === "function" && !(res instanceof Response)) ? res : (res.data ? res : await res.json());
+        if (data && data.success) {
+            const wards = data.data || [];
+            setCached('ward_health', wards);
+            renderWardHealthList(wards);
+        } else {
+            if (typeof window.renderErrorRetry === "function") {
+                window.renderErrorRetry(grid, "Failed to load health statistics.", () => loadWardHealth(true));
+            } else {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load health statistics.</div>`;
+            }
         }
     } catch (err) {
-        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load health statistics.</div>`;
+        console.error("Ward health fetch failed:", err);
+        if (typeof window.renderErrorRetry === "function") {
+            window.renderErrorRetry(grid, "Failed to load health statistics.", () => loadWardHealth(true));
+        } else {
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load health statistics.</div>`;
+        }
     }
 }
 
-async function loadRecurringHotspots() {
+function renderRecurringList(hotspots) {
     const grid = document.getElementById("recurringGrid");
-    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Scanning hotspots...</div>`;
+    if (!grid) return;
+    grid.innerHTML = "";
+    if (hotspots.length === 0) {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem;">No recurring hotspots detected yet.</div>`;
+        return;
+    }
+    const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
+    hotspots.forEach(h => {
+        const card = document.createElement("div");
+        card.className = "glass-panel queue-card";
+        const cat = esc(String(h.category || 'civic').toUpperCase());
+        const firstDate = h.first_occurrence ? new Date(h.first_occurrence).toLocaleDateString() : 'N/A';
+        const lastDate = h.last_occurrence ? new Date(h.last_occurrence).toLocaleDateString() : 'N/A';
+        card.innerHTML = `
+            <div class="queue-card-header">
+                <span class="badge badge-critical"><i class="fa-solid fa-arrows-spin"></i> RECURRING</span>
+                <strong style="color:var(--text-main);">${cat}</strong>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem;">
+                <div><strong>Ward:</strong> ${esc(h.ward || 'N/A')}</div>
+                <div><strong>Total Occurrences:</strong> ${h.total_occurrences ?? 1} times</div>
+                <div><strong>First Reported:</strong> ${esc(firstDate)}</div>
+                <div><strong>Latest:</strong> ${esc(lastDate)}</div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+async function loadRecurringHotspots(force = false) {
+    const grid = document.getElementById("recurringGrid");
+    if (!grid) return;
+
+    if (!force) {
+        const cached = getCached('recurring');
+        if (cached) {
+            renderRecurringList(cached);
+            return;
+        }
+    }
+
+    if (typeof window.renderLoading === "function") {
+        window.renderLoading(grid, "Scanning hotspots...");
+    } else {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Scanning hotspots...</div>`;
+    }
 
     try {
-        const res = await fetch("/api/analytics/recurring");
-        const data = await res.json();
-        if (data.success) {
-            grid.innerHTML = "";
-            if (data.data.length === 0) {
-                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem;">No recurring hotspots detected yet.</div>`;
-                return;
+        const fetchFn = window.api || window.fetch;
+        const res = await fetchFn("/api/analytics/recurring");
+        const data = (res && typeof res.json === "function" && !(res instanceof Response)) ? res : (res.data ? res : await res.json());
+        if (data && data.success) {
+            const hotspots = data.data || [];
+            setCached('recurring', hotspots);
+            renderRecurringList(hotspots);
+        } else {
+            if (typeof window.renderErrorRetry === "function") {
+                window.renderErrorRetry(grid, "Failed to load recurring hotspots.", () => loadRecurringHotspots(true));
+            } else {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load recurring hotspots.</div>`;
             }
-            data.data.forEach(h => {
-                const card = document.createElement("div");
-                card.className = "glass-panel queue-card";
-                card.innerHTML = `
-                    <div class="queue-card-header">
-                        <span class="badge badge-critical"><i class="fa-solid fa-arrows-spin"></i> RECURRING</span>
-                        <strong style="color:var(--text-main);">${h.category.toUpperCase()}</strong>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem;">
-                        <div><strong>Ward:</strong> ${h.ward}</div>
-                        <div><strong>Total Occurrences:</strong> ${h.total_occurrences} times</div>
-                        <div><strong>First Reported:</strong> ${new Date(h.first_occurrence).toLocaleDateString()}</div>
-                        <div><strong>Latest:</strong> ${new Date(h.last_occurrence).toLocaleDateString()}</div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
         }
     } catch (err) {
-        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load recurring hotspots.</div>`;
+        console.error("Recurring hotspots fetch failed:", err);
+        if (typeof window.renderErrorRetry === "function") {
+            window.renderErrorRetry(grid, "Failed to load recurring hotspots.", () => loadRecurringHotspots(true));
+        } else {
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Failed to load recurring hotspots.</div>`;
+        }
     }
 }
 

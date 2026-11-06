@@ -111,7 +111,7 @@ def create_issue():
         issue_type = None
     ward = payload.get("ward") or "Ward 1"
     citizen_ward = g.current_user.get("ward")
-    if citizen_ward and citizen_ward != "all":
+    if citizen_ward and str(citizen_ward).strip().lower() not in ('all', '*', ''):
         ward = citizen_ward
     
     images = []
@@ -749,7 +749,7 @@ def citizen_verify_issue(id):
 @issues_api_bp.route('/api/citizen/issues', methods=['GET'])
 @require_auth
 @verified_required
-@require_role('officer', 'citizen', 'resident')
+@require_role('admin', 'officer', 'citizen', 'resident')
 def list_issues():
     ward_filter = request.args.get("ward")
     status_filter = request.args.get("status")
@@ -783,9 +783,9 @@ def list_issues():
             query["citizen_id"] = ObjectId(g.current_user["_id"])
     else:
         officer_ward = g.current_user.get("ward")
-        if officer_ward and officer_ward != "all":
+        if officer_ward and str(officer_ward).strip().lower() not in ('all', '*', ''):
             query["ward"] = officer_ward
-        elif ward_filter and ward_filter != "all":
+        elif ward_filter and str(ward_filter).strip().lower() not in ('all', '*', ''):
             query["ward"] = ward_filter
         elif "ward" in ai_filters:
             query["ward"] = ai_filters["ward"]
@@ -1392,7 +1392,8 @@ def reject_issue(id):
         return jsonify({"success": False, "error": {"code": "CONFLICT", "message": "Issue cannot be rejected from its current status."}}), 409
 
     # Officer ward check
-    if g.current_user.get("ward") != "all" and issue.get("ward") != g.current_user.get("ward"):
+    user_ward = g.current_user.get("ward")
+    if str(user_ward or '').strip().lower() not in ('all', '*', '') and issue.get("ward") != user_ward:
         return jsonify({"success": False, "error": {"code": "FORBIDDEN", "message": "Access restricted to your assigned ward."}}), 403
 
     data = request.get_json() or {}

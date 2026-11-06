@@ -402,15 +402,29 @@ function dismissAiPanel() {
 }
 
 async function loadMyIssues() {
+    const listEl = document.getElementById("trackerList");
+    if (listEl && (!allCitizenIssues || allCitizenIssues.length === 0)) {
+        if (typeof window.renderLoading === "function") {
+            window.renderLoading(listEl, "Loading your civic reports...");
+        }
+    }
     try {
-        const res = await fetch("/api/issues");
-        const data = await res.json();
-        if (data.success) {
+        const fetchFn = window.api || window.fetch;
+        const res = await fetchFn("/api/issues");
+        const data = (res && typeof res.json === "function" && !(res instanceof Response)) ? res : (res.data ? res : await res.json());
+        if (data && data.success) {
             allCitizenIssues = data.data || [];
             renderCitizenIssues();
+        } else {
+            if (listEl && typeof window.renderErrorRetry === "function") {
+                window.renderErrorRetry(listEl, "Failed to load reports.", () => loadMyIssues());
+            }
         }
     } catch (err) {
         console.error("Failed to load issues:", err);
+        if (listEl && typeof window.renderErrorRetry === "function") {
+            window.renderErrorRetry(listEl, "Failed to load reports. Check your connection.", () => loadMyIssues());
+        }
     }
 }
 
