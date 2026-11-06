@@ -1,0 +1,52 @@
+{
+  "model_name": "SmartCivic Road Damage Detector (YOLOv8n ONNX)",
+  "architecture": "YOLOv8n",
+  "format": "ONNX",
+  "input_shape": [
+    1,
+    3,
+    416,
+    416
+  ],
+  "classes": [
+    "Crack",
+    "Pothole",
+    "Surface Erosion"
+  ],
+  "model_path": "ml/models/road_damage_v1.onnx",
+  "model_sha256": "07d9464095daad753d2b66f02e11a08a8b13537b77920f7692603bdefef11b08",
+  "model_size_bytes": 12678126,
+  "cpu_latency_ms": {
+    "mean": 15.91,
+    "p95": 17.42
+  },
+  "overall_metrics": {
+    "mAP50": 0.3999,
+    "mAP50_95": 0.1756,
+    "precision": 0.4188,
+    "recall": 0.4265
+  },
+  "per_class_metrics": {
+    "D40": {
+      "name": "Pothole",
+      "precision": 0.416,
+      "recall": 0.495,
+      "mAP50": 0.449,
+      "mAP50_95": 0.153
+    },
+    "D00": {
+      "name": "Crack",
+      "precision": 0.362,
+      "recall": 0.243,
+      "mAP50": 0.23,
+      "mAP50_95": 0.064
+    },
+    "D20": {
+      "name": "Surface Erosion",
+      "precision": 0.478,
+      "recall": 0.541,
+      "mAP50": 0.521,
+      "mAP50_95": 0.309
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "ablation_models": {
+    "M1": "Text severity only (single-signal baseline)",
+    "M2": "Text + image average without reliability weighting",
+    "M3": "Text + image + location fixed weighting without reliability",
+    "M4": "All 6 signals with fixed weights, without reliability damping",
+    "M5_full_cefap": "Full 6-signal CEFAP with evidence reliability damping factor"
+  },
+  "metrics_summary": {
+    "M1": {
+      "mean_cips": 0.615,
+      "std_cips": 0.2793,
+      "min_cips": 0.25,
+      "max_cips": 1.0
+    },
+    "M2": {
+      "mean_cips": 0.6775,
+      "std_cips": 0.2575,
+      "min_cips": 0.375,
+      "max_cips": 1.0
+    },
+    "M3": {
+      "mean_cips": 0.4794,
+      "std_cips": 0.1516,
+      "min_cips": 0.32,
+      "max_cips": 0.72
+    },
+    "M4": {
+      "mean_cips": 0.448,
+      "std_cips": 0.127,
+      "min_cips": 0.205,
+      "max_cips": 0.69
+    },
+    "M5_full_cefap": {
+      "mean_cips": 0.2626,
+      "std_cips": 0.0727,
+      "min_cips": 0.113,
+      "max_cips": 0.379
+    }
+  },
+  "default_weights": {
+    "wS": 0.25,
+    "wI": 0.2,
+    "wL": 0.2,
+    "wC": 0.15,
+    "wR": 0.1,
+    "wT": 0.1
+  },
+  "sensitivity_table": {
+    "wS": {
+      "default": 0.25,
+      "minus_20_pct": 0.2,
+      "plus_20_pct": 0.3,
+      "impact_description": "Controls sensitivity of CIPS to wS"
+    },
+    "wI": {
+      "default": 0.2,
+      "minus_20_pct": 0.16,
+      "plus_20_pct": 0.24,
+      "impact_description": "Controls sensitivity of CIPS to wI"
+    },
+    "wL": {
+      "default": 0.2,
+      "minus_20_pct": 0.16,
+      "plus_20_pct": 0.24,
+      "impact_description": "Controls sensitivity of CIPS to wL"
+    },
+    "wC": {
+      "default": 0.15,
+      "minus_20_pct": 0.12,
+      "plus_20_pct": 0.18,
+      "impact_description": "Controls sensitivity of CIPS to wC"
+    },
+    "wR": {
+      "default": 0.1,
+      "minus_20_pct": 0.08,
+      "plus_20_pct": 0.12,
+      "impact_description": "Controls sensitivity of CIPS to wR"
+    },
+    "wT": {
+      "default": 0.1,
+      "minus_20_pct": 0.08,
+      "plus_20_pct": 0.12,
+      "impact_description": "Controls sensitivity of CIPS to wT"
+    }
+  }
+}

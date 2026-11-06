@@ -1,0 +1,22 @@
+{
+  "system_performance": {
+    "cold_start_time_ms": 182.91,
+    "process_rss_mb": 189.87,
+    "platform": "win32",
+    "python_version": "3.10.11"
+  },
+  "endpoint_latencies_ms": {
+    "api_health": {
+      "mean": 2.62,
+      "p95": 2.08,
+      "min": 1.33,
+      "max": 32.71
+    },
+    "api_map_issues": {
+      "mean": 1.71,
+      "p95": 2.21,
+      "min": 1.44,
+      "max": 2.43
+    }
+  }
+}

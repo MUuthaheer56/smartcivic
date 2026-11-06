@@ -1,0 +1,608 @@
+{
+  "benchmark": "66_complaint_diverse_bengaluru",
+  "total_samples": 66,
+  "accuracy": 0.4242,
+  "correct_count": 28,
+  "mean_latency_ms": 20.02,
+  "p95_latency_ms": 6.17,
+  "model_path": "models_artifacts/text_classifier_v1.joblib",
+  "model_sha256": "a645cf4ae3d763572cceef39be5f9ce1d519cef0d4b1511b7a54ac0b58662687",
+  "model_size_bytes": 65471,
+  "provider": "local_text_plus_rules",
+  "details": [
+    {
+      "id": "EN-01",
+      "text": "There is a deep pothole on MG Road near the metro pillar that damages car tires.",
+      "gt": "road",
+      "pred": "roads",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 983.56
+    },
+    {
+      "id": "EN-02",
+      "text": "Major drinking water pipeline burst in Indiranagar 100ft road wasting thousands of gallons.",
+      "gt": "water",
+      "pred": "roads",
+      "match": false,
+      "emergency": true,
+      "latency_ms": 6.16
+    },
+    {
+      "id": "EN-03",
+      "text": "Streetlight is flickering and completely off at night on 4th cross Koramangala.",
+      "gt": "electricity",
+      "pred": "water",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 6.26
+    },
+    {
+      "id": "EN-04",
+      "text": "Garbage dump accumulating near residential layout and stray dogs scattering trash everywhere.",
+      "gt": "sanitation",
+      "pred": "sanitation",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 5.86
+    },
+    {
+      "id": "EN-05",
+      "text": "Stormwater drain is completely choked with plastic and sewage is overflowing on the footpath.",
+      "gt": "drainage",
+      "pred": "drainage",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 5.76
+    },
+    {
+      "id": "EN-06",
+      "text": "Transformer sparking loudly with live wire dangling right onto the pedestrian footpath.",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": true,
+      "latency_ms": 6.14
+    },
+    {
+      "id": "EN-07",
+      "text": "Asphalt has eroded and created a massive dangerous crater on the flyover descent.",
+      "gt": "road",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.96
+    },
+    {
+      "id": "EN-08",
+      "text": "Public dustbin in the park has not been cleared for three days.",
+      "gt": "sanitation",
+      "pred": "sanitation",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 5.62
+    },
+    {
+      "id": "EN-09",
+      "text": "Small water leakage from municipal valve near house gate.",
+      "gt": "water",
+      "pred": "water",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 6.61
+    },
+    {
+      "id": "EN-10",
+      "text": "Manhole cover is broken and open near school entrance.",
+      "gt": "drainage",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 6.17
+    },
+    {
+      "id": "KN-01",
+      "text": "\u0cb0\u0cb8\u0ccd\u0ca4\u0cc6\u0caf\u0cb2\u0ccd\u0cb2\u0cbf \u0ca6\u0cca\u0ca1\u0ccd\u0ca1 \u0c97\u0cc1\u0c82\u0ca1\u0cbf \u0cac\u0cbf\u0ca6\u0ccd\u0ca6\u0cbf\u0ca6\u0cc6 \u0cb5\u0cbe\u0cb9\u0ca8 \u0cb8\u0cb5\u0cbe\u0cb0\u0cb0\u0cbf\u0c97\u0cc6 \u0ca4\u0cca\u0c82\u0ca6\u0cb0\u0cc6\u0caf\u0cbe\u0c97\u0cc1\u0ca4\u0ccd\u0ca4\u0cbf\u0ca6\u0cc6.",
+      "gt": "road",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.74
+    },
+    {
+      "id": "KN-02",
+      "text": "\u0c95\u0cc1\u0ca1\u0cbf\u0caf\u0cc1\u0cb5 \u0ca8\u0cc0\u0cb0\u0cbf\u0ca8 \u0caa\u0cc8\u0caa\u0ccd \u0c92\u0ca1\u0cc6\u0ca6\u0cc1 \u0cb0\u0cb8\u0ccd\u0ca4\u0cc6\u0caf\u0cb2\u0ccd\u0cb2\u0cbf \u0ca8\u0cc0\u0cb0\u0cc1 \u0caa\u0ccb\u0cb2\u0cbe\u0c97\u0cc1\u0ca4\u0ccd\u0ca4\u0cbf\u0ca6\u0cc6.",
+      "gt": "water",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.96
+    },
+    {
+      "id": "KN-03",
+      "text": "\u0ca8\u0cae\u0ccd\u0cae \u0cac\u0ca1\u0cbe\u0cb5\u0ca3\u0cc6\u0caf\u0cb2\u0ccd\u0cb2\u0cbf \u0c95\u0cb3\u0cc6\u0ca6 \u0cae\u0cc2\u0cb0\u0cc1 \u0ca6\u0cbf\u0ca8\u0c97\u0cb3\u0cbf\u0c82\u0ca6 \u0cac\u0cc0\u0ca6\u0cbf \u0ca6\u0cc0\u0caa\u0c97\u0cb3\u0cc1 \u0c89\u0cb0\u0cbf\u0caf\u0cc1\u0ca4\u0ccd\u0ca4\u0cbf\u0cb2\u0ccd\u0cb2.",
+      "gt": "electricity",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.57
+    },
+    {
+      "id": "KN-04",
+      "text": "\u0c95\u0cb8\u0ca6 \u0cb0\u0cbe\u0cb6\u0cbf \u0cac\u0cbf\u0ca6\u0ccd\u0ca6\u0cbf\u0ca6\u0ccd\u0ca6\u0cc1 \u0ca6\u0cc1\u0cb0\u0ccd\u0ca8\u0cbe\u0ca4 \u0cac\u0cb0\u0cc1\u0ca4\u0ccd\u0ca4\u0cbf\u0ca6\u0cc6 \u0ca6\u0caf\u0cb5\u0cbf\u0c9f\u0ccd\u0c9f\u0cc1 \u0cb8\u0ccd\u0cb5\u0c9a\u0ccd\u0c9b\u0c97\u0cca\u0cb3\u0cbf\u0cb8\u0cbf.",
+      "gt": "sanitation",
+      "pred": "sanitation",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 5.62
+    },
+    {
+      "id": "KN-05",
+      "text": "\u0cb5\u0cbf\u0ca6\u0ccd\u0caf\u0cc1\u0ca4\u0ccd \u0ca4\u0c82\u0ca4\u0cbf \u0ca4\u0cc1\u0c82\u0ca1\u0cbe\u0c97\u0cbf \u0ca8\u0cc0\u0cb0\u0cbf\u0ca8\u0cb2\u0ccd\u0cb2\u0cbf \u0cac\u0cbf\u0ca6\u0ccd\u0ca6\u0cbf\u0ca6\u0cc6 \u0ca4\u0cc1\u0c82\u0cac\u0cbe \u0c85\u0caa\u0cbe\u0caf\u0cb5\u0cbf\u0ca6\u0cc6.",
+      "gt": "electricity",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.53
+    },
+    {
+      "id": "KN-06",
+      "text": "\u0c92\u0cb3\u0c9a\u0cb0\u0c82\u0ca1\u0cbf \u0c95\u0c9f\u0ccd\u0c9f\u0cbf\u0c95\u0cca\u0c82\u0ca1\u0cc1 \u0c95\u0cca\u0cb3\u0c9a\u0cc6 \u0ca8\u0cc0\u0cb0\u0cc1 \u0cb0\u0cb8\u0ccd\u0ca4\u0cc6\u0caf \u0cae\u0cc7\u0cb2\u0cc6 \u0cb9\u0cb0\u0cbf\u0caf\u0cc1\u0ca4\u0ccd\u0ca4\u0cbf\u0ca6\u0cc6.",
+      "gt": "drainage",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.78
+    },
+    {
+      "id": "HI-01",
+      "text": "Road pe bahut bada khadda hai bike gir sakti hai please jaldi theek karo.",
+      "gt": "road",
+      "pred": "roads",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 5.48
+    },
+    {
+      "id": "HI-02",
+      "text": "Colony main peene ka paani ka pipe toot gaya hai poora road float ho gaya.",
+      "gt": "water",
+      "pred": "roads",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.6
+    },
+    {
+      "id": "HI-03",
+      "text": "Kachra pichle char din se uthaya nahi gaya hai bohot badboo aa rahi hai.",
+      "gt": "sanitation",
+      "pred": "sanitation",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 5.56
+    },
+    {
+      "id": "HI-04",
+      "text": "Street light do hafte se band hai raat ko bahut andhera rehta hai.",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": true,
+      "latency_ms": 5.14
+    },
+    {
+      "id": "HI-05",
+      "text": "Bijli ka live wire raste par gir gaya hai sparks nikal rahe hain bache khel rahe hain.",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": true,
+      "latency_ms": 5.06
+    },
+    {
+      "id": "HI-06",
+      "text": "Gutter ka pani overflow ho ke road par aa raha hai nala pura jam hai.",
+      "gt": "drainage",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.13
+    },
+    {
+      "id": "MX-01",
+      "text": "Main road alli tumba dodda pothole ide, accidents happening daily.",
+      "gt": "road",
+      "pred": "roads",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 4.84
+    },
+    {
+      "id": "MX-02",
+      "text": "BWSSB water pipeline burst aagi full water waste aagtide near signal.",
+      "gt": "water",
+      "pred": "drainage",
+      "match": false,
+      "emergency": true,
+      "latency_ms": 4.62
+    },
+    {
+      "id": "MX-03",
+      "text": "BESCOM electric pole bend aagide and live wire hanging down.",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": true,
+      "latency_ms": 4.73
+    },
+    {
+      "id": "MX-04",
+      "text": "Gully ke corner me huge garbage heap aagide please clear madi.",
+      "gt": "sanitation",
+      "pred": "sanitation",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 4.65
+    },
+    {
+      "id": "MX-05",
+      "text": "Drain block aagide sewage water coming inside compound.",
+      "gt": "drainage",
+      "pred": "drainage",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 4.55
+    },
+    {
+      "id": "SH-01",
+      "text": "Pothole.",
+      "gt": "road",
+      "pred": "roads",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 4.56
+    },
+    {
+      "id": "SH-02",
+      "text": "Dark street.",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 5.21
+    },
+    {
+      "id": "SH-03",
+      "text": "Pipe leak.",
+      "gt": "water",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.75
+    },
+    {
+      "id": "SH-04",
+      "text": "Garbage.",
+      "gt": "sanitation",
+      "pred": "sanitation",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 4.66
+    },
+    {
+      "id": "SH-05",
+      "text": "Live wire!",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": true,
+      "latency_ms": 4.89
+    },
+    {
+      "id": "LN-01",
+      "text": "I am writing this formal complaint on behalf of the residents of Rainbow Layout. For the last six months, ever since the optical fiber cable digging was completed, the main arterial road connecting 5th main to the ring road has been left in an utterly deplorable condition. There are multiple craters, uneven asphalt settling, and gravel completely strewn across both lanes. Two days ago, during peak morning hours, an elderly citizen lost balance on a two-wheeler trying to avoid a severe water-filled pothole and suffered fractures. The school bus refuses to enter our street now because the axle scraping is severe. We have submitted multiple paper petitions to the local ward office with zero response. This road serves over 1200 apartments and daily office commuters who have no alternative exit route. If this road is not tarred and restored immediately, the upcoming monsoon rains will turn the entire stretch into an impassable mud slush, completely cutting off emergency vehicles and ambulance access to our community. Please treat this as urgent.          ",
+      "gt": "road",
+      "pred": "water",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.76
+    },
+    {
+      "id": "LN-02",
+      "text": "Extreme drinking water crisis in sector 7 HSR Layout caused by an underground pipeline failure. Over the past 48 hours, clean treated drinking water has been gushing out from an inspection chamber right in front of the community park. The volume of clean drinking water wasted is immense, estimated at over 50,000 liters every few hours, while neighboring households have not received a single drop in their overhead tanks for three consecutive days. Tanker vendors are exploiting the artificial shortage by charging exorbitant rates of Rs 2500 per tanker. The continuous waterlogging has also weakened the compound wall of the neighboring government school, creating a secondary structural safety hazard. We need BWSSB emergency maintenance teams to isolate the main valve, excavate the cracked joint, and replace the corroded section immediately.          ",
+      "gt": "water",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.44
+    },
+    {
+      "id": "LN-03",
+      "text": "Urgent safety hazard regarding an overloaded step-down distribution transformer installed adjacent to a busy residential market and kindergarten in Jayanagar 4th Block. Over the past two days, the transformer unit has been making violent buzzing and vibrating noises, accompanied by frequent intense blue sparks and smoke puffs emanating from the ceramic bushings. Heavy black dielectric oil is leaking steadily onto the pavement below, creating a slippery flammable pool right where school children and market shoppers walk. The metal enclosure door has been broken off its hinges, exposing 11kV live terminal busbars completely unprotected at waist height. In the event of heavy rain or a momentary short circuit, this unit threatens to explode catastrophically, inflicting third-degree burns and lethal shrapnel injuries on nearby pedestrians. BESCOM vigilance and maintenance division must de-energize and cordon off this lethal hazard immediately.          ",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": true,
+      "latency_ms": 5.91
+    },
+    {
+      "id": "LN-04",
+      "text": "Severe public health menace due to an unauthorized solid waste dumping ground that has mushroomed over an open vacant civic amenity site in BTM Layout 2nd Stage. Every evening after 9 PM, commercial waste collectors and restaurant workers unload tens of garbage bags containing rotten food, poultry offal, wet kitchen waste, and biomedical plastic waste. The municipal sweepers do not clear this spot because it is considered private property, leading to decomposition and rank putrid odor that permeates residential apartments up to the 4th floor. The site has become an active breeding nursery for swarms of green flies, mosquitoes, and packs of aggressive feral dogs that regularly chase two-wheelers and bite delivery workers. We demand installation of CCTV surveillance, heavy fines on violators, and immediate deployment of a JCB bobcat to completely haul away the 10 tons of putrefied waste.          ",
+      "gt": "sanitation",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.57
+    },
+    {
+      "id": "TY-01",
+      "text": "Hugeee potthool on the main rd car hit hard and rim bend.",
+      "gt": "road",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.64
+    },
+    {
+      "id": "TY-02",
+      "text": "Wtr pipe leakg heavy floooding in front of aptmnt.",
+      "gt": "water",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.99
+    },
+    {
+      "id": "TY-03",
+      "text": "Stret lyt not workng dark n scary.",
+      "gt": "electricity",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.62
+    },
+    {
+      "id": "TY-04",
+      "text": "Garbge dump stinkng smell bad plzz cln.",
+      "gt": "sanitation",
+      "pred": "sanitation",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 4.51
+    },
+    {
+      "id": "TY-05",
+      "text": "Drinage overflwing on main rroad naala choked.",
+      "gt": "drainage",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.79
+    },
+    {
+      "id": "TY-06",
+      "text": "Liev wier sparkng dwn fall on street plzzz hlp fast.",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": true,
+      "latency_ms": 4.59
+    },
+    {
+      "id": "SA-01",
+      "text": "Thank you municipal corporation for providing an Olympic size swimming pool right in the middle of our street! Wonderful pothole!",
+      "gt": "road",
+      "pred": "roads",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 4.69
+    },
+    {
+      "id": "SA-02",
+      "text": "Free Diwali fireworks in July! The transformer is showering sparks on everyone walking by, what a great festive light show!",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": true,
+      "latency_ms": 4.67
+    },
+    {
+      "id": "SA-03",
+      "text": "Our colony has officially become Bangalore's newest botanical hillock of fresh garbage. Delightful perfume!",
+      "gt": "sanitation",
+      "pred": "sanitation",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 5.42
+    },
+    {
+      "id": "SA-04",
+      "text": "Who needs Niagara falls when you have the BWSSB fountain shooting 20 feet in the air from our asphalt road.",
+      "gt": "water",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.83
+    },
+    {
+      "id": "SA-05",
+      "text": "Great romantic candle-light atmosphere on our street since streetlights haven't worked for 2 months.",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": false,
+      "latency_ms": 4.72
+    },
+    {
+      "id": "MI-01",
+      "text": "Major water pipe burst and massive pothole on the same road causing complete gridlock.",
+      "gt": "multi",
+      "pred": "roads",
+      "match": false,
+      "emergency": true,
+      "latency_ms": 5.55
+    },
+    {
+      "id": "MI-02",
+      "text": "Overflowing garbage dump caught in storm drain, causing sewage to flood into shops.",
+      "gt": "multi",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.91
+    },
+    {
+      "id": "MI-03",
+      "text": "Tree fell down tearing electric live wires and blocking the entire road.",
+      "gt": "multi",
+      "pred": "electricity",
+      "match": false,
+      "emergency": true,
+      "latency_ms": 4.83
+    },
+    {
+      "id": "MI-04",
+      "text": "Streetlight pole crashed into water meter breaking the pipe and blocking pedestrian walkway.",
+      "gt": "multi",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.31
+    },
+    {
+      "id": "MI-05",
+      "text": "Construction debris dumped on road and streetlights are not working.",
+      "gt": "multi",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.19
+    },
+    {
+      "id": "MI-06",
+      "text": "Sewage drain overflowed and created a large cave-in on the asphalt road.",
+      "gt": "multi",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.95
+    },
+    {
+      "id": "SP-01",
+      "text": "Earn 50000 rupees daily working from home! Click this link to register for bitcoin trading.",
+      "gt": "spam",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.27
+    },
+    {
+      "id": "SP-02",
+      "text": "Happy 25th birthday to my best friend Rahul! Hope you have a wonderful year ahead bro!",
+      "gt": "spam",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.27
+    },
+    {
+      "id": "SP-03",
+      "text": "Who will win today's cricket match between India and Australia? Comment your predictions below.",
+      "gt": "spam",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.0
+    },
+    {
+      "id": "SP-04",
+      "text": "Looking for 2BHK flat for rent in Whitefield near tech park. Budget 30k. Contact 9876543210.",
+      "gt": "spam",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.34
+    },
+    {
+      "id": "SP-05",
+      "text": "Watch funny cat and dog videos compilations 2026 subscribe to our channel.",
+      "gt": "spam",
+      "pred": "water",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 5.05
+    },
+    {
+      "id": "SP-06",
+      "text": "Buy genuine Nike shoes at 80% discount clearance sale limited stocks available.",
+      "gt": "spam",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.73
+    },
+    {
+      "id": "EM-01",
+      "text": "EMERGENCY: Live high voltage electric cable snapped and is sparking in a water puddle where children are playing!",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": true,
+      "latency_ms": 4.86
+    },
+    {
+      "id": "EM-02",
+      "text": "Commercial LPG cylinder godown caught fire with thick smoke and explosions starting!",
+      "gt": "fire_emergency",
+      "pred": "electricity",
+      "match": false,
+      "emergency": true,
+      "latency_ms": 4.79
+    },
+    {
+      "id": "EM-03",
+      "text": "Two wheeler rider slipped into deep crater and is unconscious and bleeding heavily, not breathing!",
+      "gt": "medical_emergency",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.61
+    },
+    {
+      "id": "EM-04",
+      "text": "Complete road collapse cave-in, bus tyre trapped on edge of 15ft pit with passengers shouting for help!",
+      "gt": "road",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.64
+    },
+    {
+      "id": "EM-05",
+      "text": "Severe chemical gas leak from industrial tanker valve, people in neighborhood choking and fainting!",
+      "gt": "gas_environment",
+      "pred": "electricity",
+      "match": false,
+      "emergency": false,
+      "latency_ms": 4.98
+    },
+    {
+      "id": "EM-06",
+      "text": "Flash flood breached lake bund, 4 feet water rushing into houses, people trapped on ground floor!",
+      "gt": "flooding",
+      "pred": "sanitation",
+      "match": false,
+      "emergency": true,
+      "latency_ms": 4.89
+    },
+    {
+      "id": "EM-07",
+      "text": "Electric shock hazard at ATM kiosk, security guard touched metal shutter and got shocked, power needs cut off immediately!",
+      "gt": "electricity",
+      "pred": "electricity",
+      "match": true,
+      "emergency": true,
+      "latency_ms": 4.6
+    }
+  ]
+}
