@@ -10641,3 +10641,4 @@
 {"timestamp": "2026-11-06T14:31:17.981216", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 8.4}
 {"timestamp": "2026-11-06T14:31:20.172165", "log_type": "api_request", "method": "GET", "path": "/api/auth/users/pending", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 4.0}
 {"timestamp": "2026-11-06T14:31:21.246147", "log_type": "api_request", "method": "POST", "path": "/api/auth/users/6aedda84d915c5a22218da51/verify", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 10.1}
+{"timestamp": "2026-11-06T14:31:22.476904", "log_type": "api_request", "method": "GET", "path": "/api/issues", "user_id": "6aedda83d915c5a22218da4d", "status_code": 200, "duration_ms": 9.0}
