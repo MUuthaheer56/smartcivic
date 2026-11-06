@@ -10,6 +10,29 @@ def hash_password(plain_text: str) -> str:
     return bcrypt.hashpw(plain_text.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def seed_db():
+    plain_password = os.getenv("SEED_PASSWORD", "").strip()
+    if not plain_password:
+        cred_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed_credentials.txt")
+        if os.path.exists(cred_file):
+            with open(cred_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith("SEED_PASSWORD="):
+                        plain_password = line.strip().split("=", 1)[1].strip()
+                        break
+        if not plain_password:
+            env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+            if os.path.exists(env_file):
+                with open(env_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip().startswith("SEED_PASSWORD="):
+                            plain_password = line.strip().split("=", 1)[1].strip()
+                            break
+
+    if len(plain_password) < 12:
+        raise RuntimeError(
+            "SEED_PASSWORD must be set (via environment, .env, or seed_credentials.txt) and contain at least 12 characters."
+        )
+
     client = MongoClient("mongodb://127.0.0.1:27017/")
     db = client.smartcivic
     
@@ -21,9 +44,6 @@ def seed_db():
     db.notifications.drop()
     db.audit_logs.drop()
     
-    plain_password = os.getenv("SEED_PASSWORD", "").strip()
-    if len(plain_password) < 12:
-        raise RuntimeError("SEED_PASSWORD must be set and contain at least 12 characters.")
     pwd_hash = hash_password(plain_password)
     
     print("Seeding new SmartCivic+ user profiles...")
@@ -35,6 +55,10 @@ def seed_db():
             "password_hash": pwd_hash,
             "role": "citizen",
             "ward": "Ward 1",
+            "ward_id": "ward_1",
+            "verified": True,
+            "verification_status": "approved",
+            "status": "active",
             "civic_score": 100,
             "role_tier": "verifier",
             "reports_submitted": 0,
@@ -49,6 +73,10 @@ def seed_db():
             "password_hash": pwd_hash,
             "role": "officer",
             "ward": "Ward 1",
+            "ward_id": "ward_1",
+            "verified": True,
+            "verification_status": "approved",
+            "status": "active",
             "created_at": datetime.utcnow(),
             "last_login": None
         },
@@ -58,6 +86,10 @@ def seed_db():
             "password_hash": pwd_hash,
             "role": "officer",
             "ward": "all",
+            "ward_id": "all",
+            "verified": True,
+            "verification_status": "approved",
+            "status": "active",
             "created_at": datetime.utcnow(),
             "last_login": None
         },
@@ -67,6 +99,10 @@ def seed_db():
             "password_hash": pwd_hash,
             "role": "admin",
             "ward": "all",
+            "ward_id": "all",
+            "verified": True,
+            "verification_status": "approved",
+            "status": "active",
             "created_at": datetime.utcnow(),
             "last_login": None
         },
@@ -77,6 +113,11 @@ def seed_db():
             "password_hash": pwd_hash,
             "role": "worker",
             "ward": "Ward 1",
+            "ward_id": "ward_1",
+            "verified": True,
+            "verification_status": "approved",
+            "approved_by_authority": True,
+            "status": "active",
             "skills": ["road_repair", "roads", "road"],
             "current_location": {
                 "type": "Point",
@@ -93,6 +134,11 @@ def seed_db():
             "password_hash": pwd_hash,
             "role": "worker",
             "ward": "Ward 1",
+            "ward_id": "ward_1",
+            "verified": True,
+            "verification_status": "approved",
+            "approved_by_authority": True,
+            "status": "active",
             "skills": ["electrical", "electricity"],
             "current_location": {
                 "type": "Point",
@@ -100,6 +146,48 @@ def seed_db():
             },
             "active_assignments": 0,
             "is_available": True,
+            "created_at": datetime.utcnow(),
+            "last_login": None
+        },
+        # Vision test accounts
+        {
+            "name": "Vision Test Citizen",
+            "email": "vision_citizen@smartcivic.com",
+            "password_hash": pwd_hash,
+            "role": "citizen",
+            "ward": "Ward 1",
+            "ward_id": "ward_1",
+            "verified": True,
+            "verification_status": "approved",
+            "status": "active",
+            "created_at": datetime.utcnow(),
+            "last_login": None
+        },
+        {
+            "name": "Vision Test Officer",
+            "email": "vision_officer@smartcivic.com",
+            "password_hash": pwd_hash,
+            "role": "officer",
+            "ward": "all",
+            "ward_id": "all",
+            "verified": True,
+            "verification_status": "approved",
+            "status": "active",
+            "created_at": datetime.utcnow(),
+            "last_login": None
+        },
+        {
+            "name": "Vision Test Worker",
+            "email": "vision_worker@smartcivic.com",
+            "password_hash": pwd_hash,
+            "role": "worker",
+            "ward": "Ward 1",
+            "ward_id": "ward_1",
+            "verified": True,
+            "verification_status": "approved",
+            "approved_by_authority": True,
+            "status": "active",
+            "skills": ["road_repair", "roads"],
             "created_at": datetime.utcnow(),
             "last_login": None
         }

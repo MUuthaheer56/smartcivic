@@ -234,3 +234,4 @@ python test_e2e_verification.py
   ```powershell
   Get-Content -Path logs/smartcivic.log -Tail 50 -Wait
   ```
+

@@ -46,6 +46,14 @@ def check_password_and_needs_rehash(plain_text: str, hashed: str) -> tuple:
         except Exception:
             return False, False
 
+    if str(hashed).startswith(("scrypt:", "pbkdf2:")):
+        try:
+            from werkzeug.security import check_password_hash
+            matches = check_password_hash(hashed, plain_text)
+            return matches, True
+        except Exception:
+            return False, False
+
     return False, False
 
 def check_password(plain_text: str, hashed: str) -> bool:

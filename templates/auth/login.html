@@ -143,10 +143,13 @@
             if (data.success) {
                 showToast("Login successful!", "success");
                 const role = data.data.user.role;
+                const redirectTarget = data.redirect || (data.data && data.data.redirect);
                 setTimeout(() => {
-                    if (role === 'citizen') window.location.href = '/citizen/dashboard';
-                    else if (role === 'officer') window.location.href = '/officer/dashboard';
-                    else if (role === 'worker') window.location.href = '/worker/dashboard';
+                    if (role === 'admin') window.location.href = redirectTarget || '/admin/dashboard';
+                    else if (role === 'citizen') window.location.href = redirectTarget || '/citizen/dashboard';
+                    else if (role === 'officer') window.location.href = redirectTarget || '/officer/dashboard';
+                    else if (role === 'worker') window.location.href = redirectTarget || '/worker/dashboard';
+                    else if (redirectTarget) window.location.href = redirectTarget;
                 }, 1000);
             } else {
                 showToast(data.error.message || "Login failed.", "danger");

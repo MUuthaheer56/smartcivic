@@ -76,3 +76,4 @@ class TestCorsHardening(unittest.TestCase):
         from app import socketio
         expected_origins = ["https://app.smartcivic.gov.in"]
         self.assertEqual(socketio.server.eio.cors_allowed_origins, expected_origins)
+

@@ -97,3 +97,4 @@ def test_verification_doc_retention_purge(app_instance):
             p = os.path.join(test_dir, f_name)
             if os.path.exists(p):
                 os.remove(p)
+

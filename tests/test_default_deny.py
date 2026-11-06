@@ -80,3 +80,4 @@ def test_default_deny_all_endpoints(app_instance):
         f"Default-Deny failure! {len(violations)} endpoint(s) lack authentication decorators "
         f"and are not in PUBLIC_ENDPOINTS allowlist:\n" + "\n".join(violations)
     )
+
