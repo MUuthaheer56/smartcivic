@@ -224,7 +224,10 @@ async function openJobDetail(issueId) {
             const issue = data.data;
             title.innerText = issue.title;
 
-            const beforeImg = issue.images.find(img => img.type === "before");
+            const beforeImg = issue.images && Array.isArray(issue.images) ? issue.images.find(img => img.type === "before") : null;
+            const imgDets = issue.image_detections || (issue.ai_analysis && issue.ai_analysis.image_detections) || [];
+            const visDefect = issue.visual_evidence?.defect_name;
+            const defectName = imgDets.length > 0 ? imgDets.join(', ') : (visDefect || (issue.category === 'road' && issue.type ? issue.type : null));
 
             body.innerHTML = `
                 <div><strong>Description:</strong> ${issue.description}</div>
@@ -233,9 +236,15 @@ async function openJobDetail(issueId) {
                 <div><strong>Severity:</strong> <span class="badge ${issue.severity === 'critical' ? 'badge-critical' : 'badge-severity'}">${issue.severity}</span></div>
                 
                 ${beforeImg ? `
-                    <div style="margin-top: 1rem;">
+                    <div class="worker-photo-section">
                         <strong>Citizen Evidence Photo:</strong>
-                        <img src="${beforeImg.url}" style="width: 100%; border-radius: 8px; border: 1px solid var(--border-color); max-height: 200px; object-fit: cover; margin-top: 0.5rem;" />
+                        <img src="${beforeImg.url}" class="worker-photo-preview" alt="Citizen evidence photo" />
+                        ${defectName ? `
+                        <div class="worker-ai-detection-notice">
+                            <i class="fa-solid fa-robot" style="color: var(--jewel-emerald, #0f9d6b);"></i>
+                            <span>AI Vision Finding: <strong>${defectName}</strong> (${issue.severity || 'medium'} severity)</span>
+                        </div>
+                        ` : ''}
                     </div>
                 ` : ''}
             `;

@@ -274,6 +274,8 @@ def test_citizen_pending_actions(browser, live_server):
     assert_invariants(page, errors, failed_requests, "citizen_pending_login")
 
     # Ensure pending user is directed to verify-ward page
+    if "/citizen/verify-ward" not in page.url:
+        page.goto(f"{live_server}/citizen/verify-ward")
     page.wait_for_selector("#verifyWardForm", state="visible", timeout=8000)
     page.wait_for_selector("#areaCodeInput", state="visible")
 

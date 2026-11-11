@@ -411,6 +411,15 @@ function renderOfficerIssuesQueue() {
         else if (sev === 'low') badgeClass = 'badge-low';
 
         const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
+        const imgObj = issue.image;
+        const imgUrl = (imgObj && typeof imgObj === 'object' ? imgObj.url : (typeof imgObj === 'string' ? imgObj : null))
+            || (issue.images && issue.images[0] ? (issue.images[0].url || issue.images[0]) : null)
+            || (issue.thumbnail_url && !issue.thumbnail_url.includes('placeholder') ? issue.thumbnail_url : null);
+        const imgDets = issue.image_detections || (issue.ai_analysis && issue.ai_analysis.image_detections) || [];
+        const visDefect = issue.visual_evidence?.defect_name;
+        const defectName = imgDets.length > 0 ? imgDets.join(', ') : (visDefect || (issue.category === 'road' && issue.type ? issue.type : null));
+        const hasAiDetection = !!defectName && (imgDets.length > 0 || !!visDefect || issue.ai_analysis?.image_analysis_available);
+
         const card = document.createElement("div");
         card.className = "glass-panel queue-card";
         const safeIssueId = encodeURIComponent(String(issue._id || ''));
@@ -421,10 +430,29 @@ function renderOfficerIssuesQueue() {
             </div>
             <h4 style="font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #ffffff;">${esc(issue.title)}</h4>
             <div style="font-size: 0.85rem; color: var(--sc-muted);">${esc(issue.description)}</div>
+            
+            ${imgUrl ? `
+                <div style="position: relative; border-radius: 8px; overflow: hidden; margin: 0.35rem 0;">
+                    <img src="${esc(imgUrl)}" alt="Citizen Evidence Photo" class="queue-photo-preview" loading="lazy" />
+                    ${hasAiDetection ? `
+                    <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 0.35rem 0.65rem; background: rgba(11,20,55,0.88); color: #6ee7b7; font-size: 0.76rem; font-weight: 700; display: flex; align-items: center; gap: 0.35rem;">
+                        <i class="fa-solid fa-robot"></i> AI Detected in Photo: <strong>${esc(defectName)}</strong>
+                    </div>
+                    ` : ''}
+                </div>
+            ` : ''}
+
             <div style="font-size: 0.85rem; color: var(--sc-muted); display: flex; flex-direction: column; gap: 0.25rem;">
                 <div><strong>Category:</strong> ${esc(issue.category)}</div>
                 <div><strong>Issue Type:</strong> ${esc(issue.type || 'other')}</div>
-                <div><strong>AI Vision:</strong> ${issue.ai_analysis?.image_analysis_available ? 'Analyzed' : 'Unavailable'}</div>
+                ${hasAiDetection ? `
+                    <div class="queue-card-ai-vision detected">
+                        <i class="fa-solid fa-microchip"></i>
+                        <span>AI Detected in Image: <strong>${esc(defectName)}</strong></span>
+                    </div>
+                ` : `
+                    <div><strong>AI Vision:</strong> ${issue.ai_analysis?.image_analysis_available ? 'Analyzed' : 'No defect detected / No photo'}</div>
+                `}
                 <div><strong>AI Explanation:</strong> ${esc(issue.ai_analysis?.explanation || 'Not available')}</div>
                 <div><strong>Age:</strong> ${Number(ageHours || 0)} hours old</div>
                 <div><strong>Priority Score:</strong> ${Number(issue.priority_score || 0)}</div>

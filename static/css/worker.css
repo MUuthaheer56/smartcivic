@@ -1,1 +1,164 @@
-/* Styled via dashboard.css */
+/**
+ * static/css/worker.css - SmartCivic Field Worker Portal Styles
+ * Dedicated styling for Field Worker Dashboard, Active Work Orders, Route Map, and Citizen Photo AI Findings
+ */
+
+.worker-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 960px) {
+    .worker-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.panel-header {
+    font-family: var(--font-heading, serif);
+    font-weight: 700;
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--sc-text);
+}
+
+.jobs-panel {
+    padding: 2.25rem 2rem;
+    background: var(--sc-card);
+    border: 1px solid var(--sc-card-border);
+    border-top: 3px solid var(--royal-purple-700, #6d28d9);
+    border-radius: var(--radius-lg, 16px);
+    box-shadow: var(--shadow-md);
+}
+
+.map-panel {
+    padding: 2.25rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background: var(--sc-card);
+    border: 1px solid var(--sc-card-border);
+    border-top: 3px solid var(--royal-gold-500, #c9a227);
+    border-radius: var(--radius-lg, 16px);
+    box-shadow: var(--shadow-md);
+}
+
+#workerMap {
+    height: 380px;
+    border-radius: var(--radius-md, 12px);
+    border: 1px solid var(--sc-card-border);
+    box-shadow: var(--shadow-sm);
+    z-index: 10;
+}
+
+.job-card {
+    padding: 1.4rem;
+    background: var(--sc-surface);
+    border: 1px solid var(--sc-card-border);
+    border-radius: var(--radius-md, 12px);
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.job-card.active {
+    border-color: var(--royal-gold-500);
+    background: rgba(201, 162, 39, 0.08);
+    box-shadow: 0 0 0 1px var(--royal-gold-500);
+}
+
+.detail-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 520px;
+    max-width: 95vw;
+    background: var(--sc-card);
+    border: 1px solid var(--sc-card-border);
+    border-top: 3px solid var(--royal-gold-500);
+    padding: 2.25rem;
+    border-radius: var(--radius-xl, 20px);
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+    gap: 1.25rem;
+    box-shadow: var(--shadow-xl);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(11, 20, 55, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1999;
+    display: none;
+}
+
+/* Worker GPS Telemetry Status */
+.worker-gps-status-box {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-color);
+}
+
+/* Citizen Photo & AI Detection Callout in Job Detail */
+.worker-photo-section {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--sc-surface);
+    border: 1px solid var(--sc-card-border);
+    border-radius: 10px;
+}
+
+.worker-photo-preview {
+    width: 100%;
+    max-height: 220px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-top: 0.5rem;
+}
+
+.worker-ai-detection-notice {
+    margin-top: 0.6rem;
+    padding: 0.6rem 0.85rem;
+    background: rgba(15, 157, 107, 0.12);
+    border: 1px solid rgba(15, 157, 107, 0.3);
+    border-left: 4px solid var(--jewel-emerald, #0f9d6b);
+    border-radius: 6px;
+    font-size: 0.84rem;
+    color: var(--sc-text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.worker-ai-detection-notice.warning {
+    background: rgba(217, 154, 26, 0.12);
+    border-color: rgba(217, 154, 26, 0.3);
+    border-left-color: var(--royal-gold-500, #c9a227);
+}

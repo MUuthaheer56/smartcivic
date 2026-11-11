@@ -844,6 +844,15 @@ def list_issues():
         iss["sla_breached"] = bool(sla_breached)
         iss["department"] = raw_doc.get("department", "roads")
         iss["worker_id"] = str(w_id) if w_id else None
+        
+        ai_data = raw_doc.get("ai_analysis") or {}
+        img_dets = ai_data.get("image_detections") or raw_doc.get("image_detections") or []
+        vis_ev = raw_doc.get("visual_evidence") or ai_data.get("visual_evidence") or {}
+        if not img_dets and vis_ev.get("defect_name"):
+            img_dets = [vis_ev["defect_name"]]
+        iss["ai_analysis"] = ai_data
+        iss["visual_evidence"] = vis_ev
+        iss["image_detections"] = img_dets
 
         if getattr(Config, "AI_ML_PRIORITY_SHADOW", False):
             try:

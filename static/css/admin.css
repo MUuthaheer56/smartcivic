@@ -1,0 +1,277 @@
+/**
+ * static/css/admin.css - SmartCivic Officer & Administrator Portal Styles
+ * Dedicated styling for Municipal Officer Dashboard, Queue Management, Admin Broadcasts, and AI Vision Findings
+ */
+
+.dashboard-layout {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+    min-height: 80vh;
+}
+
+@media (max-width: 900px) {
+    .dashboard-layout {
+        flex-direction: column;
+    }
+}
+
+/* Left Sidebar */
+.sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    padding: 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    background: var(--sc-card);
+    border: 1px solid var(--sc-card-border);
+    border-radius: var(--radius-lg, 16px);
+    box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 900px) {
+    .sidebar {
+        width: 100%;
+    }
+}
+
+.sidebar-btn {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius-sm, 8px);
+    background: transparent;
+    border: none;
+    color: var(--sc-muted);
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    border-left: 3px solid transparent;
+}
+
+.sidebar-btn:hover {
+    background: rgba(109, 40, 217, 0.08);
+    color: var(--sc-text);
+}
+
+.sidebar-btn.active {
+    background: linear-gradient(90deg, rgba(76, 29, 149, 0.16) 0%, rgba(201, 162, 39, 0.1) 100%);
+    color: var(--sc-text);
+    border-left-color: var(--royal-gold-500);
+    font-weight: 700;
+}
+
+/* Main Panel Content */
+.panel-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+}
+
+/* Stats Row */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+}
+
+@media (max-width: 1000px) {
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.stat-card {
+    padding: 1.5rem;
+    text-align: center;
+    background: var(--sc-card);
+    border: 1px solid var(--sc-card-border);
+    border-top: 3px solid var(--royal-gold-500);
+    border-radius: var(--radius-lg, 16px);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.stat-val {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 2.2rem;
+    color: var(--sc-text);
+    margin-top: 0.35rem;
+    letter-spacing: -0.02em;
+}
+
+.stat-lbl {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--sc-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* Health Bar */
+.health-container {
+    padding: 1.75rem;
+    background: var(--sc-card);
+    border: 1px solid var(--sc-card-border);
+    border-radius: var(--radius-lg, 16px);
+    box-shadow: var(--shadow-sm);
+}
+
+.health-bar-wrapper {
+    display: flex;
+    height: 16px;
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-top: 1rem;
+    background: var(--sc-surface);
+    border: 1px solid var(--sc-divider);
+}
+
+.health-segment {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+/* Priority Grid Layout */
+.queue-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.queue-card {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    position: relative;
+    background: var(--sc-card);
+    border: 1px solid var(--sc-card-border);
+    border-radius: var(--radius-lg, 16px);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.queue-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.queue-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Leaflet Map Panel */
+.map-container {
+    position: relative;
+}
+
+#officerMap {
+    height: 520px;
+    border-radius: var(--radius-lg, 16px);
+    border: 1px solid var(--sc-card-border);
+    z-index: 10;
+    box-shadow: var(--shadow-md);
+}
+
+.map-sidebar-overlay {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 320px;
+    background: var(--sc-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--sc-card-border);
+    border-top: 3px solid var(--royal-gold-500);
+    padding: 1.5rem;
+    border-radius: var(--radius-md, 12px);
+    z-index: 1000;
+    box-shadow: var(--shadow-xl);
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Overlay Assign Worker Panel */
+.assign-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 460px;
+    max-width: 95vw;
+    background: var(--sc-card);
+    border: 1px solid var(--sc-card-border);
+    border-top: 3px solid var(--royal-gold-500);
+    padding: 2.25rem;
+    border-radius: var(--radius-xl, 20px);
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+    gap: 1.5rem;
+    box-shadow: var(--shadow-xl);
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(11, 20, 55, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1999;
+    display: none;
+}
+
+/* Admin AI Vision Detection Callouts */
+.queue-card-ai-vision {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: rgba(109, 40, 217, 0.1);
+    border: 1px solid rgba(109, 40, 217, 0.25);
+    color: var(--royal-purple-700, #7c3aed);
+}
+
+.queue-card-ai-vision.detected {
+    background: rgba(15, 157, 107, 0.1);
+    border-color: rgba(15, 157, 107, 0.3);
+    color: var(--jewel-emerald, #0f9d6b);
+    font-weight: 600;
+}
+
+.queue-photo-preview {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--sc-card-border);
+    margin: 0.4rem 0;
+}
+
