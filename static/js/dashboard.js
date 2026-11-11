@@ -420,6 +420,15 @@ function renderOfficerIssuesQueue() {
         const defectName = imgDets.length > 0 ? imgDets.join(', ') : (visDefect || (issue.category === 'road' && issue.type ? issue.type : null));
         const hasAiDetection = !!defectName && (imgDets.length > 0 || !!visDefect || issue.ai_analysis?.image_analysis_available);
 
+        const detObj = issue.ai_detected || (issue.ai_analysis && issue.ai_analysis.ai_detected) || null;
+        let detBadgeHtml = "";
+        if (detObj && detObj.message) {
+            const st = detObj.status || (detObj.has_detections ? "detected" : "none");
+            detBadgeHtml = `<div class="ai-detect-badge ${esc(st)}" style="margin: 0.35rem 0;">${esc(detObj.message)}</div>`;
+        } else if (hasAiDetection) {
+            detBadgeHtml = `<div class="ai-detect-badge detected" style="margin: 0.35rem 0;">AI detected: ${esc(defectName)}</div>`;
+        }
+
         const card = document.createElement("div");
         card.className = "glass-panel queue-card";
         const safeIssueId = encodeURIComponent(String(issue._id || ''));
@@ -441,6 +450,8 @@ function renderOfficerIssuesQueue() {
                     ` : ''}
                 </div>
             ` : ''}
+
+            ${detBadgeHtml}
 
             <div style="font-size: 0.85rem; color: var(--sc-muted); display: flex; flex-direction: column; gap: 0.25rem;">
                 <div><strong>Category:</strong> ${esc(issue.category)}</div>

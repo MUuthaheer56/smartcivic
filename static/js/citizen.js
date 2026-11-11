@@ -20,7 +20,87 @@ document.addEventListener("DOMContentLoaded", () => {
     if (form) {
         form.addEventListener("submit", submitIssue);
     }
+    initImageDetectionPreview();
 });
+
+function initImageDetectionPreview() {
+    const imgInput = document.getElementById("image");
+    if (!imgInput) return;
+
+    imgInput.addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        const previewCont = document.getElementById("imagePreviewContainer");
+        const previewImg = document.getElementById("imagePreview");
+        const badge = document.getElementById("imageAiBadge");
+
+        if (!file) {
+            if (previewCont) previewCont.style.display = "none";
+            if (badge) badge.style.display = "none";
+            return;
+        }
+
+        // Preview immediately
+        if (previewCont && previewImg) {
+            try {
+                previewImg.src = URL.createObjectURL(file);
+                previewCont.style.display = "block";
+            } catch (objErr) {
+                console.warn("Preview createObjectURL failed", objErr);
+            }
+        }
+
+        // Show pending badge
+        if (badge) {
+            badge.style.display = "inline-flex";
+            badge.className = "ai-detect-badge pending";
+            badge.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Checking image with AI detector...`;
+        }
+
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+        try {
+            const res = await fetch("/api/issues/image-quality-check", {
+                method: "POST",
+                body: formData,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (!res.ok) {
+                if (badge) {
+                    badge.className = "ai-detect-badge unavailable";
+                    badge.textContent = "AI check unavailable right now.";
+                }
+                return;
+            }
+
+            const data = await res.json();
+            const det = data.detector;
+            if (badge) {
+                if (det && det.status === "detected") {
+                    badge.className = "ai-detect-badge detected";
+                    badge.textContent = det.message;
+                } else if (det && det.status === "none") {
+                    badge.className = "ai-detect-badge none";
+                    badge.textContent = det.message || "AI could not detect a civic issue in this image. You can still submit your report.";
+                } else {
+                    badge.className = "ai-detect-badge unavailable";
+                    badge.textContent = (det && det.message) ? det.message : "AI check unavailable right now.";
+                }
+            }
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (badge) {
+                badge.className = "ai-detect-badge unavailable";
+                badge.textContent = "AI check unavailable right now.";
+            }
+        }
+    });
+}
 
 function initMap() {
     // Default: Bangalore
@@ -371,10 +451,11 @@ async function submitIssue(e) {
             showToast("Complaint submitted successfully!", "success");
 
             // Show AI feedback panel
-            const ai = data.data.ai_analysis || data.ai_prediction || {};
+            const ai = data.data?.ai_analysis || data.ai_prediction || {};
+            const detector = data.ai_detected || (data.data && data.data.ai_detected) || null;
             const imgDets = (ai.image_detections && ai.image_detections.length > 0)
                 ? ai.image_detections
-                : (data.data.image_detections || (data.data.visual_evidence?.defect_name ? [data.data.visual_evidence.defect_name] : []));
+                : (data.data?.image_detections || (data.data?.visual_evidence?.defect_name ? [data.data.visual_evidence.defect_name] : []));
             const hasDetectedDefects = imgDets.length > 0;
             const detectedDefectsStr = hasDetectedDefects ? imgDets.join(', ') : (ai.type && ai.type !== 'other' ? ai.type : 'Road defect verified');
             const aiPanel = document.getElementById("aiPanel");
@@ -385,7 +466,12 @@ async function submitIssue(e) {
                     ? "Image analysis completed"
                     : (ai.image_analysis_message || "Image analysis unavailable, your report was still recorded");
                 const esc = window.escapeHtml || (s => String(s || ''));
+                const detStatus = detector?.status || (detector?.has_detections ? "detected" : "none");
+                const detBadgeHtml = (detector && detector.message)
+                    ? `<div class="ai-detect-badge ${esc(detStatus)}" style="margin-bottom: 0.75rem;">${esc(detector.message)}</div>`
+                    : '';
                 aiResults.innerHTML = `
+                    ${detBadgeHtml}
                     ${hasDetectedDefects ? `
                     <div class="ai-image-detection-callout detected">
                         <div class="ai-callout-header">
@@ -423,6 +509,10 @@ async function submitIssue(e) {
             }
 
             document.getElementById("reportForm").reset();
+            const previewCont = document.getElementById("imagePreviewContainer");
+            if (previewCont) previewCont.style.display = "none";
+            const badgeEl = document.getElementById("imageAiBadge");
+            if (badgeEl) badgeEl.style.display = "none";
             const emergContainer = document.getElementById("emergencyCategoryContainer");
             if (emergContainer) emergContainer.style.display = "none";
 
@@ -523,6 +613,15 @@ function renderCitizenIssues() {
         const defectName = imgDets.length > 0 ? imgDets.join(', ') : (visDefect || (issue.category === 'road' && issue.type ? issue.type : null));
         const hasAiDetection = !!defectName && (imgDets.length > 0 || !!visDefect || issue.ai_analysis?.image_analysis_available);
 
+        const detObj = issue.ai_detected || (issue.ai_analysis && issue.ai_analysis.ai_detected) || null;
+        let detBadgeHtml = "";
+        if (detObj && detObj.message) {
+            const st = detObj.status || (detObj.has_detections ? "detected" : "none");
+            detBadgeHtml = `<div class="ai-detect-badge ${esc(st)}" style="margin-top: 0.4rem;">${esc(detObj.message)}</div>`;
+        } else if (hasAiDetection) {
+            detBadgeHtml = `<div class="ai-detect-badge detected" style="margin-top: 0.4rem;">AI detected: ${esc(defectName)}</div>`;
+        }
+
         const card = document.createElement("div");
         card.className = "issue-card";
         card.innerHTML = `
@@ -554,12 +653,8 @@ function renderCitizenIssues() {
                     </div>
                     `}
                 </div>
-            ` : (hasAiDetection ? `
-                <div class="card-ai-vision-tag detected">
-                    <i class="fa-solid fa-robot"></i>
-                    <span>AI Detected: <strong>${esc(defectName)}</strong></span>
-                </div>
-            ` : '')}
+            ` : ''}
+            ${detBadgeHtml}
 
             ${isVerification ? `
                 <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">

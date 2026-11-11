@@ -279,6 +279,7 @@ def create_issue():
             "message": "Complaint submitted successfully.",
             "issue_id": issue.get("issue_id") or str(issue["_id"]),
             "status": issue.get("status", "submitted"),
+            "ai_detected": issue.get("ai_detected"),
             "ai_prediction": issue.get("ai_prediction", {}),
             "duplicate": issue.get("duplicate", {"is_duplicate": False}),
             "priority": normalize_priority(issue.get("priority")),
@@ -307,19 +308,35 @@ def create_issue():
 @require_auth
 def check_image_quality():
     """
-    Direct evaluation endpoint for image quality gate.
-    Accepts an uploaded image file, returns quality metrics and AI envelope.
+    Direct evaluation endpoint for image quality gate and road defect detection.
+    Accepts an uploaded image file, returns quality metrics and YOLO detector envelope.
     """
     if 'image' not in request.files:
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "No image provided."}}), 400
     file = request.files['image']
     if not file or not file.filename:
         return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": "Empty file."}}), 400
-        
+
+    valid, err_msg = validate_image_file(file)
+    if not valid:
+        return jsonify({"success": False, "error": {"code": "VALIDATION_ERROR", "message": err_msg}}), 400
+
     try:
         from services.ai.image_gate import evaluate_image_quality
+        from services.ai.road_detector import detect_and_format_defect
+
+        file.seek(0)
         res = evaluate_image_quality(file, user_id=str(g.current_user["_id"]) if hasattr(g, "current_user") and g.current_user else None, db=db)
-        return jsonify({"success": True, "result": res}), 200
+
+        file.seek(0)
+        det_info = detect_and_format_defect(file)
+        file.seek(0)
+
+        return jsonify({
+            "success": True,
+            "result": res,
+            "detector": det_info
+        }), 200
     except Exception as e:
         return jsonify({"success": False, "error": {"code": "EVAL_ERROR", "message": str(e)}}), 500
 

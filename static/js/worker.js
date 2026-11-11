@@ -228,21 +228,32 @@ async function openJobDetail(issueId) {
             const imgDets = issue.image_detections || (issue.ai_analysis && issue.ai_analysis.image_detections) || [];
             const visDefect = issue.visual_evidence?.defect_name;
             const defectName = imgDets.length > 0 ? imgDets.join(', ') : (visDefect || (issue.category === 'road' && issue.type ? issue.type : null));
+            const detObj = issue.ai_detected || (issue.ai_analysis && issue.ai_analysis.ai_detected) || null;
+            const esc = window.escapeHtml || (s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : '');
+
+            let workerBadgeHtml = "";
+            if (detObj && detObj.message) {
+                const st = detObj.status || (detObj.has_detections ? "detected" : "none");
+                workerBadgeHtml = `<div class="ai-detect-badge ${esc(st)}" style="margin-top: 0.5rem;">${esc(detObj.message)}</div>`;
+            } else if (defectName) {
+                workerBadgeHtml = `<div class="ai-detect-badge detected" style="margin-top: 0.5rem;">AI detected: ${esc(defectName)}</div>`;
+            }
 
             body.innerHTML = `
-                <div><strong>Description:</strong> ${issue.description}</div>
-                <div><strong>Address:</strong> ${issue.address}</div>
+                <div><strong>Description:</strong> ${esc(issue.description)}</div>
+                <div><strong>Address:</strong> ${esc(issue.address)}</div>
                 <div><strong>SLA Deadline:</strong> ${new Date(issue.sla_deadline).toLocaleString()}</div>
-                <div><strong>Severity:</strong> <span class="badge ${issue.severity === 'critical' ? 'badge-critical' : 'badge-severity'}">${issue.severity}</span></div>
+                <div><strong>Severity:</strong> <span class="badge ${issue.severity === 'critical' ? 'badge-critical' : 'badge-severity'}">${esc(issue.severity)}</span></div>
                 
                 ${beforeImg ? `
                     <div class="worker-photo-section">
                         <strong>Citizen Evidence Photo:</strong>
-                        <img src="${beforeImg.url}" class="worker-photo-preview" alt="Citizen evidence photo" />
+                        <img src="${esc(beforeImg.url)}" class="worker-photo-preview" alt="Citizen evidence photo" />
+                        ${workerBadgeHtml}
                         ${defectName ? `
                         <div class="worker-ai-detection-notice">
                             <i class="fa-solid fa-robot" style="color: var(--jewel-emerald, #0f9d6b);"></i>
-                            <span>AI Vision Finding: <strong>${defectName}</strong> (${issue.severity || 'medium'} severity)</span>
+                            <span>AI Vision Finding: <strong>${esc(defectName)}</strong> (${esc(issue.severity || 'medium')} severity)</span>
                         </div>
                         ` : ''}
                     </div>

@@ -102,13 +102,15 @@ def serialize_citizen_issue(doc: dict, user_id: str = None) -> dict:
         pub.pop("citizen_id", None)
 
     ai = doc.get("ai_analysis") or {}
-    img_dets = ai.get("image_detections") or []
+    img_dets = doc.get("image_detections") or ai.get("image_detections") or []
     vis_ev = doc.get("visual_evidence") or ai.get("visual_evidence") or {}
+    ai_det = doc.get("ai_detected") or ai.get("ai_detected") or {}
     if not img_dets and vis_ev.get("defect_name"):
         img_dets = [vis_ev["defect_name"]]
     pub["ai_analysis"] = ai
     pub["visual_evidence"] = vis_ev
     pub["image_detections"] = img_dets
+    pub["ai_detected"] = ai_det
 
     return pub
 
@@ -148,8 +150,9 @@ def serialize_officer_issue(doc: dict) -> dict:
         pub["reporter_name"] = doc.get("reporter_name")
 
     ai_analysis = doc.get("ai_analysis") or {}
-    img_dets = ai_analysis.get("image_detections") or []
+    img_dets = doc.get("image_detections") or ai_analysis.get("image_detections") or []
     vis_ev = doc.get("visual_evidence") or ai_analysis.get("visual_evidence") or {}
+    ai_det = doc.get("ai_detected") or ai_analysis.get("ai_detected") or {}
     if not img_dets and vis_ev.get("defect_name"):
         img_dets = [vis_ev["defect_name"]]
     pub["ai_analysis"] = {
@@ -162,5 +165,6 @@ def serialize_officer_issue(doc: dict) -> dict:
     }
     pub["visual_evidence"] = vis_ev
     pub["image_detections"] = img_dets
+    pub["ai_detected"] = ai_det
 
     return pub

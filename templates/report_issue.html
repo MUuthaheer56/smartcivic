@@ -91,6 +91,10 @@
     <div class="form-group">
       <label class="form-label">Evidence Image Photo</label>
       <input type="file" id="image" class="form-control" accept="image/*" required>
+      <div id="imagePreviewContainer" style="display: none; margin-top: 0.5rem;">
+        <img id="imagePreview" alt="Evidence Preview" style="max-width: 100%; max-height: 200px; border-radius: 6px; object-fit: cover; border: 1px solid var(--sc-border, #cbd5e1);">
+      </div>
+      <div id="imageAiBadge" class="ai-detect-badge" style="display: none; margin-top: 0.5rem;" data-testid="image-ai-badge"></div>
     </div>
 
     <div class="emergency-box">

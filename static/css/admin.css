@@ -275,3 +275,41 @@
     margin: 0.4rem 0;
 }
 
+/* AI Defect Detection Badges (Green for detected, Grey for none, Amber for unavailable, Blue for pending) */
+.ai-detect-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.35;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.ai-detect-badge.detected {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.ai-detect-badge.none {
+    background: rgba(100, 116, 139, 0.1);
+    color: #475569;
+    border-color: rgba(100, 116, 139, 0.25);
+}
+
+.ai-detect-badge.unavailable {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.ai-detect-badge.pending {
+    background: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+    border-color: rgba(59, 130, 246, 0.25);
+}
+

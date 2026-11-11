@@ -52,6 +52,7 @@ def _preprocess_image(image_input: Union[str, bytes, Image.Image, np.ndarray], t
     Loads and normalizes image for YOLOv8 ONNX (NCHW format, RGB, 0.0 - 1.0).
     Returns (preprocessed_tensor, original_width, original_height).
     """
+    import io
     if isinstance(image_input, (str, os.PathLike)):
         if not os.path.exists(image_input):
             return None, 0, 0
@@ -60,6 +61,14 @@ def _preprocess_image(image_input: Union[str, bytes, Image.Image, np.ndarray], t
         img = image_input.convert("RGB")
     elif isinstance(image_input, np.ndarray):
         img = Image.fromarray(image_input).convert("RGB")
+    elif isinstance(image_input, bytes):
+        img = Image.open(io.BytesIO(image_input)).convert("RGB")
+    elif hasattr(image_input, "read"):
+        pos = image_input.tell() if hasattr(image_input, "tell") else 0
+        data = image_input.read()
+        if hasattr(image_input, "seek"):
+            image_input.seek(pos)
+        img = Image.open(io.BytesIO(data)).convert("RGB")
     else:
         return None, 0, 0
 
@@ -331,5 +340,88 @@ def run_road_detector(
 
 # Alias for backward compatibility
 detect_road_damage = run_road_detector
+
+
+def detect_and_format_defect(image_input: Union[str, bytes, Image.Image, np.ndarray, Any]) -> Dict[str, Any]:
+    """
+    Executes local YOLOv8 ONNX defect detection and returns standardized
+    message and badge metadata for citizen, officer, and worker views:
+      - Detection found: "AI detected: <defect type> (confidence XX%) • Severity X/10"
+        (with several detections: "+N more")
+      - Nothing detected: "AI could not detect a civic issue in this image. You can still submit your report."
+      - Error/Unavailable: "AI check unavailable right now."
+    """
+    default_res = {
+        "available": False,
+        "has_detections": False,
+        "status": "unavailable",
+        "message": "AI check unavailable right now.",
+        "defect_type": None,
+        "confidence": 0.0,
+        "confidence_pct": 0,
+        "severity": None,
+        "severity_score": 0,
+        "detections": [],
+        "count": 0,
+        "additional_count": 0
+    }
+    if not image_input:
+        return default_res
+
+    sess, _ = _get_active_session()
+    if sess is None:
+        return default_res
+
+    try:
+        res = run_road_detector(image_input, session_override=sess)
+        val = res.get("value", {}) if isinstance(res, dict) else {}
+        if not val.get("available"):
+            return default_res
+
+        dets = val.get("detections", [])
+        if dets:
+            top = dets[0]
+            defect_type = top.get("class_name") or val.get("primary_defect") or "Civic defect"
+            conf = float(top.get("confidence") or res.get("confidence") or 0.0)
+            conf_pct = int(round(conf * 100))
+            raw_score = top.get("severity_score") or val.get("severity_score") or 0.5
+            sev_num = int(round(raw_score * 10)) if raw_score <= 1.0 else int(round(raw_score))
+            sev_num = max(1, min(10, sev_num))
+            additional = len(dets) - 1
+            more_str = f" +{additional} more" if additional > 0 else ""
+            msg = f"AI detected: {defect_type} (confidence {conf_pct}%) • Severity {sev_num}/10{more_str}"
+            return {
+                "available": True,
+                "has_detections": True,
+                "status": "detected",
+                "message": msg,
+                "defect_type": defect_type,
+                "confidence": conf,
+                "confidence_pct": conf_pct,
+                "severity": top.get("severity") or val.get("severity") or "medium",
+                "severity_score": sev_num,
+                "detections": dets,
+                "count": len(dets),
+                "additional_count": additional
+            }
+        else:
+            return {
+                "available": True,
+                "has_detections": False,
+                "status": "none",
+                "message": "AI could not detect a civic issue in this image. You can still submit your report.",
+                "defect_type": None,
+                "confidence": 0.0,
+                "confidence_pct": 0,
+                "severity": None,
+                "severity_score": 0,
+                "detections": [],
+                "count": 0,
+                "additional_count": 0
+            }
+    except Exception as exc:
+        logger.warning(f"[RoadDetector] detect_and_format_defect error: {exc}")
+        return default_res
+
 
 

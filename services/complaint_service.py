@@ -208,13 +208,24 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
     # 3. Analyze text and image independently before fusing the predictions.
     ai_text = ai_service.analyze_complaint_text(description)
     ai_img = None
+    ai_detected_info = None
     if images:
         before_imgs = [img for img in images if isinstance(img, dict) and img.get("type") == "before"]
         if before_imgs:
             _img_path = before_imgs[0].get("filepath") or before_imgs[0].get("url", "")
             ai_img = ai_service.analyze_complaint_image(_img_path)
         elif images and isinstance(images[0], str):
+            _img_path = images[0]
             ai_img = ai_service.analyze_complaint_image(images[0])
+        else:
+            _img_path = None
+
+        if _img_path:
+            try:
+                from services.ai.road_detector import detect_and_format_defect
+                ai_detected_info = detect_and_format_defect(_img_path)
+            except Exception as _det_err:
+                logger.warning(f"Failed to detect defects on image: {_det_err}")
 
     if ai_img is None:
         ai_img = {
@@ -379,9 +390,10 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         "confidence_type": final_prediction.get("confidence_type", "heuristic"),
         "provider": ai_img.get("provider") if ai_img.get("available") else ai_text.get("provider", "rule_based"),
         "model": ai_img.get("model") if ai_img.get("available") else None,
-        "image_analysis_available": bool(ai_img.get("available")),
-        "image_analysis_message": ai_img.get("message") or ("Image analysis completed" if ai_img.get("available") else "Image analysis unavailable, your report was still recorded"),
-        "image_detections": ai_img.get("image_detections", []),
+        "image_analysis_available": bool(ai_img.get("available") or (ai_detected_info and ai_detected_info.get("available"))),
+        "image_analysis_message": (ai_detected_info.get("message") if ai_detected_info else None) or ai_img.get("message") or ("Image analysis completed" if ai_img.get("available") else "Image analysis unavailable, your report was still recorded"),
+        "image_detections": [d["class_name"] for d in ai_detected_info["detections"] if d.get("class_name")] if (ai_detected_info and ai_detected_info.get("has_detections")) else ai_img.get("image_detections", []),
+        "ai_detected": ai_detected_info,
         "explanation": final_prediction.get("reason", ""),
         "category_source": "model_predicted" if ai_img.get("available") else "text_analysis",
         "department_source": "category_mapping",
@@ -421,6 +433,8 @@ def create_complaint(citizen_id, title: str, description: str, location: dict, i
         "original_description": orig_desc,
         "translated_description": trans_desc,
         "ai_analysis": ai_analysis,
+        "ai_detected": ai_detected_info,
+        "image_detections": [d["class_name"] for d in ai_detected_info["detections"] if d.get("class_name")] if (ai_detected_info and ai_detected_info.get("has_detections")) else ai_img.get("image_detections", []),
         "ai_prediction": {
             "issue_type": issue_type,
             "category": category,
