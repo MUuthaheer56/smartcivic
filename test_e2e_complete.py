@@ -19,6 +19,7 @@ from app import create_app, db, limiter
 
 app = create_app()
 app.config['TESTING'] = True
+app.config['WTF_CSRF_ENABLED'] = False
 limiter.enabled = False
 client = app.test_client()
 

@@ -200,3 +200,91 @@
     color: #2563eb;
     border-color: rgba(59, 130, 246, 0.25);
 }
+
+
+/* ============================================================
+   7. WORKER ROUTE & WAYPOINT PANEL
+   ============================================================ */
+.route-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.waypoint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  padding-left: 24px;
+}
+
+.waypoint-list::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 8px;
+  width: 3px;
+  background: linear-gradient(to bottom, var(--royal-purple-700), var(--royal-gold-500));
+  border-radius: 3px;
+  z-index: 1;
+}
+
+.waypoint-item {
+  position: relative;
+  background-color: var(--sc-card);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--sc-card-border);
+  z-index: 2;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.waypoint-item:hover {
+  transform: translateX(4px);
+  border-color: var(--royal-purple-600);
+}
+
+.waypoint-seq {
+  position: absolute;
+  top: 16px;
+  left: -32px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sc-primary-gradient);
+  color: #ffffff;
+  border: 2px solid var(--royal-gold-400);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.waypoint-item.completed .waypoint-seq {
+  background: var(--jewel-emerald);
+  border-color: #ffffff;
+}
+
+.tracking-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(76, 29, 149, 0.08) 0%, rgba(201, 162, 39, 0.12) 100%);
+  border: 1px solid rgba(201, 162, 39, 0.4);
+  color: var(--sc-text);
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+html.dark .tracking-bar {
+  background: linear-gradient(135deg, rgba(76, 29, 149, 0.25) 0%, rgba(201, 162, 39, 0.18) 100%);
+  border-color: rgba(201, 162, 39, 0.4);
+  color: #faf8f3;
+}

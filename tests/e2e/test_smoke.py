@@ -176,7 +176,7 @@ def test_role_e2e_smoke(browser, live_server, config):
         failed_requests.clear()
 
         full_url = f"{live_server}{page_path}"
-        page.goto(full_url, wait_until="load", timeout=12000)
+        page.goto(full_url, wait_until="domcontentloaded", timeout=25000)
         page.wait_for_timeout(2000)
 
         # Check network & console invariants

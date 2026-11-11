@@ -313,3 +313,94 @@
     border-color: rgba(59, 130, 246, 0.25);
 }
 
+
+
+/* ============================================================
+   4. HOTSPOT & FORECAST CARDS
+   ============================================================ */
+.hotspot-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background-color: var(--sc-card);
+  border: 1px solid var(--sc-card-border);
+  margin-bottom: 10px;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hotspot-card:hover {
+  transform: translateX(4px);
+  border-color: var(--royal-purple-600);
+  box-shadow: var(--shadow-sm);
+}
+
+.hotspot-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hotspot-name {
+  font-weight: 700;
+  font-size: 0.94rem;
+  color: var(--sc-text);
+  font-family: var(--font-body);
+}
+
+.hotspot-meta {
+  font-size: 0.8rem;
+  color: var(--sc-muted);
+}
+
+.hotspot-badge {
+  background-color: var(--sc-critical-bg);
+  color: var(--sc-critical-text);
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--sc-critical-border);
+  flex-shrink: 0;
+}
+
+/* History lists */
+.history-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sc-card-border) transparent;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--sc-divider);
+  font-size: 0.9rem;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-reason {
+  font-weight: 500;
+  color: var(--sc-text);
+}
+
+.history-change {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.history-change.positive {
+  color: var(--jewel-emerald);
+}
+
+.history-change.negative {
+  color: var(--jewel-ruby);
+}
